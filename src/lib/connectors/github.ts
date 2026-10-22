@@ -60,13 +60,14 @@ export class GitHubConnector implements ConnectorAdapter {
   }
 
   describe(connection: ConnectorConnection) {
-    const enabled = connection.state === "connected" && Boolean(connection.secretRef);
     return ["issues.search", "issues.read", "issues.create"].map((id) => ({
       id,
-      state: enabled ? "enabled" as const : "unknown" as const,
-      evidence: enabled ? "live_auth_check" as const : "not_verified" as const,
+      state: "unknown" as const,
+      evidence: "not_verified" as const,
       requiredScopes: id === "issues.create" ? ["Issues: write"] : ["Issues: read"],
-      reason: enabled ? undefined : "GitHub App/OAuth authorization has not been checked by ATLAS HQ.",
+      reason: connection.state === "connected" && connection.secretRef
+        ? "Live repository permission check has not been implemented."
+        : "GitHub App/OAuth authorization has not been checked by ATLAS HQ.",
     }));
   }
 

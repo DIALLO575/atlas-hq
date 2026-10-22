@@ -77,6 +77,7 @@ test("timeout records an unknown outcome and blocks blind replay", async () => {
 test("missing authentication and Linear capability checks stay explicit", async () => {
   const adapter = new GitHubConnector({ async resolve() { throw new Error("must not read secrets"); } });
   await assert.rejects(() => adapter.health({ ...connection, state: "reauthorization_required" }), { code: "AUTH_REQUIRED" });
+  assert.ok(adapter.describe(connection).every((capability) => capability.state === "unknown" && capability.evidence === "not_verified"));
   const capabilities = describeLinear({ ...connection, provider: "linear", state: "disconnected", secretRef: undefined });
   assert.ok(capabilities.every((capability) => capability.state === "unknown" && capability.evidence === "not_verified"));
 });
