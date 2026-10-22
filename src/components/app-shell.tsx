@@ -1,41 +1,86 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 
 const navItems = [
-  { label: "Vue d’ensemble", icon: "grid" as const, href: "/" },
-  { label: "Mes Apps", icon: "layers" as const, href: "/apps" },
-  { label: "Agents", icon: "bot" as const, href: "/agents" },
-  { label: "Recherche", icon: "search" as const, href: "/search" },
+  { label: "Accueil", icon: "grid" as const, href: "/" },
+  { label: "Workspaces", icon: "layers" as const, href: "/workspaces" },
+  { label: "Missions", icon: "activity" as const, href: "/missions" },
+  { label: "Agents & Équipes", icon: "bot" as const, href: "/agents" },
+  { label: "Mes Apps", icon: "apps" as const, href: "/apps" },
+  { label: "Inbox", icon: "inbox" as const, href: "/inbox" },
 ];
+
+const utilityItems = [
+  { label: "Recherche globale", icon: "search" as const, href: "/search" },
+  { label: "Éléments liés", icon: "link" as const, href: "/related" },
+  { label: "Chief", icon: "spark" as const, href: "/chief" },
+  { label: "Paramètres", icon: "settings" as const, href: "/settings" },
+];
+
+const mobileItems = [navItems[0], navItems[2], navItems[5]];
 
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "ATLAS HQ";
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setMenuOpen(false);
+        router.push("/search");
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [router]);
+
+  const closeMenu = () => setMenuOpen(false);
+  const linkClass = (href: string) => `nav-item ${pathname === href ? "nav-active" : ""}`;
 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Aller au contenu principal</a>
       <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} aria-label="Navigation principale">
-        <Link className="brand" href="/" aria-label="ATLAS HQ, accueil" onClick={() => setMenuOpen(false)}><span className="brand-symbol">A</span><span>ATLAS<span className="brand-light">HQ</span><small>PERSONAL OPERATING SYSTEM</small></span></Link>
-        <div className="workspace-switch"><span className="workspace-avatar">M</span><span><strong>Espace personnel</strong><small>Personal Operating System</small></span><span className="switch-chevron" aria-hidden="true">⌄</span></div>
+        <Link className="brand" href="/" aria-label="ATLAS HQ, accueil" onClick={closeMenu}>
+          <span className="brand-symbol">A</span>
+          <span>ATLAS<span className="brand-light">HQ</span><small>PERSONAL OPERATING SYSTEM</small></span>
+        </Link>
+        <div className="workspace-switch"><span className="workspace-avatar" aria-hidden="true">A</span><span><strong>Espace ATLAS</strong><small>Vue personnelle</small></span><span className="switch-chevron" aria-hidden="true">⌄</span></div>
         <div className="nav-label">ESPACE DE TRAVAIL</div>
-        <nav className="primary-nav" aria-label="Sections">
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return <Link key={item.href} className={`nav-item ${active ? "nav-active" : ""}`} href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)}><Icon name={item.icon}/><span>{item.label}</span></Link>;
-          })}
+        <nav className="primary-nav" aria-label="Sections principales">
+          {navItems.map((item) => <Link key={item.href} className={linkClass(item.href)} href={item.href} aria-current={pathname === item.href ? "page" : undefined} onClick={closeMenu}><Icon name={item.icon}/><span>{item.label}</span></Link>)}
         </nav>
-        <div className="sidebar-bottom"><div className="sidebar-help"><span className="help-orb" aria-hidden="true">?</span><span><strong>Besoin d’aide ?</strong><small>Découvrez le guide de démarrage</small></span><Icon name="arrow-up-right" /></div><Link className="nav-item settings-item" href="/" aria-label="Paramètres, bientôt disponibles"><Icon name="settings"/><span>Paramètres · bientôt</span></Link><div className="profile-row"><div className="profile-avatar" aria-hidden="true">MD</div><span><strong>Mamadou Diallo</strong><small>Compte personnel</small></span><span className="profile-menu" aria-hidden="true">···</span></div></div>
+        <div className="sidebar-bottom">
+          <div className="nav-label utility-label">ACCÈS TRANSVERSAUX</div>
+          <nav className="utility-nav" aria-label="Outils transversaux">
+            {utilityItems.map((item) => <Link key={item.href} className={linkClass(item.href)} href={item.href} aria-current={pathname === item.href ? "page" : undefined} onClick={closeMenu}><Icon name={item.icon}/><span>{item.label}</span></Link>)}
+          </nav>
+          <div className="profile-row"><div className="profile-avatar" aria-hidden="true">AT</div><span><strong>Espace personnel</strong><small>Compte non connecté</small></span></div>
+        </div>
       </aside>
-      {menuOpen && <button className="sidebar-scrim" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />}
+      {menuOpen && <button className="sidebar-scrim" aria-label="Fermer le menu" onClick={closeMenu} />}
       <div className="app-column">
-        <header className="topbar"><button className="mobile-menu icon-button" onClick={() => setMenuOpen((open) => !open)} aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"} aria-expanded={menuOpen}><Icon name={menuOpen ? "close" : "menu"} /></button><div className="breadcrumb"><span>Mon espace</span><span className="crumb-slash" aria-hidden="true">/</span><strong>{navItems.find((item) => item.href === pathname)?.label ?? "Espace de travail"}</strong></div><div className="topbar-actions"><span className="system-status"><span className="status-dot" /> Mode démo · aucune connexion active</span><span className="avatar-button" aria-label="Compte personnel">MD</span></div></header>
+        <header className="topbar">
+          <button className="mobile-menu icon-button" onClick={() => setMenuOpen((open) => !open)} aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"} aria-expanded={menuOpen}><Icon name={menuOpen ? "close" : "menu"}/></button>
+          <div className="breadcrumb"><span>ATLAS HQ</span><span className="crumb-slash" aria-hidden="true">/</span><strong>{currentLabel}</strong></div>
+          <div className="topbar-actions">
+            <Link className="global-search icon-button" href="/search" aria-label="Recherche globale"><Icon name="search"/><span>Rechercher</span><kbd>⌘ K</kbd></Link>
+            <span className="system-status"><span className="status-dot"/>Mode démonstration</span>
+          </div>
+        </header>
         {children}
       </div>
+      <nav className="mobile-bottom-nav" aria-label="Navigation rapide">
+        {mobileItems.map((item) => <Link key={item.href} className={`mobile-nav-item ${pathname === item.href ? "mobile-nav-active" : ""}`} href={item.href} aria-current={pathname === item.href ? "page" : undefined} onClick={closeMenu}><Icon name={item.icon}/><span>{item.label}</span></Link>)}
+        <button className={`mobile-nav-item ${menuOpen ? "mobile-nav-active" : ""}`} type="button" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><Icon name={menuOpen ? "close" : "menu"}/><span>Menu</span></button>
+      </nav>
     </div>
   );
 }

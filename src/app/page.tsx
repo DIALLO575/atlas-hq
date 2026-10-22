@@ -16,8 +16,8 @@ export default function Home() {
       <main className="main-content" id="main-content">
         <div className="welcome-row">
           <div>
-            <p className="eyebrow">JEUDI 22 OCTOBRE</p>
-            <h1>Bonjour, Mamadou <span aria-hidden="true">✳</span></h1>
+            <p className="eyebrow">VUE PERSONNELLE</p>
+            <h1>Bonjour <span aria-hidden="true">✳</span></h1>
             <p className="welcome-copy">Votre espace de travail, enfin réuni au même endroit.</p>
           </div>
           <Link className="icon-button search-button" href="/search" aria-label="Rechercher dans ATLAS HQ">

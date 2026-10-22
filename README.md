@@ -4,9 +4,12 @@ ATLAS HQ est le cockpit Web/PWA du Personal Operating System. Cette première fo
 
 ## Cockpit V0
 
-- Navigation entre Vue d’ensemble, Mes Apps, Agents et Recherche, au clavier comme au tactile.
+- Six destinations : Accueil, Workspaces, Missions, Agents & Équipes, Mes Apps et Inbox.
+- Recherche globale, Éléments liés, Chief et Paramètres sont accessibles depuis le shell.
+- Sur mobile, une barre rapide donne accès à Accueil, Missions, Inbox et Menu; le menu latéral est un panneau unique.
+- Navigation adaptée aux lecteurs d’écran, au clavier et au tactile; thème clair et tokens compatibles avec le mode sombre du système.
 - Le catalogue et les résultats de recherche utilisent uniquement des exemples d’interface, signalés par « Mode démonstration ». Ils ne décrivent pas l’état réel des comptes.
-- La vue Agents explique clairement l’absence de connexion. Les routes secondaires ont des états de chargement et une erreur récupérable.
+- Les espaces sans source connectée affichent des états vides explicites. Les routes secondaires ont des états de chargement et une erreur récupérable.
 - Les intégrations, l’activité opérationnelle et les connexions ne sont pas encore activées.
 
 ## Démarrage
