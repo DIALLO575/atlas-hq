@@ -13,8 +13,10 @@ test("PWA manifest describes a standalone French app", () => {
   assert.ok(manifest.icons.some((icon) => icon.src === "/icon.svg"));
 });
 
-test("service worker precaches the app shell and falls back offline", () => {
+test("service worker precaches only public assets and never caches authenticated HTML", () => {
   assert.match(serviceWorker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(serviceWorker, /request\.mode === "navigate"/);
-  assert.match(serviceWorker, /caches\.match\("\/"\)/);
+  assert.match(serviceWorker, /Never cache authenticated HTML/);
+  assert.doesNotMatch(serviceWorker, /cache\.put\("\/"/);
+  assert.doesNotMatch(serviceWorker, /caches\.match\("\/"\)/);
 });

@@ -35,7 +35,7 @@ test("new sections and transversal pages are honest empty states", () => {
     assert.match(page, /<DemoNotice\/>/);
     assert.match(page, /<EmptyPanel/);
   }
-  assert.match(workspaces, /Aucun workspace connecté/);
+  assert.match(workspaces, /Contrat workspace indisponible/);
   assert.match(missions, /Aucune mission/);
   assert.match(inbox, /Votre Inbox est vide/);
   assert.match(related, /Aucun lien n’est déduit ou inventé/);

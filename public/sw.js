@@ -1,5 +1,5 @@
-const CACHE_NAME = "atlas-hq-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg"];
+const CACHE_NAME = "atlas-hq-v2";
+const APP_SHELL = ["/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -15,13 +15,13 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).then((response) => {
-      const copy = response.clone();
-      void caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
-      return response;
-    }).catch(async () => (await caches.match("/")) || Response.error()));
+    // Never cache authenticated HTML or use it as an offline route fallback.
+    event.respondWith(fetch(request));
     return;
   }
+  const url = new URL(request.url);
+  const isPublicAsset = APP_SHELL.includes(url.pathname) || url.pathname.startsWith("/_next/static/");
+  if (!isPublicAsset) return;
   event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
     if (response.ok) { const copy = response.clone(); void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)); }
     return response;

@@ -6,7 +6,7 @@ export function PageHeading({ eyebrow, title, description }: { eyebrow: string; 
 }
 
 export function DemoNotice() {
-  return <aside className="demo-notice" aria-label="Données de démonstration"><span aria-hidden="true">i</span><p><strong>Mode démonstration.</strong> Les éléments affichés sont des exemples d’interface. Aucun service n’est connecté et aucune donnée opérationnelle n’est chargée.</p></aside>;
+  return <aside className="demo-notice" aria-label="Données de démonstration"><span aria-hidden="true">i</span><p><strong>Mode démonstration.</strong> Les éléments affichés sont des exemples d’interface sans données opérationnelles réelles.</p></aside>;
 }
 
 export function EmptyPanel({ title, children, icon = "layers" }: { title: string; children: ReactNode; icon?: "layers" | "bot" | "search" }) {

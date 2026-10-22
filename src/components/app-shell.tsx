@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
+import { SessionControls } from "@/components/session-controls";
+import { WorkspaceSelector } from "@/components/workspace-selector";
 
 const navItems = [
   { label: "Accueil", icon: "grid" as const, href: "/" },
@@ -52,7 +54,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           <span className="brand-symbol">A</span>
           <span>ATLAS<span className="brand-light">HQ</span><small>PERSONAL OPERATING SYSTEM</small></span>
         </Link>
-        <div className="workspace-switch"><span className="workspace-avatar" aria-hidden="true">A</span><span><strong>Espace ATLAS</strong><small>Vue personnelle</small></span><span className="switch-chevron" aria-hidden="true">⌄</span></div>
+        <WorkspaceSelector />
         <div className="nav-label">ESPACE DE TRAVAIL</div>
         <nav className="primary-nav" aria-label="Sections principales">
           {navItems.map((item) => <Link key={item.href} className={linkClass(item.href)} href={item.href} aria-current={pathname === item.href ? "page" : undefined} onClick={closeMenu}><Icon name={item.icon}/><span>{item.label}</span></Link>)}
@@ -62,7 +64,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           <nav className="utility-nav" aria-label="Outils transversaux">
             {utilityItems.map((item) => <Link key={item.href} className={linkClass(item.href)} href={item.href} aria-current={pathname === item.href ? "page" : undefined} onClick={closeMenu}><Icon name={item.icon}/><span>{item.label}</span></Link>)}
           </nav>
-          <div className="profile-row"><div className="profile-avatar" aria-hidden="true">AT</div><span><strong>Espace personnel</strong><small>Compte non connecté</small></span></div>
+          <SessionControls />
         </div>
       </aside>
       {menuOpen && <button className="sidebar-scrim" aria-label="Fermer le menu" onClick={closeMenu} />}
@@ -72,7 +74,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           <div className="breadcrumb"><span>ATLAS HQ</span><span className="crumb-slash" aria-hidden="true">/</span><strong>{currentLabel}</strong></div>
           <div className="topbar-actions">
             <Link className="global-search icon-button" href="/search" aria-label="Recherche globale"><Icon name="search"/><span>Rechercher</span><kbd>⌘ K</kbd></Link>
-            <span className="system-status"><span className="status-dot"/>Mode démonstration</span>
+            <span className="system-status"><span className="status-dot"/>Espace protégé</span>
           </div>
         </header>
         {children}
