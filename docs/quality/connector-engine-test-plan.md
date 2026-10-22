@@ -33,6 +33,33 @@ The CI workflow runs the same checks for branch pushes, pull requests into `main
 | Account separation | Every lookup, cursor, idempotency key, relation and event is keyed by owner + connection; another account cannot reuse a command or resource | Command binding and resolver scope are unit-testable; cross-tenant database/RLS isolation needs a provisioned backend |
 | API regressions | Normalized fixtures pin provider identity and expected request/response shape; run against supported API fixtures before adapter releases | Synthetic GitHub fixture added; recorded API fixtures and provider sandbox are still needed |
 
+## ATLAS Agent Layer: PR → @VISION contract
+
+The first end-to-end slice is a GitHub pull request as the source resource, @VISION as the selected agent, an authorized bounded context package, and a real OpenMausBot mission whose final result links back to that same PR. The UI response or a locally generated summary is not evidence of a mission dispatch.
+
+The synthetic fixture and Node tests in `tests/fixtures/agent-layer/pr-vision-mission.json` and `tests/agent-layer-contract.test.mjs` pin the initial request/event contract. Run them with `npm test`. The context allowlist is limited to PR title/body, base/head refs and SHA, changed file names and patches. Tenant/workspace identifiers are part of authorization scope; unrelated resources, credentials and unrestricted repository contents must not enter the context. The PR URL, number and source SHA must stay consistent through dispatch, status events and the final result.
+
+| Contract | Required behavior | Offline coverage now | Real integration gate |
+| --- | --- | --- | --- |
+| Selection/context | Resolve @VISION to its stable agent ID; transmit only the selected PR and policy-authorized fields; reject cross-workspace resources and secret-like values | Fixture checks exact context keys, source identity, and rejects additional unrelated context/secret-like content | Verify actual permission filtering and serialized mission payload from the PR surface |
+| Dispatch/idempotency | One user action creates one mission; retries with the same request key and payload return the same mission; changed payload with the same key conflicts | Request key and identity are pinned in the synthetic fixture; a live deduplication assertion is not possible without the dispatch service | Repeat the same dispatch; verify one OpenMausBot mission ID and conflict on changed context |
+| Lifecycle/errors | Expose queued/running/succeeded/failed/retryable; normalized error code; unknown outcomes are reconciled before retry | Event contract rejects unknown states, missing error codes, and success linked to a different PR | Force auth, permission, unavailable, timeout and retry cases; confirm no duplicate mission |
+| Result/audit | Persist requester, workspace, agent, source PR/SHA, mission ID, timestamps, outcome and result URL; attach the result to the exact originating PR | Synthetic status event checks source identity and same-PR binding | Inspect OpenMausBot mission record and GitHub resource relation/audit entry after completion |
+| Isolation/mobile | Enforce workspace and account boundary at lookup and write time; make selection, confirmation, progress, retry and result reachable on mobile | Cross-resource fixture rejection only; mobile UI and database policy are not in this test harness | Test two isolated workspaces and a narrow mobile viewport with the actual app |
+
+### Current execution status and blocker
+
+Repository inspection on 2026-10-22 found the foundation PR and the Connector Engine QA branch, but no J.A.R.V.I.S./SHURI/Agent Layer implementation branch. The available OpenMausBot tool surface in this QA run exposes teammate coordination but no mission-dispatch/create/read operation. Therefore these tests are contract checks over synthetic input, not a simulated claim that a real mission ran. A real PR → @VISION execution remains blocked until the Agent Layer dispatch/status integration is available and an authorized test PR can be used. Record the mission ID, exact source PR/SHA, audit record and final linked result when that environment is ready.
+
+### Pass criteria for the first live slice
+
+- `npm test`, typecheck, lint, build, secret scan and the dependency audit policy pass on the QA branch.
+- A single real dispatch yields a real OpenMausBot mission ID; replay does not create another mission.
+- The mission carries only the allowlisted, permission-filtered context for the identified PR/SHA.
+- Status, normalized failures/retry behavior and final result remain attached to that same PR.
+- Cross-workspace access is denied and recorded; mobile selection and result flow work at a narrow viewport.
+- Any unavailable live gate stays marked unverified; no capability is marked live-verified from fixture tests.
+
 ## Test layers and gate criteria
 
 1. **Unit/contract (every PR):** fake transport and fake vault only. Assert identity, error codes, secret isolation, previews, cursor semantics, freshness arithmetic, idempotency and account scoping. No external network calls.
