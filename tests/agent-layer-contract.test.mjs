@@ -9,17 +9,29 @@ const fixture = JSON.parse(await readFile(
 
 const CONTEXT_ALLOWLIST = ["title", "body", "baseRef", "headRef", "headSha", "changedFiles"];
 const MISSION_STATES = new Set(["queued", "running", "succeeded", "failed", "retryable"]);
-const SECRET_PATTERN = /(?:bearer\\s+[\\w.-]+|gh[pousr]_[\\w]+|token|secret)/i;
+const SECRET_PATTERN = /(?:bearer\s+[\w.-]+|gh[pousr]_[\w]+|token|secret)/i;
+
+function expectedIdempotencyKey(request) {
+  return [
+    request.requestedBy.userId,
+    request.requestedBy.workspaceId,
+    request.source.provider,
+    request.source.repository,
+    request.source.pullRequestNumber,
+    request.source.headSha,
+    request.agent.id,
+  ].join(":");
+}
 
 function assertPrMissionRequest(request) {
   assert.equal(request.source.provider, "github");
   assert.equal(request.source.resourceType, "pull_request");
-  assert.match(request.source.url, /^https:\\/\\/github\\.com\\/[^/]+\\/[^/]+\\/pull\\/\\d+$/);
+  assert.match(request.source.url, /^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+$/);
   assert.equal(request.source.pullRequestNumber, Number(request.source.url.split("/").at(-1)));
   assert.equal(request.context.headSha, request.source.headSha);
   assert.deepEqual(Object.keys(request.context).sort(), [...CONTEXT_ALLOWLIST].sort());
   assert.ok(request.agent.id && request.requestedBy.userId && request.requestedBy.workspaceId);
-  assert.ok(request.idempotencyKey);
+  assert.equal(request.idempotencyKey, expectedIdempotencyKey(request));
   assert.ok(!SECRET_PATTERN.test(JSON.stringify(request)));
   assert.equal(request.context.changedFiles.length > 0, true);
 }
@@ -32,7 +44,7 @@ function assertMissionEvent(event, request) {
   assert.equal(event.source.pullRequestNumber, request.source.pullRequestNumber);
   assert.equal(event.source.headSha, request.source.headSha);
   assert.ok(!SECRET_PATTERN.test(JSON.stringify(event)));
-  if (event.status === "succeeded") assert.ok(event.result?.url);
+  if (event.status === "succeeded") assert.equal(event.result?.url, request.source.url);
   if (["failed", "retryable"].includes(event.status)) assert.ok(event.error?.code);
 }
 
@@ -62,6 +74,22 @@ test("request contract rejects secret-like context", () => {
   }));
 });
 
+test("idempotency key is scoped to requester, workspace, resource revision and agent", () => {
+  assert.equal(fixture.idempotencyKey, expectedIdempotencyKey(fixture));
+  assert.notEqual(
+    expectedIdempotencyKey({ ...fixture, requestedBy: { ...fixture.requestedBy, workspaceId: "workspace-fixture-2" } }),
+    fixture.idempotencyKey,
+  );
+  assert.notEqual(
+    expectedIdempotencyKey({ ...fixture, source: { ...fixture.source, pullRequestNumber: 43 } }),
+    fixture.idempotencyKey,
+  );
+  assert.notEqual(
+    expectedIdempotencyKey({ ...fixture, agent: { id: "agent-other" } }),
+    fixture.idempotencyKey,
+  );
+});
+
 test("mission events remain attached to the same PR and source revision", () => {
   for (const status of ["queued", "running", "succeeded"]) {
     assertMissionEvent({
@@ -75,6 +103,12 @@ test("mission events remain attached to the same PR and source revision", () => 
     missionId: fixture.id,
     status: "succeeded",
     source: { ...fixture.source, pullRequestNumber: 43 },
+    result: { url: "https://github.com/DIALLO575/atlas-hq/pull/43" },
+  }, fixture));
+  assert.throws(() => assertMissionEvent({
+    missionId: fixture.id,
+    status: "succeeded",
+    source: fixture.source,
     result: { url: "https://github.com/DIALLO575/atlas-hq/pull/43" },
   }, fixture));
 });
