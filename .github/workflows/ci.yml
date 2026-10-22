@@ -53,7 +53,7 @@ jobs:
             const path = new Set(seen).add(name);
             const via = vulnerabilities[name].via ?? [];
             if (via.some((entry) => typeof entry === "object" &&
-                (entry.url ?? "").endsWith(advisory))) return true;
+                (entry.url ?? "").toLowerCase().endsWith(advisory.toLowerCase()))) return true;
             return via.some((entry) => typeof entry === "string" &&
               isOnlyAcceptedAdvisory(entry, path));
           }
