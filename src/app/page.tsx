@@ -1,5 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
+import Link from "next/link";
+import { DemoNotice } from "@/components/page-elements";
 
 const spaces = [
   { name: "Notion", detail: "Espaces de travail", mark: "N", tone: "notion" },
@@ -18,10 +20,12 @@ export default function Home() {
             <h1>Bonjour, Mamadou <span aria-hidden="true">✳</span></h1>
             <p className="welcome-copy">Votre espace de travail, enfin réuni au même endroit.</p>
           </div>
-          <button className="icon-button search-button" type="button" aria-label="Rechercher dans ATLAS HQ">
+          <Link className="icon-button search-button" href="/search" aria-label="Rechercher dans ATLAS HQ">
             <Icon name="search" /> <span>Rechercher</span><kbd>⌘ K</kbd>
-          </button>
+          </Link>
         </div>
+
+        <DemoNotice />
 
         <section className="focus-card" aria-labelledby="focus-title">
           <div className="focus-content">
@@ -40,7 +44,7 @@ export default function Home() {
 
         <div className="section-heading" id="espaces">
           <div><p className="eyebrow">VOTRE ÉCOSYSTÈME</p><h2>Espaces à connecter</h2></div>
-          <button className="text-button" type="button">Gérer les connexions <Icon name="arrow-right" /></button>
+          <Link className="text-button" href="/apps">Voir Mes Apps <Icon name="arrow-right" /></Link>
         </div>
 
         <section className="spaces-grid" aria-label="État des espaces de travail">
@@ -49,7 +53,7 @@ export default function Home() {
               <div className={`space-mark ${space.tone}`} aria-hidden="true">{space.mark}</div>
               <div className="space-info"><h3>{space.name}</h3><p>{space.detail}</p></div>
               <span className="connection-state"><span /> À connecter</span>
-              <button className="space-arrow" type="button" aria-label={`Configurer ${space.name}`}><Icon name="arrow-up-right" /></button>
+              <Link className="space-arrow" href="/apps" aria-label={`Voir ${space.name} dans Mes Apps`}><Icon name="arrow-up-right" /></Link>
             </article>
           ))}
         </section>

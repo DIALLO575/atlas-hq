@@ -2,6 +2,13 @@
 
 ATLAS HQ est le cockpit Web/PWA du Personal Operating System. Cette première fondation propose une interface responsive utilisable sans IA et sans connexion aux services externes.
 
+## Cockpit V0
+
+- Navigation entre Vue d’ensemble, Mes Apps, Agents et Recherche, au clavier comme au tactile.
+- Le catalogue et les résultats de recherche utilisent uniquement des exemples d’interface, signalés par « Mode démonstration ». Ils ne décrivent pas l’état réel des comptes.
+- La vue Agents explique clairement l’absence de connexion. Les routes secondaires ont des états de chargement et une erreur récupérable.
+- Les intégrations, l’activité opérationnelle et les connexions ne sont pas encore activées.
+
 ## Démarrage
 
 Prérequis : Node.js 20.9 ou plus récent et npm.
@@ -16,6 +23,7 @@ Ouvrez [http://localhost:3000](http://localhost:3000). Le build de production se
 ## Vérifications
 
 ```bash
+npm test
 npm run typecheck
 npm run lint
 npm run build
