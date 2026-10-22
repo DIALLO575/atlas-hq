@@ -26,6 +26,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
       - name: Scan repository for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
