@@ -7,7 +7,7 @@ const fixture = JSON.parse(await readFile(
   "utf8",
 ));
 
-const CONTEXT_ALLOWLIST = ["title", "body", "baseRef", "headRef", "headSha", "changedFiles"];
+const CONTEXT_ALLOWLIST = ["title", "body", "baseRef", "baseSha", "headRef", "headSha", "changedFiles"];
 const MISSION_STATES = new Set(["queued", "running", "succeeded", "failed", "retryable"]);
 const SECRET_PATTERN = /(?:bearer\s+[\w.-]+|gh[pousr]_[\w]+|token|secret)/i;
 
@@ -16,8 +16,9 @@ function expectedIdempotencyKey(request) {
     request.requestedBy.userId,
     request.requestedBy.workspaceId,
     request.source.provider,
-    request.source.repository,
+    request.source.repositoryId,
     request.source.pullRequestNumber,
+    request.source.baseSha,
     request.source.headSha,
     request.agent.id,
   ].join(":");
@@ -28,10 +29,13 @@ function assertPrMissionRequest(request) {
   assert.equal(request.source.resourceType, "pull_request");
   assert.match(request.source.url, /^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+$/);
   assert.equal(request.source.pullRequestNumber, Number(request.source.url.split("/").at(-1)));
+  assert.equal(request.context.baseSha, request.source.baseSha);
   assert.equal(request.context.headSha, request.source.headSha);
   assert.deepEqual(Object.keys(request.context).sort(), [...CONTEXT_ALLOWLIST].sort());
   assert.ok(request.agent.id && request.requestedBy.userId && request.requestedBy.workspaceId);
   assert.equal(request.idempotencyKey, expectedIdempotencyKey(request));
+  assert.equal(request.authorization.confirmed, true);
+  assert.deepEqual(request.authorization.toolCapabilities, ["github.pull_request.read"]);
   assert.ok(!SECRET_PATTERN.test(JSON.stringify(request)));
   assert.equal(request.context.changedFiles.length > 0, true);
 }
@@ -41,6 +45,8 @@ function assertMissionEvent(event, request) {
   assert.equal(event.missionId, request.id);
   assert.equal(event.source.provider, request.source.provider);
   assert.equal(event.source.repository, request.source.repository);
+  assert.equal(event.source.repositoryId, request.source.repositoryId);
+  assert.equal(event.source.baseSha, request.source.baseSha);
   assert.equal(event.source.pullRequestNumber, request.source.pullRequestNumber);
   assert.equal(event.source.headSha, request.source.headSha);
   assert.ok(!SECRET_PATTERN.test(JSON.stringify(event)));
@@ -52,6 +58,8 @@ test("synthetic PR-to-VISION request carries an exact, bounded context", () => {
   assertPrMissionRequest(fixture);
   assert.equal(fixture.agent.displayName, "VISION");
   assert.equal(fixture.source.repository, "DIALLO575/atlas-hq");
+  assert.equal(fixture.source.repositoryId, 1000001);
+  assert.equal(fixture.source.baseSha, fixture.context.baseSha);
   assert.equal(fixture.source.pullRequestNumber, 42);
   assert.equal(fixture.source.headSha, fixture.context.headSha);
 });
