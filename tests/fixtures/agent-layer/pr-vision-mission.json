@@ -1,0 +1,33 @@
+{
+  "id": "mission-contract-fixture-001",
+  "idempotencyKey": "pr:atlas-hq:42:head:deadbeef:vision",
+  "requestedBy": {
+    "userId": "user-fixture-1",
+    "workspaceId": "workspace-fixture-1"
+  },
+  "agent": {
+    "id": "agent-vision-fixture",
+    "displayName": "VISION"
+  },
+  "source": {
+    "provider": "github",
+    "resourceType": "pull_request",
+    "repository": "DIALLO575/atlas-hq",
+    "pullRequestNumber": 42,
+    "url": "https://github.com/DIALLO575/atlas-hq/pull/42",
+    "headSha": "deadbeef0123456789deadbeef0123456789abcd"
+  },
+  "context": {
+    "title": "Add workspace-scoped mission dispatch",
+    "body": "Synthetic PR body for contract testing.",
+    "baseRef": "main",
+    "headRef": "feat/agent-layer-contract",
+    "headSha": "deadbeef0123456789deadbeef0123456789abcd",
+    "changedFiles": [
+      {
+        "path": "src/lib/agent-layer/dispatch.ts",
+        "patch": "@@ -0,0 +1 @@\\nexport const fixture = true;"
+      }
+    ]
+  }
+}
