@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { ConnectorError } from "../src/lib/connectors/contracts.ts";
 import { GitHubConnector } from "../src/lib/connectors/github.ts";
 import { describeLinear } from "../src/lib/connectors/linear.ts";
+import { assertCapabilityManifest, assertScopedNormalizedResource } from "./support/connector-contract-assertions.mjs";
+
+const githubSearchFixture = JSON.parse(readFileSync(new URL("./fixtures/connectors/github-search-response.json", import.meta.url), "utf8"));
 
 const connection = {
   id: "conn-1",
@@ -80,4 +84,110 @@ test("missing authentication and Linear capability checks stay explicit", async 
   assert.ok(adapter.describe(connection).every((capability) => capability.state === "unknown" && capability.evidence === "not_verified"));
   const capabilities = describeLinear({ ...connection, provider: "linear", state: "disconnected", secretRef: undefined });
   assert.ok(capabilities.every((capability) => capability.state === "unknown" && capability.evidence === "not_verified"));
+});
+
+test("shared capability contract rejects unsupported enabled states", () => {
+  const github = new GitHubConnector({ async resolve() { return "mock-secret"; } });
+  const githubCapabilities = assertCapabilityManifest(github, connection);
+  assert.deepEqual(githubCapabilities.map(({ id }) => id), ["issues.search", "issues.read", "issues.create"]);
+
+  const linearCapabilities = assertCapabilityManifest({ describe: (candidate) => describeLinear(candidate) }, { ...connection, provider: "linear" });
+  assert.deepEqual(linearCapabilities.map(({ id }) => id), ["issues.search", "issues.read", "issues.create", "webhooks.subscribe"]);
+});
+
+test("shared read contract scopes resources and keeps server credentials out of results", async () => {
+  const secretInputs = [];
+  let request;
+  const adapter = new GitHubConnector(
+    { async resolve(input) { secretInputs.push(input); return "mock-secret"; } },
+    async (url, init) => {
+      request = { url: String(url), init };
+      return Response.json(githubSearchFixture);
+    },
+    () => new Date("2026-10-22T18:00:00Z"),
+  );
+
+  const result = await adapter.searchIssues(connection, "contract fixture");
+  assert.deepEqual(secretInputs, [{ ownerId: connection.ownerId, connectionId: connection.id, secretRef: connection.secretRef }]);
+  assert.equal(request.init.headers.Authorization, "Bearer mock-secret");
+  assertScopedNormalizedResource(result.items[0], { connectionId: connection.id, provider: "github" });
+  assert.ok(!JSON.stringify(result).includes("mock-secret"));
+});
+
+test("direct reads normalize provider identity, URL and observation time", async () => {
+  let requestedUrl;
+  const adapter = new GitHubConnector(
+    { async resolve() { return "mock-secret"; } },
+    async (url) => {
+      requestedUrl = String(url);
+      return Response.json(githubSearchFixture.items[0]);
+    },
+    () => new Date("2026-10-22T18:00:00Z"),
+  );
+
+  const resource = await adapter.getIssue(connection, "7");
+  assert.equal(requestedUrl, "https://api.github.com/repos/DIALLO575/atlas-hq/issues/7");
+  assertScopedNormalizedResource(resource, { connectionId: connection.id, provider: "github" });
+  assert.equal(resource.canonicalUrl, githubSearchFixture.items[0].html_url);
+  assert.equal(resource.sourceUpdatedAt, githubSearchFixture.items[0].updated_at);
+});
+
+test("authentication and provider mismatch stop before resolving a credential or calling the provider", async () => {
+  let secretCalls = 0;
+  let requestCalls = 0;
+  const adapter = new GitHubConnector(
+    { async resolve() { secretCalls += 1; return "mock-secret"; } },
+    async () => { requestCalls += 1; return Response.json({ items: [] }); },
+  );
+
+  await assert.rejects(() => adapter.searchIssues({ ...connection, state: "disconnected" }, "x"), { code: "AUTH_REQUIRED" });
+  await assert.rejects(() => adapter.searchIssues({ ...connection, provider: "linear" }, "x"), { code: "VALIDATION_FAILED" });
+  assert.equal(secretCalls, 0);
+  assert.equal(requestCalls, 0);
+});
+
+test("a prepared write cannot be replayed against another connection", async () => {
+  let requestCalls = 0;
+  const adapter = new GitHubConnector(
+    { async resolve() { return "mock-secret"; } },
+    async () => { requestCalls += 1; return Response.json({}); },
+  );
+  const command = adapter.prepareCreateIssue(connection, { title: "Connection isolation" });
+  const otherConnection = { ...connection, id: "conn-2", accountId: "repo-2", accountLabel: "example/other" };
+
+  await assert.rejects(
+    () => adapter.executeCreateIssue(otherConnection, command, command.payloadHash, "isolated-key", memoryStore()),
+    { code: "VALIDATION_FAILED" },
+  );
+  assert.equal(requestCalls, 0);
+});
+
+test("provider errors normalize authentication, permissions, visibility and rate limits", async (t) => {
+  const cases = [
+    { name: "401", status: 401, expected: "AUTH_REQUIRED" },
+    { name: "403", status: 403, expected: "PERMISSION_DENIED" },
+    { name: "404", status: 404, expected: "NOT_FOUND_OR_HIDDEN" },
+    { name: "429 with retry-after", status: 429, expected: "RATE_LIMITED", retryAfter: "17", seconds: 17 },
+    { name: "403 with retry-after", status: 403, expected: "RATE_LIMITED", retryAfter: "9", seconds: 9 },
+  ];
+
+  for (const scenario of cases) {
+    await t.test(scenario.name, async () => {
+      const adapter = new GitHubConnector(
+        { async resolve() { return "mock-secret"; } },
+        async () => new Response(JSON.stringify({ message: "synthetic provider error" }), {
+          status: scenario.status,
+          headers: scenario.retryAfter ? { "retry-after": scenario.retryAfter } : undefined,
+        }),
+      );
+
+      await assert.rejects(() => adapter.getIssue(connection, "7"), (error) => {
+        assert.ok(error instanceof ConnectorError);
+        assert.equal(error.code, scenario.expected);
+        assert.ok(!error.message.includes("mock-secret"));
+        if (scenario.seconds !== undefined) assert.equal(error.retryAfterSeconds, scenario.seconds);
+        return true;
+      });
+    });
+  }
 });
