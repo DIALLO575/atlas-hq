@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const fixture = JSON.parse(await readFile(
-  new URL("../fixtures/agent-layer/pr-vision-mission.json", import.meta.url),
+  new URL("./fixtures/agent-layer/pr-vision-mission.json", import.meta.url),
   "utf8",
 ));
 
