@@ -1,6 +1,6 @@
 {
   "id": "mission-contract-fixture-001",
-  "idempotencyKey": "pr:atlas-hq:42:head:deadbeef:vision",
+  "idempotencyKey": "user-fixture-1:workspace-fixture-1:github:DIALLO575/atlas-hq:42:deadbeef0123456789deadbeef0123456789abcd:agent-vision-fixture",
   "requestedBy": {
     "userId": "user-fixture-1",
     "workspaceId": "workspace-fixture-1"
