@@ -18,18 +18,16 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
       <a className="skip-link" href="#main-content">Aller au contenu principal</a>
       <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} aria-label="Navigation principale">
         <Link className="brand" href="#main-content" aria-label="ATLAS HQ, accueil"><span className="brand-symbol">A</span><span>ATLAS<span className="brand-light">HQ</span><small>PERSONAL OPERATING SYSTEM</small></span></Link>
-        <div className="workspace-switch"><span className="workspace-avatar">M</span><span><strong>Espace personnel</strong><small>Offre individuelle</small></span><span className="switch-chevron">⌄</span></div>
+        <div className="workspace-switch"><span className="workspace-avatar">M</span><span><strong>Espace personnel</strong><small>Personal Operating System</small></span><span className="switch-chevron">⌄</span></div>
         <div className="nav-label">ESPACE DE TRAVAIL</div>
         <nav className="primary-nav">
-          {navItems.map((item) => <a key={item.label} className={`nav-item ${item.active ? "nav-active" : ""}`} href={item.href} onClick={() => setMenuOpen(false)}><Icon name={item.icon}/><span>{item.label}</span>{item.label === "Mes espaces" && <span className="nav-count">4</span>}</a>)}
+          {navItems.map((item) => <a key={item.label} className={`nav-item ${item.active ? "nav-active" : ""}`} href={item.href} onClick={() => setMenuOpen(false)}><Icon name={item.icon}/><span>{item.label}</span></a>)}
         </nav>
-        <div className="nav-label connections-label">CONNEXIONS</div>
-        <div className="connections-preview"><span className="connection-mini mini-notion">N</span><span className="connection-mini mini-github">GH</span><span className="connection-mini mini-linear">L</span><span className="connection-mini mini-more">+</span><span>4 espaces</span></div>
         <div className="sidebar-bottom"><div className="sidebar-help"><span className="help-orb">?</span><span><strong>Besoin d’aide ?</strong><small>Découvrez le guide de démarrage</small></span><Icon name="arrow-up-right" /></div><a className="nav-item settings-item" href="#main-content"><Icon name="settings"/><span>Paramètres</span></a><div className="profile-row"><div className="profile-avatar">MD</div><span><strong>Mamadou Diallo</strong><small>Compte personnel</small></span><span className="profile-menu">···</span></div></div>
       </aside>
       {menuOpen && <button className="sidebar-scrim" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />}
       <div className="app-column">
-        <header className="topbar"><button className="mobile-menu icon-button" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumb"><span>Mon espace</span><span className="crumb-slash">/</span><strong>Vue d’ensemble</strong></div><div className="topbar-actions"><span className="system-status"><i /> Tous les systèmes opérationnels</span><button className="avatar-button" aria-label="Menu du compte">MD</button></div></header>
+        <header className="topbar"><button className="mobile-menu icon-button" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumb"><span>Mon espace</span><span className="crumb-slash">/</span><strong>Vue d’ensemble</strong></div><div className="topbar-actions"><span className="system-status">Aucune connexion active</span><button className="avatar-button" aria-label="Menu du compte">MD</button></div></header>
         {children}
       </div>
     </div>

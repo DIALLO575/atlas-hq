@@ -39,7 +39,7 @@ export default function Home() {
         </section>
 
         <div className="section-heading" id="espaces">
-          <div><p className="eyebrow">VOTRE ÉCOSYSTÈME</p><h2>Espaces connectés</h2></div>
+          <div><p className="eyebrow">VOTRE ÉCOSYSTÈME</p><h2>Espaces à connecter</h2></div>
           <button className="text-button" type="button">Gérer les connexions <Icon name="arrow-right" /></button>
         </div>
 
