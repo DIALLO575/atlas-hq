@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "ATLAS HQ — Personal Operating System",
+  "short_name": "ATLAS HQ",
+  "description": "Votre cockpit personnel pour retrouver vos espaces et avancer sereinement.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101415",
+  "theme_color": "#101415",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
