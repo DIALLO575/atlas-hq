@@ -85,4 +85,4 @@ Required before those checks: disposable GitHub repository and Linear team; conf
 
 ## Rollback
 
-For this QA-only change, revert the commit or delete `qa/connector-engine-contract-harness`; no data or external provider state is changed by the tests. If a future integration test creates a sandbox issue, delete only the fixture issue identified by its recorded test marker and verify it is absent. Do not replay a write whose outcome is unknown; reconcile by reading the provider first. No production deployment is in scope.
+For this QA-only Agent Layer slice, revert only its added fixture/test files and restore the Agent Layer section of this plan to the pre-slice version; preserve the pre-existing Connector Engine harness and branch. No data or external provider state is changed by the tests. If a future integration test creates a sandbox issue, delete only the fixture issue identified by its recorded test marker and verify it is absent. Do not replay a write whose outcome is unknown; reconcile by reading the provider first. No production deployment is in scope.
