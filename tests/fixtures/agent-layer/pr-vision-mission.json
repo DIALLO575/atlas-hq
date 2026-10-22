@@ -1,6 +1,6 @@
 {
   "id": "mission-contract-fixture-001",
-  "idempotencyKey": "user-fixture-1:workspace-fixture-1:github:DIALLO575/atlas-hq:42:deadbeef0123456789deadbeef0123456789abcd:agent-vision-fixture",
+  "idempotencyKey": "user-fixture-1:workspace-fixture-1:github:1000001:42:cafebabe0123456789cafebabe0123456789abcd:deadbeef0123456789deadbeef0123456789abcd:agent-vision-fixture",
   "requestedBy": {
     "userId": "user-fixture-1",
     "workspaceId": "workspace-fixture-1"
@@ -15,7 +15,9 @@
     "repository": "DIALLO575/atlas-hq",
     "pullRequestNumber": 42,
     "url": "https://github.com/DIALLO575/atlas-hq/pull/42",
-    "headSha": "deadbeef0123456789deadbeef0123456789abcd"
+    "headSha": "deadbeef0123456789deadbeef0123456789abcd",
+    "repositoryId": 1000001,
+    "baseSha": "cafebabe0123456789cafebabe0123456789abcd"
   },
   "context": {
     "title": "Add workspace-scoped mission dispatch",
@@ -28,6 +30,13 @@
         "path": "src/lib/agent-layer/dispatch.ts",
         "patch": "@@ -0,0 +1 @@\\nexport const fixture = true;"
       }
+    ],
+    "baseSha": "cafebabe0123456789cafebabe0123456789abcd"
+  },
+  "authorization": {
+    "confirmed": true,
+    "toolCapabilities": [
+      "github.pull_request.read"
     ]
   }
 }
