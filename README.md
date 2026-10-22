@@ -12,6 +12,18 @@ ATLAS HQ est le cockpit Web/PWA du Personal Operating System. Cette première fo
 - Les espaces sans source connectée affichent des états vides explicites. Les routes secondaires ont des états de chargement et une erreur récupérable.
 - Les intégrations, l’activité opérationnelle et les connexions ne sont pas encore activées.
 
+## Connecteur Engine — GitHub et Linear
+
+La page « Mes Apps » présente une maquette intégrable des deux connecteurs prioritaires. Elle reprend les états du contrat serveur (`connected`, `reauthorization_required`, `disconnected`, `error`) et les capacités (`enabled`, `disabled`, `unknown`), mais n’affiche ici que l’état démonstration non connecté : aucune route HTTP, authentification OAuth, permission vérifiée, synchronisation ou ressource réelle n’est encore raccordée. Les actions mutatives restent désactivées; une création d’issue devra être approuvée à partir d’un aperçu serveur.
+
+Critères d’acceptation de cet incrément :
+
+- GitHub et Linear ont chacun une vue de capacités explicitement « À vérifier » sans preuve fournisseur.
+- Le compte, le workspace/dépôt, l’état d’accès, la fraîcheur et les incidents restent explicitement indisponibles ou inconnus tant que le serveur ne les fournit pas.
+- Les états sans connexion, sans ressource et sans approbation sont visibles; l’état erreur récupérable de route et l’état de chargement restent gérés par les fichiers `loading.tsx` et `error.tsx` existants.
+- La navigation du catalogue est utilisable au clavier; la page s’adapte au mobile et au thème sombre.
+- Aucune clé, permission ou donnée d’activité opérationnelle n’est envoyée ou simulée côté client.
+
 ## Démarrage
 
 Prérequis : Node.js 20.9 ou plus récent et npm.

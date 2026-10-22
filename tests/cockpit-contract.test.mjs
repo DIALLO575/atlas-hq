@@ -44,6 +44,15 @@ test("new sections and transversal pages are honest empty states", () => {
 
 test("mock catalogue is labelled and agents show a truthful empty state", () => {
   assert.match(apps, /<DemoNotice\/>/);
+  assert.match(apps, /name: "GitHub"/);
+  assert.match(apps, /name: "Linear"/);
+  assert.match(apps, /status: "unknown"/);
+  assert.match(apps, /Aucun compte autorisé/);
+  assert.match(apps, /Fraîcheur : inconnue/);
+  assert.match(apps, /Incidents de synchronisation/);
+  assert.match(apps, /Aucune ressource synchronisée/);
+  assert.match(apps, /Approbation requise avant exécution/);
+  assert.match(apps, /disabled aria-describedby="connect-unavailable"/);
   assert.match(agents, /Aucun agent connecté/);
   assert.match(agents, /Aucune conversation ni activité d’agent n’est simulée/);
   assert.match(demoData, /export const demoApps/);
