@@ -28,6 +28,26 @@ interface GitHubSearchResponse {
   items: GitHubIssue[];
 }
 
+interface GitHubPullRequest {
+  number: number;
+  title: string;
+  body: string | null;
+  state: string;
+  user?: { login?: string };
+  base?: { ref?: string };
+  head?: { ref?: string; sha?: string };
+  html_url: string;
+  updated_at: string;
+}
+
+interface GitHubPullRequestFile {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch?: string;
+}
+
 function mapIssue(connectionId: string, issue: GitHubIssue, observedAt: string): NormalizedResource {
   return {
     connectionId,
@@ -60,11 +80,11 @@ export class GitHubConnector implements ConnectorAdapter {
   }
 
   describe(connection: ConnectorConnection) {
-    return ["issues.search", "issues.read", "issues.create"].map((id) => ({
+    return ["issues.search", "issues.read", "issues.create", "pull_requests.read"].map((id) => ({
       id,
       state: "unknown" as const,
       evidence: "not_verified" as const,
-      requiredScopes: id === "issues.create" ? ["Issues: write"] : ["Issues: read"],
+      requiredScopes: id === "issues.create" ? ["Issues: write"] : id === "pull_requests.read" ? ["Pull requests: read"] : ["Issues: read"],
       reason: connection.state === "connected" && connection.secretRef
         ? "Live repository permission check has not been implemented."
         : "GitHub App/OAuth authorization has not been checked by ATLAS HQ.",
@@ -97,6 +117,44 @@ export class GitHubConnector implements ConnectorAdapter {
     const response = await this.request(connection, `/repos/${connection.accountLabel}/issues/${encodeURIComponent(providerObjectId)}`);
     if (!response.ok) throw await this.toError(response);
     return mapIssue(connection.id, await response.json() as GitHubIssue, this.now().toISOString());
+  }
+
+  async getPullRequestContext(connection: ConnectorConnection, number: string) {
+    assertCanUseConnection(connection, this.provider);
+    if (!/^\d+$/.test(number)) throw new ConnectorError("VALIDATION_FAILED", "Pull request number must be numeric");
+    const response = await this.request(connection, `/repos/${connection.accountLabel}/pulls/${number}`);
+    if (!response.ok) throw await this.toError(response);
+    const pr = await response.json() as GitHubPullRequest;
+    const files: GitHubPullRequestFile[] = [];
+    for (let page = 1; page <= 30; page += 1) {
+      const filesResponse = await this.request(connection, `/repos/${connection.accountLabel}/pulls/${number}/files?per_page=100&page=${page}`);
+      if (!filesResponse.ok) throw await this.toError(filesResponse);
+      const nextFiles = await filesResponse.json() as GitHubPullRequestFile[];
+      files.push(...nextFiles);
+      if (nextFiles.length < 100) break;
+      if (page === 30) throw new ConnectorError("UNSUPPORTED_CAPABILITY", "Pull request exceeds the supported 3,000-file context limit");
+    }
+    const observedAt = this.now().toISOString();
+    return {
+      resource: {
+        provider: "github" as const,
+        objectType: "pull_request" as const,
+        objectId: String(pr.number),
+        connectionId: connection.id,
+        canonicalUrl: pr.html_url,
+      },
+      title: pr.title,
+      body: pr.body ?? undefined,
+      state: pr.state,
+      author: pr.user?.login,
+      baseBranch: pr.base?.ref,
+      headBranch: pr.head?.ref,
+      headSha: pr.head?.sha,
+      changedFiles: files.map((file) => ({ path: file.filename, status: file.status, additions: file.additions, deletions: file.deletions, patch: file.patch })),
+      sourceUpdatedAt: pr.updated_at,
+      observedAt,
+      canonicalUrl: pr.html_url,
+    };
   }
 
   prepareCreateIssue(connection: ConnectorConnection, input: IssueCreateInput): PreparedCommand<IssueCreateInput> {

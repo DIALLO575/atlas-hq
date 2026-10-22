@@ -49,6 +49,28 @@ test("GitHub reads normalize issue identity, source URL and freshness", async ()
   });
 });
 
+test("GitHub pull request context includes metadata and changed-file patches", async () => {
+  const requests = [];
+  const adapter = new GitHubConnector(
+    { async resolve() { return "mock-secret"; } },
+    async (url) => {
+      requests.push(String(url));
+      if (String(url).includes("/pulls/17/files")) return Response.json([{ filename: "src/auth.ts", status: "modified", additions: 2, deletions: 1, patch: "@@ -1 +1 @@" }]);
+      return Response.json({ number: 17, title: "Fix tenant scope", body: "Review auth.", state: "open", user: { login: "dev" }, base: { ref: "main" }, head: { ref: "fix/scope", sha: "abc123" }, html_url: "https://github.com/DIALLO575/atlas-hq/pull/17", updated_at: "2026-10-22T17:00:00Z" });
+    },
+    () => new Date("2026-10-22T18:00:00Z"),
+  );
+  const result = await adapter.getPullRequestContext(connection, "17");
+  assert.deepEqual(requests.map((url) => new URL(url).pathname), [
+    "/repos/DIALLO575/atlas-hq/pulls/17",
+    "/repos/DIALLO575/atlas-hq/pulls/17/files",
+  ]);
+  assert.equal(result.resource.objectType, "pull_request");
+  assert.equal(result.resource.connectionId, "conn-1");
+  assert.equal(result.headSha, "abc123");
+  assert.deepEqual(result.changedFiles, [{ path: "src/auth.ts", status: "modified", additions: 2, deletions: 1, patch: "@@ -1 +1 @@" }]);
+});
+
 test("writes require a matching approved preview, granted scope and idempotency", async () => {
   let calls = 0;
   const adapter = new GitHubConnector(
