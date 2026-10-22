@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [proxy, login, actions, contract, selector, shell, envExample, workspacePage] = await Promise.all([
+const [proxy, login, actions, contract, selector, shell, envExample, workspacePage, sessionControls, styles] = await Promise.all([
   read("../src/lib/supabase/proxy.ts"),
   read("../src/app/login/page.tsx"),
   read("../src/app/login/actions.ts"),
@@ -12,6 +12,8 @@ const [proxy, login, actions, contract, selector, shell, envExample, workspacePa
   read("../src/components/app-shell.tsx"),
   read("../.env.example"),
   read("../src/app/workspaces/page.tsx"),
+  read("../src/components/session-controls.tsx"),
+  read("../src/app/globals.css"),
 ]);
 
 test("the six cockpit sections are protected by verified Supabase claims", () => {
@@ -28,6 +30,18 @@ test("login and logout use server auth actions and expose safe user messages", (
   assert.match(actions, /requestedPath\.startsWith\("\/\/"\)/);
   assert.match(login, /name="next"/);
   assert.doesNotMatch(actions, /service_role|sb_secret/i);
+});
+
+test("session controls distinguish loading, connected, signed-out, and failed states", () => {
+  assert.match(sessionControls, /status: "loading"/);
+  assert.match(sessionControls, /status: "ready"; email: string/);
+  assert.match(sessionControls, /status: "signed-out"/);
+  assert.match(sessionControls, /status: "error"/);
+  assert.match(sessionControls, /Déconnecté/);
+  assert.match(sessionControls, /Session indisponible/);
+  assert.match(sessionControls, /disabled=\{session\.status !== "ready"\}/);
+  assert.match(styles, /@media\(max-width:680px\).*\.session-row/s);
+  assert.match(sessionControls, /listener\.subscription\.unsubscribe\(\)/);
 });
 
 test("workspace adapter clearly reports that the verified backend contract is missing", () => {
