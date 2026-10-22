@@ -14,10 +14,10 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -27,7 +27,50 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        # GHSA-vfj7-8cjw-p6xm currently has no patched braces release. Allow only
+        # that advisory on its known eslint-config-next dev-dependency path.
+        run: |
+          npm audit --json > "$RUNNER_TEMP/npm-audit.json" || true
+          node - "$RUNNER_TEMP/npm-audit.json" <<'NODE'
+          const fs = require("node:fs");
+          const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          if (report.error) {
+            console.error("npm audit failed:", report.error);
+            process.exit(1);
+          }
+
+          const advisory = "GHSA-vfj7-8cjw-p6xm";
+          const allowedPackages = new Set([
+            "braces",
+            "micromatch",
+            "fast-glob",
+            "@next/eslint-plugin-next",
+            "eslint-config-next",
+          ]);
+          const vulnerabilities = report.vulnerabilities ?? {};
+          function isOnlyAcceptedAdvisory(name, seen = new Set()) {
+            if (!allowedPackages.has(name) || seen.has(name) || !vulnerabilities[name]) return false;
+            const path = new Set(seen).add(name);
+            const via = vulnerabilities[name].via ?? [];
+            if (via.some((entry) => typeof entry === "object" &&
+                (entry.url ?? "").endsWith(advisory))) return true;
+            return via.some((entry) => typeof entry === "string" &&
+              isOnlyAcceptedAdvisory(entry, path));
+          }
+
+          const high = Object.entries(vulnerabilities)
+            .filter(([, item]) => ["high", "critical"].includes(item.severity));
+          const unexpected = high.filter(([name]) => !isOnlyAcceptedAdvisory(name));
+          if (unexpected.length) {
+            console.error("Unaccepted high or critical npm advisories:", unexpected.map(([name]) => name));
+            process.exit(1);
+          }
+          if (high.length) {
+            console.log(`Accepted ${high.length} high-severity finding(s) only for ${advisory} on the documented braces dependency path; recheck when upstream publishes a fix.`);
+          } else {
+            console.log("No high or critical npm audit findings.");
+          }
+          NODE
       - name: Scan repository for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
