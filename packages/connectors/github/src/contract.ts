@@ -3,6 +3,7 @@ import type { ConnectorEvent, ReadOnlyConnectorContract, ResourceRef } from "../
 /**
  * GitHub.com MVP contract, verified against GitHub Docs on 2026-10-23.
  * It describes only read operations and webhook shapes ATLAS consumes.
+ * SHA-113 adds the setup callback below. That flow performs no GitHub call.
  */
 export const githubMvpContract = {
   provider: "github",
@@ -88,6 +89,17 @@ export const githubMvpContract = {
     pull_request: ["opened", "reopened", "synchronize", "closed"],
     ignored: "Unknown event names/actions are acknowledged but not processed; validate webhook signature and delivery id before this contract is used at runtime.",
   },
+  installationFlow: {
+    installUrl: "https://github.com/apps/{app-slug}/installations/new",
+    stateParameter: "state",
+    stateTtlSeconds: 900,
+    callbackParameters: ["installation_id", "setup_action", "state"],
+    setupActions: ["install", "update", "request"],
+    acceptedRepositorySelection: "selected",
+    ownershipCheck: "GET /user/installations with a user access token before installation_id is trusted",
+    repositoryList: "GET /installation/repositories",
+    liveGitHubCalls: false,
+  },
   responseHandling: {
     success: "200 JSON; use ETag/If-None-Match when available; 304 means unchanged.",
     auth: "401 stops and marks credential/session invalid; do not retry blindly.",
@@ -102,6 +114,7 @@ export const githubMvpContract = {
     "GitHub MCP as an authentication or execution path (experimental follow-up only)",
     "GraphQL until a measured product need justifies it",
     "checks/statuses, issues, contents, organization-wide discovery, and broad repository installation",
+    "REST changes to an installation's repository selection; the user selects repositories in GitHub's install UI",
   ],
   githubMcp: "V1/experimental and explicitly outside the MVP authentication path",
   writesEnabled: false,
@@ -116,6 +129,17 @@ export const githubMvpContract = {
     test: string;
   }[];
   events: Record<string, readonly string[] | string>;
+  installationFlow: {
+    installUrl: string;
+    stateParameter: "state";
+    stateTtlSeconds: number;
+    callbackParameters: readonly string[];
+    setupActions: readonly string[];
+    acceptedRepositorySelection: "selected";
+    ownershipCheck: string;
+    repositoryList: "GET /installation/repositories";
+    liveGitHubCalls: false;
+  };
   responseHandling: Record<string, string>;
   excluded: readonly string[];
   githubMcp: string;

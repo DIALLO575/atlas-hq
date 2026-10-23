@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     "./webhook-contract": "./src/webhook-contract.mjs",
-    "./pagination-contract": "./src/pagination-contract.mjs"
+    "./pagination-contract": "./src/pagination-contract.mjs",
+    "./installation-flow": "./src/installation-flow.mjs"
   }
 }

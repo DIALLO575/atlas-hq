@@ -50,3 +50,5 @@ Checked 2026-10-23; links below are GitHub's official documentation and the cont
 ## Verification boundary
 
 The local tests prove the runtime matrix fields, pure pagination/cap helpers, and parser behavior against fixed, synthetic payloads without network access or credentials. The parser validates the delivery ID's GUID shape but does not persist delivery IDs or prevent redelivery/replay; deduplication belongs to a future receiver. These tests do **not** prove a GitHub App installation, webhook signature verification/delivery, persistent deduplication, permissions on an actual installation, or an end-to-end connector; those remain out of scope and unverified in SHA-112.
+
+SHA-113 adds the server installation flow in `packages/connectors/github/src/installation-flow.mjs`, specified in `docs/integrations/github-app-installation.md`. It keeps this permission set and `writesEnabled: false`. Its tests use synthetic fixtures and do not call GitHub.
