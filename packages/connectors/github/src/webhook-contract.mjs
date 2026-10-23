@@ -1,9 +1,10 @@
 const actions = new Set(["opened", "reopened", "synchronize", "closed"]);
 const shaPattern = /^[0-9a-f]{40}$/i;
+const deliveryIdPattern = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 /** Parse only the small event envelope consumed by the MVP. Signature checks belong before this parser. */
 export function parsePullRequestEvent(eventName, deliveryId, payload) {
-  if (eventName !== "pull_request" || !deliveryId || !payload || typeof payload !== "object") return null;
+  if (eventName !== "pull_request" || typeof deliveryId !== "string" || !deliveryIdPattern.test(deliveryId) || !payload || typeof payload !== "object") return null;
   if (!actions.has(payload.action)) return null;
   const installationId = payload.installation?.id;
   const repository = payload.repository;

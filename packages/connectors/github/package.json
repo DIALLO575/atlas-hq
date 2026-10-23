@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./webhook-contract": "./src/webhook-contract.mjs"
+    "./webhook-contract": "./src/webhook-contract.mjs",
+    "./pagination-contract": "./src/pagination-contract.mjs"
   }
 }

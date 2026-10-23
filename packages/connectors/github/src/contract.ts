@@ -70,7 +70,7 @@ export const githubMvpContract = {
       requiredPermission: "pull_requests:read",
       events: ["pull_request:opened", "pull_request:synchronize", "pull_request:reopened"],
       risk: "Response is paginated and capped at 3,000 files; never imply a complete diff past the documented cap.",
-      test: "Link-header pagination and explicit cap handling",
+      test: "offline Link parser and explicit cap-helper test",
     },
     {
       capability: "pull_requests.commits.read",
@@ -79,7 +79,7 @@ export const githubMvpContract = {
       requiredPermission: "pull_requests:read",
       events: ["pull_request:opened", "pull_request:synchronize", "pull_request:reopened"],
       risk: "Pull-request endpoint lists at most 250 commits; represent that limitation and do not treat list as exhaustive beyond the cap.",
-      test: "Link-header pagination and explicit cap handling",
+      test: "offline Link parser and explicit cap-helper test",
     },
   ],
   events: {
