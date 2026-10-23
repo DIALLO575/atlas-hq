@@ -399,3 +399,134 @@
   .duo-or { margin: 12px 0 10px; }
   .duo-switch { margin-top: 12px; }
 }
+
+.duo-theme {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 16px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(148, 176, 230, 0.22);
+  border-radius: 999px;
+  background: rgba(8, 12, 22, 0.72);
+}
+
+.duo-theme button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #9aa6bd;
+  font: 620 13px AtlasDuo, Inter, "Liberation Sans", sans-serif;
+  cursor: pointer;
+}
+
+.duo-theme button[aria-pressed="true"] {
+  background: linear-gradient(180deg, #4c94ff 0%, #1d6ef5 100%);
+  color: #fff;
+}
+
+@media (max-width: 1099px) {
+  .duo-stage { padding-top: 64px; }
+}
+
+/* Clair : hex de :root dans globals.css. Le sombre ci-dessus reste le défaut. */
+.duo-auth[data-theme="light"] {
+  color: #1e293b;
+  color-scheme: light;
+  background: #f6f8fb;
+}
+
+.duo-auth[data-theme="light"] .duo-card {
+  background: #fff;
+  border: 1px solid #e5e9ef;
+  box-shadow: 0 18px 50px #17201d0a;
+}
+
+.duo-auth[data-theme="light"] .duo-logo,
+.duo-auth[data-theme="light"] .duo-card h1,
+.duo-auth[data-theme="light"] label,
+.duo-auth[data-theme="light"] .duo-sub,
+.duo-auth[data-theme="light"] .duo-switch,
+.duo-auth[data-theme="light"] .duo-rules li,
+.duo-auth[data-theme="light"] .duo-rules li.is-met {
+  color: #1e293b;
+}
+
+.duo-auth[data-theme="light"] .duo-tag,
+.duo-auth[data-theme="light"] .duo-footnote,
+.duo-auth[data-theme="light"] .duo-outside,
+.duo-auth[data-theme="light"] .duo-lead,
+.duo-auth[data-theme="light"] .duo-toggle,
+.duo-auth[data-theme="light"] .duo-tick,
+.duo-auth[data-theme="light"] input::placeholder {
+  color: #758196;
+}
+
+.duo-auth[data-theme="light"] .duo-text-button { color: #1d6ef5; }
+
+.duo-auth[data-theme="light"] .duo-rules li.is-met .duo-tick { color: #1d6ef5; }
+
+.duo-auth[data-theme="light"] input:not([type="checkbox"]):not([type="hidden"]) {
+  border-color: #e5e9ef;
+  background: #fff;
+  color: #1e293b;
+}
+
+.duo-auth[data-theme="light"] input:-webkit-autofill {
+  -webkit-text-fill-color: #1e293b;
+  caret-color: #1e293b;
+  box-shadow: 0 0 0 1000px #fff inset;
+}
+
+.duo-auth[data-theme="light"] .duo-field.is-invalid input {
+  border-color: #9a2f2f;
+  background: #fff;
+}
+
+.duo-auth[data-theme="light"] input:disabled {
+  color: #758196;
+  background: #f6f8fb;
+}
+
+.duo-auth[data-theme="light"] .duo-msg,
+.duo-auth[data-theme="light"] .duo-banner {
+  color: #9a2f2f;
+}
+
+.duo-auth[data-theme="light"] .duo-banner,
+.duo-auth[data-theme="light"] .duo-status {
+  background: #fff;
+  border-color: #e5e9ef;
+}
+
+.duo-auth[data-theme="light"] .duo-status { color: #1e293b; }
+
+.duo-auth[data-theme="light"] .duo-check input { border-color: #758196; }
+
+.duo-auth[data-theme="light"] .duo-or { color: #758196; }
+
+.duo-auth[data-theme="light"] .duo-or::before,
+.duo-auth[data-theme="light"] .duo-or::after { background: #e5e9ef; }
+
+.duo-auth[data-theme="light"] .duo-social button {
+  border-color: #e5e9ef;
+  background: #fff;
+}
+
+.duo-auth[data-theme="light"] .duo-confirm-mark {
+  background: #f6f8fb;
+  color: #1d6ef5;
+}
+
+.duo-auth[data-theme="light"] .duo-theme {
+  background: #fff;
+  border-color: #e5e9ef;
+}
+
+.duo-auth[data-theme="light"] .duo-theme button { color: #1e293b; }
+
+.duo-auth[data-theme="light"] .duo-theme button[aria-pressed="true"] { color: #fff; }
