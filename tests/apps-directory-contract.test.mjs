@@ -45,9 +45,10 @@ test("Mes Apps is a proper working discovery interface, not fictitious integrati
   assert.match(directory, /localStorage\.setItem\(FAVORITES_KEY/);
   assert.match(directory, /Voir toutes les applications/);
   assert.match(directory, /setSelected/);
-  assert.match(directory, /Aucune connexion suivie/);
+  assert.match(directory, /GitHub peut être connecté selon votre espace/);
   assert.match(directory, /Connexion à venir/);
-  assert.match(directory, /Les validations et demandes d’accès apparaîtront/);
+  assert.doesNotMatch(directory, /Actions rapides|Besoin de vous|atlas-apps-sidebar|atlas-apps-attention/);
+  assert.match(directory, /atlas-apps-inline-detail/);
   assert.doesNotMatch(directory, /8 apps connectées|Approbations \(3\)|Connectée<\/span>/);
   assert.match(catalogue, /recommendedApps = atlasApps\.filter/);
   assert.match(catalogue, /HubSpot/);
@@ -58,14 +59,14 @@ test("Mes Apps is a proper working discovery interface, not fictitious integrati
   assert.match(styles, /atlas-apps-content-grid/);
   assert.match(styles, /atlas-apps-tiles/);
   assert.match(styles, /atlas-apps-reco-grid/);
+  assert.match(styles, /grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
   assert.match(styles, /@media\(max-width:540px\)/);
 });
 
 test("all enabled navigation targets have real destinations and not fake OAuth flows", async () => {
   const directory = await read("../src/components/apps-directory.tsx");
-  assert.match(directory, /href="\/agents"/);
-  assert.match(directory, /href="\/missions"/);
-  assert.match(directory, /href="\/inbox"/);
-  assert.match(directory, /href="#apps-catalog"/);
+  const page = await read("../src/app/apps/page.tsx");
+  assert.match(page, /href="#apps-catalog"/);
+  assert.doesNotMatch(directory, /href="\/agents"|href="\/missions"|href="\/inbox"/);
   assert.doesNotMatch(directory, /href="https?:\/\/.*oauth|fetch\(["']\/api\/connect/);
 });
