@@ -54,5 +54,5 @@ test("expanded or right-side docks reserve content space; mobile is a static dra
   assert.match(styles, /touch-action: none/);
   assert.match(shell, /aria-expanded=\{expanded\}/);
   assert.match(shell, /atlas-mobile-bottom/);
-  assert.match(layout, /import "\.\/smart-css"/);
+  assert.match(layout, /import "\.\/smart-dock\.css"/);
 });
