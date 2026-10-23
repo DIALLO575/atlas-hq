@@ -38,7 +38,14 @@ test("login and logout use server auth actions and expose safe user messages", (
   assert.match(surface, /role="alert"/);
   assert.match(surface, /Adresse ou mot de passe incorrect\./);
   assert.match(surface, /Connexion indisponible/);
-  assert.match(surface, /Aucun accès n’est accordé en mode démonstration\./);
+  assert.match(surface, /Les paramètres publics d’authentification manquent\./);
+  assert.doesNotMatch(surface, /Connectez vos données/);
+  assert.doesNotMatch(surface, /Avancez plus loin/);
+  assert.doesNotMatch(surface, /Accédez à votre espace Atlas/);
+  assert.doesNotMatch(surface, /Rejoignez Atlas et centralisez vos données en toute simplicité/);
+  assert.doesNotMatch(surface, /ou continuer avec/);
+  assert.doesNotMatch(surface, /Aucun accès n’est accordé en mode démonstration/);
+  assert.doesNotMatch(surface, /Aucun accès de démonstration/);
   assert.match(surface, /name="next"/);
   assert.match(surface, /aria-disabled=\{true\}/);
   assert.match(surface, /disabled/);

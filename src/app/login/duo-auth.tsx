@@ -29,10 +29,6 @@ function Wordmark() {
   return <p className="duo-logo"><span>A</span>tlas</p>;
 }
 
-function Tagline() {
-  return <p className="duo-tag">Connectez vos données.<br />Avancez plus loin.</p>;
-}
-
 function PanelButton({ panel, children }: { panel: Panel; children: string }) {
   const { select, destination } = useContext(PanelContext);
   const params = new URLSearchParams();
@@ -50,7 +46,6 @@ function PanelButton({ panel, children }: { panel: Panel; children: string }) {
 function SocialRow() {
   return (
     <>
-      <div className="duo-or"><span>ou continuer avec</span></div>
       <div className="duo-social">
         <button type="button" aria-label="Google" aria-disabled={true} disabled><GoogleIcon /></button>
         <button type="button" aria-label="Microsoft" aria-disabled={true} disabled><MicrosoftIcon /></button>
@@ -151,9 +146,7 @@ function LoginForm({ destination, reason }: { destination: string; reason: strin
   return (
     <form action={signIn} noValidate onSubmit={onSubmit}>
       <Wordmark />
-      <Tagline />
       <h1 id="login-title">Connexion</h1>
-      <p className="duo-sub">Accédez à votre espace Atlas.</p>
       {reason === "credentials" ? <p className="duo-banner" role="alert">Adresse ou mot de passe incorrect.</p> : null}
       {reason === "auth-unavailable" ? <p className="duo-banner" role="alert">Le service de connexion ne répond pas. Réessayez dans quelques instants.</p> : null}
       {reason === "signed-out" ? <p className="duo-status" role="status">Vous êtes déconnecté.</p> : null}
@@ -221,9 +214,7 @@ function SignupForm({ destination, reason, gaps }: { destination: string; reason
   return (
     <form action={signUp} noValidate onSubmit={onSubmit}>
       <Wordmark />
-      <Tagline />
       <h1 id="signup-title">Créer un compte</h1>
-      <p className="duo-sub">Rejoignez Atlas et centralisez vos données en toute simplicité.</p>
       {reason === "signup-failed" ? <p className="duo-banner" role="alert">La création du compte n’a pas abouti. Réessayez.</p> : null}
       <input type="hidden" name="next" value={destination} />
       <SignupControls visible={visible} onToggle={() => setVisible((current) => !current)} password={password} onPassword={setPassword} errors={errors} onClear={(field) => setErrors((current) => ({ ...current, [field]: "" }))} />
@@ -275,7 +266,6 @@ function ResetForm() {
   return (
     <form noValidate onSubmit={(event) => event.preventDefault()}>
       <Wordmark />
-      <Tagline />
       <h1 id="reset-title">Mot de passe oublié</h1>
       <p className="duo-sub" id="reset-unavailable">Le choix d’un nouveau mot de passe n’est pas disponible sur cet écran.</p>
       <Field id="reset-email" label="Adresse e-mail" type="email" name="email" placeholder="votre@email.com" autoComplete="email" icon={<MailIcon />} error="" disabled={false} />

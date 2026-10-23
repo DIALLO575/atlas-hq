@@ -74,7 +74,7 @@
 }
 
 .duo-card h1 {
-  margin: 0;
+  margin: 18px 0 16px;
   color: #fff;
   font-size: 26px;
   font-weight: 650;
@@ -84,7 +84,7 @@
 }
 
 .duo-sub {
-  margin: 6px 0 18px;
+  margin: 0 0 18px;
   color: #9aa6bd;
   font-size: 14px;
   line-height: 1.4;
@@ -304,7 +304,7 @@
   background: rgba(148, 176, 230, 0.22);
 }
 
-.duo-social { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.duo-social { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 16px; }
 
 .duo-social button {
   height: 48px;
