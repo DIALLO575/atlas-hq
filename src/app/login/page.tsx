@@ -25,11 +25,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <article className="duo-card" aria-labelledby="configuration-title">
             <p className="duo-logo"><span>A</span>tlas</p>
             <h1 id="configuration-title">Connexion indisponible</h1>
-            <p className="duo-sub">Les paramètres publics d’authentification manquent. Ni la connexion ni l’inscription ne peuvent s’ouvrir.</p>
-            <p className="duo-footnote">Aucun accès de démonstration.</p>
+            <p className="duo-sub">Les paramètres publics d’authentification manquent.</p>
           </article>
         </div>
-        <p className="duo-outside">Connexion par e-mail. Aucun accès n’est accordé en mode démonstration.</p>
       </main>
     );
   }
@@ -37,7 +35,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main className="duo-auth">
       <DuoAuth destination={destination} reason={params.reason ?? ""} vue={params.vue ?? ""} gaps={params.gaps ?? ""} />
-      <p className="duo-outside">Connexion par e-mail. Aucun accès n’est accordé en mode démonstration.</p>
     </main>
   );
 }
