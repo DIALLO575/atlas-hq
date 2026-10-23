@@ -76,6 +76,9 @@ grant execute on function private.is_workspace_admin(uuid) to authenticated;
 
 alter table public.workspaces enable row level security;
 alter table public.workspace_members enable row level security;
+alter table public.atlas_connections enable row level security;
+alter table public.atlas_provider_objects enable row level security;
+alter table public.atlas_sync_cursors enable row level security;
 
 grant select, insert, delete on public.workspaces to authenticated;
 grant update (name, updated_at) on public.workspaces to authenticated;
@@ -130,6 +133,31 @@ using (
 grant select, insert, update, delete on public.atlas_connections to authenticated;
 grant select, insert, update, delete on public.atlas_provider_objects to authenticated;
 grant select, insert, update, delete on public.atlas_sync_cursors to authenticated;
+
+drop policy if exists atlas_connections_read_owner on public.atlas_connections;
+create policy atlas_connections_read_owner
+on public.atlas_connections for select to authenticated
+using (owner_id = (select auth.uid()));
+
+drop policy if exists atlas_provider_objects_read_connection_owner on public.atlas_provider_objects;
+create policy atlas_provider_objects_read_connection_owner
+on public.atlas_provider_objects for select to authenticated
+using (
+  exists (
+    select 1 from public.atlas_connections c
+    where c.id = atlas_provider_objects.connection_id and c.owner_id = (select auth.uid())
+  )
+);
+
+drop policy if exists atlas_sync_cursors_read_connection_owner on public.atlas_sync_cursors;
+create policy atlas_sync_cursors_read_connection_owner
+on public.atlas_sync_cursors for select to authenticated
+using (
+  exists (
+    select 1 from public.atlas_connections c
+    where c.id = atlas_sync_cursors.connection_id and c.owner_id = (select auth.uid())
+  )
+);
 
 create policy atlas_connections_insert_owner
 on public.atlas_connections for insert to authenticated

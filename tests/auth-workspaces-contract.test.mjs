@@ -28,6 +28,10 @@ test("workspaces and memberships have explicit roles, ownership and row policies
   assert.match(migration, /create schema private/);
   assert.match(migration, /revoke all on schema private from public/);
   for (const relation of ["atlas_connections", "atlas_provider_objects", "atlas_sync_cursors"]) {
+    assert.match(migration, new RegExp(`alter table public\\.${relation} enable row level security`));
+    assert.match(migration, new RegExp(`create policy ${relation}_(?:read_owner|read_connection_owner)`));
+  }
+  for (const relation of ["atlas_connections", "atlas_provider_objects", "atlas_sync_cursors"]) {
     assert.match(migration, new RegExp(`grant select, insert, update, delete on public\\.${relation} to authenticated`));
     for (const operation of ["insert", "update", "delete"]) {
       assert.match(migration, new RegExp(`create policy ${relation}_[^\\n]*${operation}[^\\n]*\\n`));
