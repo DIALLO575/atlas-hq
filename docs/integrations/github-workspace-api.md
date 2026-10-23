@@ -65,3 +65,64 @@ Never prefix these with `NEXT_PUBLIC_`. Do not put actual credentials in Git,
    and OpenMausBot mission dispatch. None is silently enabled.
 
 The API deliberately fails closed until trusted installation records exist.
+
+## End-to-end connection flow (new, pending live credentials and migrations)
+
+1. **Mes Apps → GitHub → Connecter** submits a same-origin POST at
+   `/api/apps/github/connect/start`. The authenticated user must be an owner
+   or admin of the selected Workspace. A signed 15-minute state is recorded
+   in the server-only `atlas_github_connect_attempts` ledger and bound to an
+   HttpOnly SameSite=Lax cookie. No browser may write an installation grant.
+2. GitHub App install UI uses the **Setup URL**
+   `https://<ATLAS_HOST>/api/apps/github/connect/setup`. The callback
+   verifies the state against the cookie, authenticated actor, Workspace,
+   single-use ledger, and expected setup action. It does not trust
+   `installation_id` as ownership evidence.
+3. ATLAS starts **GitHub App user OAuth** with
+   `https://github.com/login/oauth/authorize` and a fresh signed state.
+   Configure GitHub App **Callback URL** to
+   `https://<ATLAS_HOST>/api/apps/github/connect/oauth`.
+   The GitHub App must use **Setup URL mode**; do not enable
+   "Request user authorization (OAuth) during installation" because that
+   replaces this setup redirect.
+4. Server exchanges the OAuth code for a **temporary user access token**.
+   It queries `GET /user`, `GET /user/installations`, and
+   `GET /user/installations/{installation_id}/repositories`, rejecting
+   mismatched app IDs, wrong personal account, suspended installations,
+   all-repositories selection, and out-of-range or incomplete repository
+   listings. **Organization installations are deliberately not supported
+   by this first connection flow**; they require verified org-admin handling.
+   The user access token is not persisted to ATLAS HQ.
+5. Only after that proof may the server write the verified installation and
+   the selected repository IDs in Supabase. Writes progress
+   `active → repositories-ready`, failing closed if a write fails. Any
+   collision with an installation already attached to a different Workspace
+   is rejected, never reassigned implicitly.
+6. The GitHub explorer calls the authenticated read-only
+   `/api/apps/github` API to load repositories, PRs and changed files.
+
+Additional migration:
+`supabase/migrations/20261023213000_atlas_github_connect_attempts.sql`.
+**Both new GitHub migrations must be reviewed and tested against a disposable
+Supabase instance before being applied to the official project. They have
+NOT been applied here.** Live integration also requires a registered GitHub
+App with the correct settings and a deployment with server-only secrets.
+
+Required secure server configuration:
+
+- `ATLAS_PUBLIC_ORIGIN` — canonical `https://...` origin for callbacks;
+- `GITHUB_APP_SLUG` — public GitHub App slug;
+- `GITHUB_APP_ID` — numeric GitHub App ID;
+- `GITHUB_APP_PRIVATE_KEY` — server-side PEM private key;
+- `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET` — app OAuth
+  credentials (not interchangeable with GitHub App ID);
+- `GITHUB_INSTALL_STATE_KEY` — random HMAC secret of at least 32 characters;
+- `SUPABASE_SERVICE_ROLE_KEY` — **server only**, needed for trusted database
+  transitions; not used for regular user requests or client-side reads;
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+Known boundaries: no GitHub organization-admin authorization, webhook
+ingress, background revocation/synchronization, MCP or MausBot in this change.
+The proof is only as fresh as its latest successful authorization; the
+explorer enforces GitHub access again at request time. Provider and RLS
+integration testing must precede production enablement.
