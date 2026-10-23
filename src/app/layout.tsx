@@ -5,6 +5,7 @@ import "./globals.css";
 import "./atlas-redesign.css";
 import "./apps-redesign.css";
 import "./workspaces-redesign.css";
+import "./github-control-center.css";
 import "./smart-dock.css";
 import "./dock-studio.css";
 
