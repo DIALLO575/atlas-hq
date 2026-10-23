@@ -40,3 +40,18 @@ A real installation is not proven. These human steps are required before ATLAS c
 7. For `GET /installation/repositories`, supply the App ID and the App private key on the server so a later change can mint an installation access token. This change does not mint one.
 
 Until those secrets exist outside the repo, the fixture tests are the verification. They do not prove a GitHub redirect, a signature from GitHub, or a repository list from the API.
+
+
+## Consolidation avec le client REST (PR #4)
+
+La branche de cette PR a désormais été mise à jour sur le `main` récent et inclut
+les opérations de lecture GitHub provenant de la PR #10, ainsi que la frontière
+`authorized-reader.mjs`. Le paragraphe historique ci-dessus (« no GitHub call »)
+décrit uniquement le module `installation-flow.mjs` de SHA-113, qui reste
+un contrat sans accès réseau. Le module `github-app-client.mjs` effectue des
+requêtes GitHub réelles **uniquement lorsqu'une identité de tenant et des identifiants
+d'installation vérifiés lui sont fournis côté serveur**.
+
+La liaison de production (stockage SQL/RLS, vérification OAuth de propriété,
+rotation des secrets, endpoints Next.js, webhooks et MCP) n'est toujours pas opérationnelle.
+Voir [github-app-live-read.md](./github-app-live-read.md).
