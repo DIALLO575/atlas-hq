@@ -37,3 +37,26 @@ test("dock remembers expansion and its position between client-side navigations"
   assert.match(hook, /clientPlacement = placement/);
   assert.match(shell, /onPointerDown=\{handlePointerDown\}/);
 });
+
+
+test("a single stable dock survives route navigation without a remount", async () => {
+  const [root, wrapper, shell, hook, styles] = await Promise.all([
+    read("../src/app/layout.tsx"),
+    read("../src/components/persistent-atlas-shell.tsx"),
+    read("../src/components/app-shell.tsx"),
+    read("../src/components/use-floating-dock.ts"),
+    read("../src/app/dock-studio.css"),
+  ]);
+  assert.match(root, /<PersistentAtlasShell>\{children\}<\/PersistentAtlasShell>/);
+  assert.match(wrapper, /<AppShellFrame>\{children\}<\/AppShellFrame>/);
+  assert.match(wrapper, /pathname === "\/login"/);
+  assert.match(shell, /createContext\(false\)/);
+  assert.match(shell, /if \(insidePersistentShell\) return <>\{children\}<\/>/);
+  assert.match(shell, /<AppShellContext.Provider value=\{true\}>/);
+  assert.match(hook, /previous\.width === next\.width/);
+  assert.match(hook, /positionTop\(placement\.vertical, geometry\.viewportHeight, geometry\.height\) \+ geometry\.height \/ 2/);
+  assert.match(hook, /transform: "translateY\(-50%\)"/);
+  assert.match(styles, /top: calc\(50% \+ 37px\)/);
+  assert.match(styles, /will-change: auto/);
+  assert.match(styles, /transition: none/);
+});

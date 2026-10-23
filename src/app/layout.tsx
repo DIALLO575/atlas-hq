@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { InstallPrompt } from "@/components/install-prompt";
+import { PersistentAtlasShell } from "@/components/persistent-atlas-shell";
 import "./globals.css";
 import "./atlas-redesign.css";
 import "./apps-redesign.css";
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="fr">
       <body>
-        {children}
+        <PersistentAtlasShell>{children}</PersistentAtlasShell>
         <InstallPrompt />
       </body>
     </html>
