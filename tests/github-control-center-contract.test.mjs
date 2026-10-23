@@ -31,7 +31,7 @@ test("control center is read-only with truthful agent, automation and PR status"
     read("../src/app/api/apps/github/route.ts"),
     read("../docs/integrations/github-app-live-read.md"),
   ]);
-  assert.match(ui, /Aucune action sur le code, merge ou validation automatique/);
+  assert.match(ui, /Aucun merge, validation, déclencheur ou agent IA n’est exécuté/);
   assert.match(ui, /Aucun merge, validation, déclencheur ou agent IA n’est exécuté/);
   assert.doesNotMatch(ui, /tab === "agents"|tab === "automations"|Fonctionnalité à venir/);
   assert.match(ui, /section === "settings"/);
