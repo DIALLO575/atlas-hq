@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 
 function finish(settings: NonNullable<ReturnType<typeof githubConnectSettings>>, outcome: string) {
   const response = NextResponse.redirect(connectorRedirect(settings, outcome), 303);
-  response.cookies.delete(githubConnectCookieName);
+  response.cookies.set(githubConnectCookieName, "", { path: "/api/apps/github/connect", httpOnly: true,
+    sameSite: "lax", secure: settings.publicOrigin.startsWith("https:"), maxAge: 0 });
   return response;
 }
 
