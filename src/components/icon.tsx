@@ -1,8 +1,13 @@
 import type { SVGProps } from "react";
 
-type IconName = "grid" | "layers" | "activity" | "settings" | "search" | "bot" | "apps" | "inbox" | "link" | "spark" | "arrow-up-right" | "arrow-right" | "menu" | "close";
+type IconName = "pin" | "grip" | "chevron-left" | "chevron-right" | "rotate-ccw" | "grid" | "layers" | "activity" | "settings" | "search" | "bot" | "apps" | "inbox" | "link" | "spark" | "arrow-up-right" | "arrow-right" | "menu" | "close";
 
 const paths: Record<IconName, React.ReactNode> = {
+  pin: <><path d="m16 3 5 5-3 1-3 5-2 2-4-4 2-2 5-3 0-4Z"/><path d="m9 15-6 6"/></>,
+  grip: <><circle cx="8" cy="5" r="1"/><circle cx="16" cy="5" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="19" r="1"/><circle cx="16" cy="19" r="1"/></>,
+  "chevron-left": <path d="m14 6-6 6 6 6"/>,
+  "chevron-right": <path d="m10 6 6 6-6 6"/>,
+  "rotate-ccw": <><path d="M3 11a9 9 0 1 1 2.5 6.2"/><path d="M3 4v7h7"/></>,
   grid: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
   layers: <><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></>,
   activity: <><path d="M3 12h4l3-8 4 16 3-8h4"/></>,
