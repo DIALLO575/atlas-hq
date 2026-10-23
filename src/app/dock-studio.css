@@ -221,3 +221,25 @@
   .atlas-shell .atlas-dock.atlas-smart-dock,
   .atlas-shell .atlas-smart-dock .atlas-dock-link {transition: none;}
 }
+
+
+/* Stable anchor on first paint and across Next.js route transitions.
+   The default vertical midpoint equals the hook's normalized 0.5 placement:
+   center = viewport midpoint + (TOP_GAP - BOTTOM_GAP) / 2 = 50% + 37px.
+   Never animate absolute left/top: navigation must not appear to drag the dock. */
+.atlas-shell .atlas-dock.atlas-smart-dock {
+  left: 24px;
+  top: calc(50% + 37px);
+  transform: translateY(-50%);
+  transition: none;
+  will-change: auto;
+}
+.atlas-shell .atlas-dock.atlas-smart-dock .atlas-dock-link {
+  transition: none;
+}
+@media (max-width: 760px) {
+  .atlas-shell .atlas-dock.atlas-smart-dock,
+  .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock {
+    transition: transform .2s ease;
+  }
+}

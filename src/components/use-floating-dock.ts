@@ -73,12 +73,21 @@ export function useFloatingDock() {
     if (!dock) return;
     const measure = () => {
       const rect = dock.getBoundingClientRect();
-      setGeometry({
+      const next = {
         width: rect.width,
         height: rect.height,
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
-      });
+      };
+      // Route updates and identical ResizeObserver notifications must not
+      // recalculate/repaint the dock when its actual geometry has not changed.
+      setGeometry((previous) =>
+        previous &&
+        previous.width === next.width &&
+        previous.height === next.height &&
+        previous.viewportWidth === next.viewportWidth &&
+        previous.viewportHeight === next.viewportHeight ? previous : next
+      );
     };
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
     observer?.observe(dock);
@@ -108,8 +117,10 @@ export function useFloatingDock() {
       position: "fixed",
       left,
       right: "auto",
-      top: positionTop(placement.vertical, geometry.viewportHeight, geometry.height),
-      transform: "none",
+      // Position the *center* of the dock. The CSS fallback uses the same
+      // center-based transform, so hydration never switches positioning models.
+      top: positionTop(placement.vertical, geometry.viewportHeight, geometry.height) + geometry.height / 2,
+      transform: "translateY(-50%)",
     };
   })();
 

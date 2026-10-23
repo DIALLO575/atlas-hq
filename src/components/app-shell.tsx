@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 import { SessionControls } from "@/components/session-controls";
 import { WorkspaceSelector } from "@/components/workspace-selector";
@@ -29,7 +29,17 @@ const mobileItems = [navItems[0], navItems[2], navItems[5]];
 // Retain only the expanded/collapsed preference between client-side navigations.
 let cachedExpanded: boolean | null = null;
 
+// Route pages keep their existing <AppShell> wrappers, but the actual dock lives
+// once in the persistent root layout. Nested wrappers render only page content.
+const AppShellContext = createContext(false);
+
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
+  const insidePersistentShell = useContext(AppShellContext);
+  if (insidePersistentShell) return <>{children}</>;
+  return <AppShellFrame>{children}</AppShellFrame>;
+}
+
+export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
   const [expanded, setExpanded] = useState(() => cachedExpanded ?? false);
@@ -81,6 +91,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "Atlas";
 
   return (
+    <AppShellContext.Provider value={true}>
     <div data-dock-side={dockSide} className={"app-shell atlas-shell" + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dockDragging ? " atlas-dock-is-dragging" : "")}>
       <a className="skip-link" href="#main-content">Aller au contenu principal</a>
 
@@ -176,5 +187,6 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </button>
       </nav>
     </div>
+    </AppShellContext.Provider>
   );
 }
