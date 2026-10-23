@@ -336,6 +336,7 @@
     width: min(1050px, calc(100vw - 48px));
     padding: 8px 13px;
     border-radius: 999px;
+    justify-content: center;
   }
   .atlas-shell[data-dock-side="top"] .atlas-dock-title,
   .atlas-shell[data-dock-side="bottom"] .atlas-dock-title,
@@ -385,8 +386,22 @@
     border-radius: 13px;
     gap: 7px;
   }
+  /* Expanded horizontal mode shows readable names and can scroll gently when
+     the viewport cannot fit every shortcut. Collapsed mode keeps icons only. */
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-smart-dock .atlas-dock-link,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-smart-dock .atlas-dock-link {
+    width: auto;
+    padding: 0 9px;
+  }
   .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-smart-dock .atlas-dock-label,
-  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-smart-dock .atlas-dock-label { display: none; }
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-smart-dock .atlas-dock-label {
+    display: inline;
+    max-width: 95px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+  }
   .atlas-shell[data-dock-side="top"] .atlas-dock-separator,
   .atlas-shell[data-dock-side="bottom"] .atlas-dock-separator {
     margin: 0 5px;
