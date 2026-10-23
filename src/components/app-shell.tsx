@@ -27,14 +27,17 @@ const utilityItems = [
 ];
 
 const mobileItems = [navItems[0], navItems[2], navItems[5]];
+// These caches are only mutated in client events/effects; server rendering uses defaults.
+let cachedExpanded: boolean | null = null;
+let cachedPinnedIds: readonly DockToolId[] | null = null;
 
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => cachedExpanded ?? false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toolspaceOpen, setToolspaceOpen] = useState(false);
-  const [pinnedIds, setPinnedIds] = useState<readonly DockToolId[]>(defaultPinnedTools);
+  const [pinnedIds, setPinnedIds] = useState<readonly DockToolId[]>(() => cachedPinnedIds ?? defaultPinnedTools);
   const {
     dockRef, side: dockSide, dragging: dockDragging, dockStyle,
     handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel,
@@ -43,17 +46,22 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const pinnedTools = dockTools.filter((tool) => pinnedIds.includes(tool.id));
 
   useEffect(() => {
+    if (cachedPinnedIds !== null) return;
     const frame = window.requestAnimationFrame(() => {
       try {
         const saved: unknown = JSON.parse(window.localStorage.getItem("atlas:dock-pins-v1") ?? "null");
-        if (!Array.isArray(saved)) return;
-        const safePins = saved
-          .filter((id): id is DockToolId => typeof id === "string" && dockTools.some((tool) => tool.id === id))
-          .filter((id, index, all) => all.indexOf(id) === index)
-          .slice(0, MAX_PINNED_TOOLS);
-        setPinnedIds(safePins);
+        if (Array.isArray(saved)) {
+          const safePins = saved
+            .filter((id): id is DockToolId => typeof id === "string" && dockTools.some((tool) => tool.id === id))
+            .filter((id, index, all) => all.indexOf(id) === index)
+            .slice(0, MAX_PINNED_TOOLS);
+          cachedPinnedIds = safePins;
+          setPinnedIds(safePins);
+        } else {
+          cachedPinnedIds = defaultPinnedTools;
+        }
       } catch {
-        // Personalization is optional.
+        cachedPinnedIds = defaultPinnedTools;
       }
     });
     return () => window.cancelAnimationFrame(frame);
@@ -63,6 +71,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
     setPinnedIds((current) => {
       const next = current.includes(id) ? current.filter((item) => item !== id) :
         current.length < MAX_PINNED_TOOLS ? [...current, id] : current;
+      cachedPinnedIds = next;
       try { window.localStorage.setItem("atlas:dock-pins-v1", JSON.stringify(next)); } catch {}
       return next;
     });
@@ -71,11 +80,14 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "Atlas";
 
   useEffect(() => {
+    if (cachedExpanded !== null) return;
     const restore = window.setTimeout(() => {
       try {
-        setExpanded(window.localStorage.getItem("atlas:dock-expanded") === "true");
+        const fromStorage = window.localStorage.getItem("atlas:dock-expanded") === "true";
+        cachedExpanded = fromStorage;
+        setExpanded(fromStorage);
       } catch {
-        // Storage may be unavailable in restricted browsing environments.
+        cachedExpanded = false;
       }
     }, 0);
     return () => window.clearTimeout(restore);
@@ -100,6 +112,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const toggleExpanded = () => {
     setExpanded((current) => {
       const next = !current;
+      cachedExpanded = next;
       try { window.localStorage.setItem("atlas:dock-expanded", String(next)); } catch {}
       return next;
     });

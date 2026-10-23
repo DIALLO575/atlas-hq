@@ -1,16 +1,16 @@
-/* Atlas Dock Studio — independent violet control island + sidecar tools panel. */
+/* Atlas Dock Studio — independent light control island + sidecar tools panel. */
 .atlas-shell .atlas-dock.atlas-smart-dock {
   width: 82px;
   padding: 12px 10px 13px;
   border-radius: 32px;
   max-height: calc(100dvh - 104px);
-  border: 1px solid rgba(185,160,255,.65);
-  background: linear-gradient(159deg,#8259ee 0%,#6640ce 48%,#4f2aa9 100%);
-  color: #fff;
-  box-shadow: 0 26px 56px rgba(86,55,175,.26),0 7px 20px rgba(60,32,143,.16),inset 0 1px 0 rgba(255,255,255,.23);
+  border: 1px solid #e8e5f1;
+  background: linear-gradient(160deg,#ffffff 0%,#fcfbff 100%);
+  color: #37364d;
+  box-shadow: 0 17px 43px rgba(56,50,106,.09),0 3px 10px rgba(56,50,106,.04),inset 0 1px 0 #fff;
 }
 .atlas-shell .atlas-dock.atlas-smart-dock:hover {
-  box-shadow: 0 29px 67px rgba(86,55,175,.30),0 8px 22px rgba(60,32,143,.17),inset 0 1px 0 rgba(255,255,255,.25);
+  box-shadow: 0 20px 48px rgba(56,50,106,.11),0 5px 14px rgba(56,50,106,.04);
 }
 .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock {
   width: 264px;
@@ -18,57 +18,57 @@
   border-radius: 27px;
 }
 .atlas-shell.atlas-dock-is-dragging .atlas-dock.atlas-smart-dock {
-  border-color: #e1d5ff;
-  background:linear-gradient(160deg,#906af5,#6b44da 50%,#4b289e);
-  box-shadow:0 32px 78px rgba(85,50,179,.40),0 0 0 5px rgba(144,105,245,.13);
+  border-color: #cfc6e9;
+  background:linear-gradient(160deg,#fff,#f8f6ff);
+  box-shadow:0 23px 60px rgba(68,55,135,.16),0 0 0 4px rgba(146,126,207,.08);
 }
 .atlas-shell .atlas-smart-dock .atlas-dock-grip {
-  color:#e8ddff;
-  background:rgba(255,255,255,.10);
-  border-color:rgba(255,255,255,.10);
+  color:#9c93b5;
+  background:#f7f5fb;
+  border-color:#efeaf6;
 }
 .atlas-shell .atlas-smart-dock .atlas-dock-grip:hover,.atlas-shell .atlas-smart-dock .atlas-dock-grip:focus-visible {
-  background:rgba(255,255,255,.19);
-  border-color:rgba(255,255,255,.35);
-  color:#fff;
+  background:#f0ecfc;
+  border-color:#d8ccef;
+  color:#7457ce;
 }
 .atlas-shell .atlas-smart-dock .atlas-expand-toggle {
-  background:rgba(255,255,255,.14);
-  border-color:rgba(255,255,255,.12);
-  color:#f5eeff;
+  background:#f2effb;
+  border-color:#eae4f6;
+  color:#7559c9;
 }
 .atlas-shell .atlas-smart-dock .atlas-expand-toggle:hover {
-  background:rgba(255,255,255,.26);
-  color:#fff;
+  background:#e8e1fa;
+  color:#6546bf;
 }
-.atlas-shell .atlas-smart-dock .atlas-dock-title-text {color:#f0e7ff;}
-.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-title-text {color:#eee2ff;}
-.atlas-dock-identity {display:grid;place-items:center;position:relative;width:46px;height:46px;margin:1px auto 13px;border:1px solid rgba(255,255,255,.27);border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.24),rgba(255,255,255,.08));box-shadow:inset 0 1px rgba(255,255,255,.18);}
-.atlas-dock-identity span {font-size:23px;font-weight:840;color:#fff;font-style:italic;letter-spacing:-.15em;padding-right:4px;}
-.atlas-dock-identity i {position:absolute;width:7px;height:7px;right:-3px;bottom:-3px;background:#c4f2cf;border:2px solid #6540cd;border-radius:50%;}
+.atlas-shell .atlas-smart-dock .atlas-dock-title-text {color:#9c96ac;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-title-text {color:#9991b0;}
+.atlas-dock-identity {display:grid;place-items:center;position:relative;width:46px;height:46px;margin:1px auto 13px;border:1px solid #e6def6;border-radius:16px;background:linear-gradient(145deg,#f2edff,#faf8ff);box-shadow:inset 0 1px #fff;}
+.atlas-dock-identity span {font-size:23px;font-weight:840;color:#7754d6;font-style:italic;letter-spacing:-.15em;padding-right:4px;}
+.atlas-dock-identity i {position:absolute;width:7px;height:7px;right:-3px;bottom:-3px;background:#a8dbb8;border:2px solid #fff;border-radius:50%;}
 .atlas-expanded .atlas-dock-identity {margin:5px 0 14px 11px;width:47px;height:47px;}
 .atlas-shell .atlas-smart-dock .atlas-dock-link {
-  color:#eae0ff;
+  color:#77748e;
   border-radius:15px;
   min-height:43px;
   padding:0 19px;
 }
 .atlas-shell .atlas-smart-dock .atlas-dock-link:hover {
-  color:#fff;
-  background:rgba(255,255,255,.17);
-  transform:translateX(0);
+  color:#6e50ca;
+  background:#f4f0fd;
+  transform:none;
 }
 .atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active {
-  color:#6c3dd3;
-  background:#fff;
-  box-shadow:0 7px 19px rgba(47,26,105,.14);
+  color:#7050cf;
+  background:#efebfa;
+  box-shadow:none;
 }
 .atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active::before {display:none;}
 .atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active svg {color:#744ada;}
 .atlas-shell .atlas-smart-dock .atlas-dock-link svg {width:20px;height:20px;}
 .atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-link {min-height:42px;gap:13px;padding-left:14px;font-weight:580;}
-.atlas-shell .atlas-smart-dock .atlas-dock-separator {height:1px;margin:13px 7px;background:rgba(255,255,255,.19);}
-.atlas-shell .atlas-smart-dock .atlas-dock-section-name {display:none;font-size:9px;color:#d2c1ff;letter-spacing:.1em;font-weight:700;padding:3px 9px 9px;}
+.atlas-shell .atlas-smart-dock .atlas-dock-separator {height:1px;margin:13px 7px;background:#ece7f5;}
+.atlas-shell .atlas-smart-dock .atlas-dock-section-name {display:none;font-size:9px;color:#a19bb2;letter-spacing:.1em;font-weight:700;padding:3px 9px 9px;}
 .atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-section-name {display:block;}
 .atlas-dock-tools-section {display:flex;flex-direction:column;gap:5px;}
 .atlas-dock-tool-toggle {
@@ -77,34 +77,34 @@
   justify-content:center;
   gap:12px;
   position:relative;
-  border:1px solid rgba(255,255,255,.35);
+  border:1px solid #e8def9;
   border-radius:15px;
   min-height:45px;
   width:100%;
-  background:rgba(255,255,255,.15);
-  color:#fff;
-  box-shadow:inset 0 1px rgba(255,255,255,.15);
+  background:#f2edfb;
+  color:#7757cf;
+  box-shadow:none;
   font:700 12px var(--font-body);
   cursor:pointer;
-  transition:background .16s,transform .16s;
+  transition:none;
 }
-.atlas-dock-tool-toggle:hover,.atlas-dock-tool-toggle.is-open {background:#fff;color:#6941d0;}
+.atlas-dock-tool-toggle:hover,.atlas-dock-tool-toggle.is-open {background:#e9e1fa;color:#6648bc;}
 .atlas-dock-tool-toggle svg {width:21px;height:21px;}
 .atlas-dock-tool-toggle-plus {display:none;font-size:17px;font-weight:500;}
 .atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-tool-toggle {justify-content:flex-start;padding:0 14px;min-height:44px;}
 .atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-tool-toggle .atlas-dock-label {display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-tool-toggle-plus {display:inline;margin-left:auto;}
 .atlas-dock-pins {gap:2px;}
-.atlas-shell .atlas-smart-dock .atlas-dock-pin-link {min-height:34px;color:#e5d8ff;}
+.atlas-shell .atlas-smart-dock .atlas-dock-pin-link {min-height:34px;color:#817996;}
 .atlas-shell .atlas-smart-dock .atlas-dock-pin-link svg {width:17px;height:17px;opacity:.86;}
 .atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-pin-link {min-height:34px;font-size:11px;}
-.atlas-shell .atlas-smart-dock .atlas-dock-account {border-top-color:rgba(255,255,255,.22);}
+.atlas-shell .atlas-smart-dock .atlas-dock-account {border-top-color:#eae5f2;}
 .atlas-shell .atlas-smart-dock .atlas-dock-account .profile-row strong,
-.atlas-shell .atlas-smart-dock .atlas-dock-account .profile-row small {color:#fff;}
-.atlas-shell .atlas-smart-dock .atlas-dock-account .profile-avatar {background:rgba(255,255,255,.20);color:#fff;}
+.atlas-shell .atlas-smart-dock .atlas-dock-account .profile-row small {color:#48465e;}
+.atlas-shell .atlas-smart-dock .atlas-dock-account .profile-avatar {background:#eee8fa;color:#7557ca;}
 .atlas-shell .atlas-smart-dock .atlas-dock-account .sign-out-button,
-.atlas-shell .atlas-smart-dock .atlas-dock-reset {color:#fff;border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.11);}
-.atlas-shell .atlas-smart-dock .atlas-dock-reset:hover {background:rgba(255,255,255,.24);color:#fff;}
+.atlas-shell .atlas-smart-dock .atlas-dock-reset {color:#807491;border-color:#e9e4f2;background:#faf8ff;}
+.atlas-shell .atlas-smart-dock .atlas-dock-reset:hover {background:#efebf9;color:#7155bf;}
 /* Distinct adjacent tool surface; separate background, radius, border and visual hierarchy. */
 .atlas-toolspace {
   position:fixed;
@@ -124,7 +124,7 @@
   border-radius:25px;
   box-shadow:0 28px 80px rgba(48,29,111,.15),0 4px 16px rgba(58,34,113,.06);
   padding:16px;
-  animation:atlas-tools-arrive .22s cubic-bezier(.19,.72,.31,1) both;
+  animation:none;
 }
 .atlas-expanded .atlas-toolspace {left:312px;}
 .atlas-shell[data-dock-side="right"] .atlas-toolspace {left:auto;right:124px;}
@@ -228,14 +228,14 @@
 }
 @media (max-width:760px) {
   .atlas-shell .atlas-dock.atlas-smart-dock, .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock {
-    background:linear-gradient(158deg,#835bf0,#5730b9);
-    color:white;
-    border:1px solid #a78ae7;
+    background:linear-gradient(160deg,#fff,#faf9fe);
+    color:#37364d;
+    border:1px solid #e8e5f1;
     padding:12px;
     width:265px;
   }
-  .atlas-shell .atlas-smart-dock .atlas-dock-link {color:#f1e9ff;}
-  .atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active {color:#724ccf;background:#fff;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-link {color:#77748e;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active {color:#7050cf;background:#efebfa;}
   .atlas-shell .atlas-smart-dock .atlas-dock-identity {display:none;}
   .atlas-shell .atlas-smart-dock .atlas-dock-section-name {display:block;}
   .atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle {justify-content:flex-start;padding:0 14px;}
@@ -275,11 +275,28 @@
     cursor:pointer;
   }
 }
-@keyframes atlas-tools-arrive {
-  from {opacity:0;transform:translateY(-49%) scale(.975);}
-  to {opacity:1;transform:translateY(-50%) scale(1);}
-}
 @media (prefers-reduced-motion:reduce) {
   .atlas-toolspace {animation:none;}
   .atlas-dock-tool-toggle,.atlas-toolspace-tool {transition:none;}
 }
+
+/* Navigation should update immediately: no flashing, scaling, or entrance animations on tab selection. */
+.atlas-shell .atlas-smart-dock .atlas-dock-link,
+.atlas-shell .atlas-smart-dock .atlas-dock-link svg,
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle,
+.atlas-shell .atlas-toolspace,
+.atlas-shell .atlas-toolspace-tabs button {
+  animation: none;
+  transition: none;
+}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:hover svg {transform:none;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:active,
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle:active,
+.atlas-shell .atlas-toolspace-tabs button:active {transform:none;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:focus:not(:focus-visible),
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle:focus:not(:focus-visible) {outline:none;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:focus-visible,
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle:focus-visible {outline:2px solid #a98de8;outline-offset:2px;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link,
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle,
+.atlas-shell .atlas-toolspace-tabs button {-webkit-tap-highlight-color:transparent;}

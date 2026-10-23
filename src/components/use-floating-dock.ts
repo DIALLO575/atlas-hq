@@ -13,6 +13,8 @@ const EDGE_GAP = 24;
 const TOP_GAP = 96;
 const BOTTOM_GAP = 22;
 const INITIAL_PLACEMENT: Placement = { side: "left", vertical: 0.5 };
+// Browser-only session cache prevents the dock from jumping when navigating routes.
+let clientPlacement: Placement | null = null;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -42,6 +44,7 @@ function readPlacement(): Placement | null {
 }
 
 function storePlacement(placement: Placement) {
+  clientPlacement = placement;
   try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(placement)); } catch {
     // Private browsing or blocked storage should not prevent navigation.
   }
@@ -51,13 +54,15 @@ export function useFloatingDock() {
   const dockRef = useRef<HTMLElement>(null);
   const dragRef = useRef<DragStart | null>(null);
   const dragPointRef = useRef<Drag | null>(null);
-  const [placement, setPlacement] = useState<Placement>(INITIAL_PLACEMENT);
+  const [placement, setPlacement] = useState<Placement>(() => clientPlacement ?? INITIAL_PLACEMENT);
   const [geometry, setGeometry] = useState<Geometry | null>(null);
   const [dragPoint, setDragPoint] = useState<Drag | null>(null);
 
   useEffect(() => {
+    if (clientPlacement !== null) return;
     const frame = window.requestAnimationFrame(() => {
       const restored = readPlacement();
+      clientPlacement = restored ?? INITIAL_PLACEMENT;
       if (restored) setPlacement(restored);
     });
     return () => window.cancelAnimationFrame(frame);
