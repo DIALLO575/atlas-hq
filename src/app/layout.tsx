@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { InstallPrompt } from "@/components/install-prompt";
 import "./globals.css";
 import "./atlas-redesign.css";
+import "./apps-redesign.css";
 
 export const metadata: Metadata = {
   title: "Atlas — Agents, apps et missions",

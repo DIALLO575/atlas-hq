@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
 import { ChiefComposer } from "@/components/chief-composer";
+import { BrandLogo } from "@/components/brand-logo";
+import { atlasApps } from "@/lib/app-catalog";
 
 const summaries = [
   { label: "Approbations", value: "À activer", note: "Décisions et autorisations", icon: "inbox" as const, href: "/inbox", tone: "rose" },
@@ -9,11 +11,7 @@ const summaries = [
   { label: "Missions", value: "À connecter", note: "Suivi des tâches", icon: "activity" as const, href: "/missions", tone: "blue" },
 ];
 
-const suggestedApps = [
-  { name: "Notion", mark: "N", tone: "notion" },
-  { name: "GitHub", mark: "GH", tone: "github" },
-  { name: "Linear", mark: "L", tone: "linear" },
-];
+const suggestedApps = atlasApps.slice(0, 3);
 
 export default function Home() {
   return (
@@ -25,7 +23,7 @@ export default function Home() {
             <h1>Tout ce qui compte, au même endroit<span className="atlas-heading-spark" aria-hidden="true"> ✦</span></h1>
             <p className="atlas-home-lead">Vos agents IA, applications et missions, coordonnés en un seul espace.</p>
           </div>
-          <Link className="atlas-primary-action" href="/apps"><Icon name="link" /> Connecter une app</Link>
+          <Link className="atlas-primary-action" href="/apps"><Icon name="link" /> Explorer les apps</Link>
         </div>
 
         <section className="atlas-summary-grid" aria-label="Vue rapide">
@@ -73,7 +71,7 @@ export default function Home() {
             <div className="atlas-suggested-apps">
               {suggestedApps.map((app) => (
                 <Link href="/apps" key={app.name} className="atlas-mini-app">
-                  <span className={"atlas-mini-app-icon atlas-mini-" + app.tone}>{app.mark}</span><span>{app.name}</span><Icon name="arrow-up-right" />
+                  <span className="atlas-mini-app-icon"><BrandLogo slug={app.slug} size={22} /></span><span>{app.name}</span><Icon name="arrow-up-right" />
                 </Link>
               ))}
             </div>

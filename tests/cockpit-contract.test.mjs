@@ -44,7 +44,7 @@ test("new sections and transversal pages are honest empty states", () => {
 });
 
 test("mock catalogue is labelled and agents show a truthful empty state", () => {
-  assert.match(apps, /<DemoNotice\/>/);
+  assert.match(apps, /<AppsDirectory\s*\/>/);
   assert.match(agents, /Aucun agent connecté/);
   assert.match(agents, /Aucune conversation ni activité d’agent n’est simulée/);
   assert.match(demoData, /export const demoApps/);
