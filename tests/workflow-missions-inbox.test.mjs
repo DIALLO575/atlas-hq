@@ -37,7 +37,7 @@ test("missions and approvals use authenticated server actions and scoped RLS", a
   assert.match(actions, /supabase\.auth\.getUser\(\)/);
   assert.match(actions, /listWorkspaces\(\)/);
   assert.match(actions, /UUID\.test\(workspaceId\)/);
-  assert.match(actions, /status: "ready"/);
+  assert.match(actions, /result\.status !== "ready"/);
   assert.match(actions, /from\("atlas_missions"\)\.insert/);
   assert.match(actions, /\.eq\("workspace_id", workspaceId\)/);
   assert.match(actions, /rpc\("request_atlas_mission_review"/);
