@@ -3,6 +3,7 @@ import { InstallPrompt } from "@/components/install-prompt";
 import "./globals.css";
 import "./atlas-redesign.css";
 import "./apps-redesign.css";
+import "./smart-dock.css";
 
 export const metadata: Metadata = {
   title: "Atlas — Agents, apps et missions",
