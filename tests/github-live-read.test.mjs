@@ -80,7 +80,7 @@ test("refuses expired tokens and insufficient GitHub App permissions", async () 
 
 test("repository listing follows same-endpoint pagination and filters to selected IDs", async () => {
   const requests = [];
-  const reader = createGitHubReadClient({ token: "secret-test", repositoryIds: [7, 9], request: async (url, init) => {
+  const reader = createGitHubReadClient({ token: "secret-test", installationId: 77, repositoryIds: [7, 9], request: async (url, init) => {
     requests.push({ url, init });
     if (url.includes("page=2")) return json({ repositories: [repo(9, "acme/nine")] });
     return json({ repositories: [repo(7, "acme/seven"), repo(8, "other/no-access")] }, 200, {
@@ -96,7 +96,7 @@ test("repository listing follows same-endpoint pagination and filters to selecte
 
 test("never follows a GitHub Link header to a different endpoint", async () => {
   let calls = 0;
-  const reader = createGitHubReadClient({ token: "t", repositoryIds: [7], request: async () => {
+  const reader = createGitHubReadClient({ token: "t", installationId: 77, repositoryIds: [7], request: async () => {
     calls++;
     return json({ repositories: [repo(7, "acme/seven")] }, 200, {
       link: '<https://api.github.com/app/installations>; rel="next"',
@@ -109,7 +109,7 @@ test("never follows a GitHub Link header to a different endpoint", async () => {
 
 test("prevents access to repository IDs not bound to this installation", async () => {
   let calls = 0;
-  const reader = createGitHubReadClient({ token: "t", repositoryIds: [7],
+  const reader = createGitHubReadClient({ token: "t", installationId: 77, repositoryIds: [7],
     request: async () => { calls++; throw new Error("should not fetch"); } });
   await assert.rejects(reader.getPullRequest(8, 1), (error) => error.code === "PERMISSION_DENIED");
   await assert.rejects(reader.listPullRequests(8), (error) => error.code === "PERMISSION_DENIED");
@@ -118,7 +118,7 @@ test("prevents access to repository IDs not bound to this installation", async (
 
 test("returns real-API-shaped PRs and pins context to the returned GitHub SHA", async () => {
   const calls = [];
-  const reader = createGitHubReadClient({ token: "t", repositoryIds: [7], request: async (url) => {
+  const reader = createGitHubReadClient({ token: "t", installationId: 77, repositoryIds: [7], request: async (url) => {
     calls.push(url);
     if (url.includes("/installation/repositories")) return json({ repositories: [repo(7, "acme/seven")] });
     if (url.endsWith("/pulls?state=open&per_page=100")) return json([pr(42)]);
@@ -132,7 +132,8 @@ test("returns real-API-shaped PRs and pins context to the returned GitHub SHA", 
   assert.equal(list.pullRequests[0].number, 42);
   const detail = await reader.getPullRequest(7, 42);
   assert.equal(detail.resource.provider, "github");
-  assert.equal(detail.resource.installationRepositoryId, 7);
+  assert.equal(detail.resource.installationId, 77);
+  assert.equal(detail.resource.repositoryId, 7);
   assert.equal(detail.resource.headSha, "a".repeat(40));
   assert.equal(detail.files[0].path, "src/index.ts");
   assert.equal(detail.filesTruncated, false);
@@ -141,7 +142,7 @@ test("returns real-API-shaped PRs and pins context to the returned GitHub SHA", 
 });
 
 test("rejects mismatch and missing source revision", async () => {
-  const reader = createGitHubReadClient({ token: "t", repositoryIds: [7], request: async (url) =>
+  const reader = createGitHubReadClient({ token: "t", installationId: 77, repositoryIds: [7], request: async (url) =>
     url.includes("installation/repositories")
       ? json({ repositories: [repo(7, "acme/seven")] })
       : json(pr(41, "not-a-sha"))
@@ -154,7 +155,7 @@ test("maps provider errors safely without logging tokens or response bodies", as
     [403, "RATE_LIMITED", { "retry-after": "60" }], [404, "NOT_FOUND_OR_HIDDEN", {}],
     [429, "RATE_LIMITED", {}], [503, "PROVIDER_UNAVAILABLE", {}]]) {
     const reader = createGitHubReadClient({
-      token: "private-credential", repositoryIds: [7],
+      token: "private-credential", installationId: 77, repositoryIds: [7],
       request: async () => new Response("sensitive provider details", { status, headers }),
     });
     await assert.rejects(reader.listRepositories(), (error) => {
