@@ -138,7 +138,8 @@ function positiveRepo(repo) {
     repo.full_name.split("/").every(githubName);
 }
 
-export function createGitHubReadClient({ token, repositoryIds, request = fetch }) {
+export function createGitHubReadClient({ token, installationId, repositoryIds, request = fetch }) {
+  positiveId(installationId, "installation ID");
   if (typeof token !== "string" || !token.trim()) throw new GitHubReadError("AUTH_REQUIRED", "Installation token missing");
   const ids = allowedIds(repositoryIds);
 
@@ -162,10 +163,11 @@ export function createGitHubReadClient({ token, repositoryIds, request = fetch }
       const { body, link } = await get(url);
       const chunk = arrayKey ? body?.[arrayKey] : body;
       if (!Array.isArray(chunk)) throw new GitHubReadError("INVALID_RESPONSE", "GitHub returned an invalid collection");
-      items.push(...chunk.slice(0, maximum - items.length));
+      const remaining = maximum - items.length;
+      items.push(...chunk.slice(0, remaining));
       const next = safeNext(link, first.pathname);
       if (items.length >= maximum) {
-        truncated = Boolean(next) || chunk.length >= maximum - (items.length - Math.min(chunk.length, maximum));
+        truncated = Boolean(next) || (maximum === 3000);
         break;
       }
       url = next;
@@ -225,7 +227,7 @@ export function createGitHubReadClient({ token, repositoryIds, request = fetch }
       maximum: 3000, maxPages: 30,
     });
     return {
-      resource: { provider: "github", installationRepositoryId: repo.id, owner: repo.fullName.split("/")[0],
+      resource: { provider: "github", installationId, repositoryId: repo.id, owner: repo.fullName.split("/")[0],
         repository: repo.fullName.split("/")[1], pullRequestNumber: pr.number, headSha: pr.head.sha },
       title: pr.title ?? "",
       body: pr.body ?? null,
