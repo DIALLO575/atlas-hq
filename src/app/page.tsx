@@ -2,6 +2,9 @@ import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
 import Link from "next/link";
 import { DemoNotice } from "@/components/page-elements";
+import { getOrCreateDefaultWorkspace } from "@/lib/workspaces";
+
+export const dynamic = "force-dynamic";
 
 const spaces = [
   { name: "Notion", detail: "Espaces de travail", mark: "N", tone: "notion" },
@@ -10,14 +13,15 @@ const spaces = [
   { name: "OpenMausBot", detail: "Assistants", mark: "◎", tone: "maus" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const { workspace, user } = await getOrCreateDefaultWorkspace();
   return (
     <AppShell>
       <main className="main-content" id="main-content">
         <div className="welcome-row">
           <div>
             <p className="eyebrow">JEUDI 22 OCTOBRE</p>
-            <h1>Bonjour, Mamadou <span aria-hidden="true">✳</span></h1>
+            <h1>Bonjour <span aria-hidden="true">✳</span></h1>
             <p className="welcome-copy">Votre espace de travail, enfin réuni au même endroit.</p>
           </div>
           <Link className="icon-button search-button" href="/search" aria-label="Rechercher dans ATLAS HQ">
@@ -29,9 +33,9 @@ export default function Home() {
 
         <section className="focus-card" aria-labelledby="focus-title">
           <div className="focus-content">
-            <div className="focus-label"><span className="live-dot" /> ESPACE PERSONNEL</div>
+            <div className="focus-label"><span className="live-dot" /> {workspace.name.toLocaleUpperCase("fr")}</div>
             <h2 id="focus-title">Tout commence<br className="mobile-break" /> par une bonne vue d’ensemble.</h2>
-            <p>Vos projets et vos outils, rassemblés dans un cockpit clair. Connectez vos espaces quand vous serez prêt.</p>
+            <p>{user.email ?? "Votre compte"} · Vos projets et vos outils, rassemblés dans un cockpit clair.</p>
             <a className="button button-light" href="#espaces">Explorer mes espaces <Icon name="arrow-up-right" /></a>
           </div>
           <div className="focus-art" aria-hidden="true">

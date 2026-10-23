@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/icon";
+import { signOut } from "@/app/login/actions";
 
 const navItems = [
   { label: "Vue d’ensemble", icon: "grid" as const, href: "/" },
@@ -29,7 +30,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
             return <Link key={item.href} className={`nav-item ${active ? "nav-active" : ""}`} href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)}><Icon name={item.icon}/><span>{item.label}</span></Link>;
           })}
         </nav>
-        <div className="sidebar-bottom"><div className="sidebar-help"><span className="help-orb" aria-hidden="true">?</span><span><strong>Besoin d’aide ?</strong><small>Découvrez le guide de démarrage</small></span><Icon name="arrow-up-right" /></div><Link className="nav-item settings-item" href="/" aria-label="Paramètres, bientôt disponibles"><Icon name="settings"/><span>Paramètres · bientôt</span></Link><div className="profile-row"><div className="profile-avatar" aria-hidden="true">MD</div><span><strong>Mamadou Diallo</strong><small>Compte personnel</small></span><span className="profile-menu" aria-hidden="true">···</span></div></div>
+        <div className="sidebar-bottom"><div className="sidebar-help"><span className="help-orb" aria-hidden="true">?</span><span><strong>Besoin d’aide ?</strong><small>Découvrez le guide de démarrage</small></span><Icon name="arrow-up-right" /></div><Link className="nav-item settings-item" href="/" aria-label="Paramètres, bientôt disponibles"><Icon name="settings"/><span>Paramètres · bientôt</span></Link><div className="profile-row"><div className="profile-avatar" aria-hidden="true">AT</div><span><strong>Compte connecté</strong><small>Session sécurisée</small></span><form action={signOut}><button className="profile-menu" type="submit" aria-label="Se déconnecter" title="Se déconnecter">↪</button></form></div></div>
       </aside>
       {menuOpen && <button className="sidebar-scrim" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />}
       <div className="app-column">

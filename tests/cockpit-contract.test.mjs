@@ -7,7 +7,7 @@ const [shell, apps, agents, search, loading, errors, demoData] = await Promise.a
   read("../src/components/app-shell.tsx"),
   read("../src/app/apps/page.tsx"),
   read("../src/app/agents/page.tsx"),
-  read("../src/app/search/page.tsx"),
+  read("../src/app/search/search-client.tsx"),
   read("../src/components/route-states.tsx"),
   Promise.all(["apps", "agents", "search"].map((route) => read(`../src/app/${route}/error.tsx`))),
   read("../src/lib/demo-data.ts"),

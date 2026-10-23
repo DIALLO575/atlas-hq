@@ -9,6 +9,7 @@
 
 # production
 /build
+/supabase/.temp/
 
 # local environment files
 .env*
