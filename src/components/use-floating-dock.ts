@@ -12,6 +12,9 @@ const STORAGE_KEY = "atlas:dock-position-v1";
 const EDGE_GAP = 24;
 const TOP_GAP = 96;
 const BOTTOM_GAP = 22;
+const ARROW_STEP_PX = 48;
+const MOVE_PANEL_WIDTH = 162;
+const MOVE_PANEL_HEIGHT = 178;
 const INITIAL_PLACEMENT: Placement = { side: "left", vertical: 0.5 };
 // Browser-only session cache prevents the dock from jumping when navigating routes.
 let clientPlacement: Placement | null = null;
@@ -54,6 +57,7 @@ export function useFloatingDock() {
   const dockRef = useRef<HTMLElement>(null);
   const dragRef = useRef<DragStart | null>(null);
   const dragPointRef = useRef<Drag | null>(null);
+  const draggedClickRef = useRef(false);
   const [placement, setPlacement] = useState<Placement>(() => clientPlacement ?? INITIAL_PLACEMENT);
   const [geometry, setGeometry] = useState<Geometry | null>(null);
   const [dragPoint, setDragPoint] = useState<Drag | null>(null);
@@ -124,6 +128,7 @@ export function useFloatingDock() {
     };
   })();
 
+  // Only a genuine drag moves the dock. Simple taps must not flash or reposition it.
   const movePointer = (event: PointerEvent<HTMLButtonElement>) => {
     const start = dragRef.current;
     if (!start || start.pointerId !== event.pointerId || window.innerWidth <= 760) return;
@@ -133,6 +138,11 @@ export function useFloatingDock() {
       x: clamp(event.clientX - start.offsetX, EDGE_GAP, Math.max(EDGE_GAP, window.innerWidth - width - EDGE_GAP)),
       y: clamp(event.clientY - start.offsetY, min, max),
     };
+    // The first few pixels are a click/tap, not a drag.
+    if (!dragPointRef.current &&
+        Math.hypot(event.clientX - (start.offsetX + (dockRef.current?.getBoundingClientRect().left ?? point.x)),
+          event.clientY - (start.offsetY + (dockRef.current?.getBoundingClientRect().top ?? point.y))) < 7) return;
+    draggedClickRef.current = true;
     dragPointRef.current = point;
     setDragPoint(point);
   };
@@ -160,6 +170,8 @@ export function useFloatingDock() {
     if (event.button !== 0 || window.innerWidth <= 760) return;
     const rect = dockRef.current?.getBoundingClientRect();
     if (!rect) return;
+    draggedClickRef.current = false;
+    dragPointRef.current = null;
     dragRef.current = {
       pointerId: event.pointerId,
       offsetX: event.clientX - rect.left,
@@ -167,10 +179,57 @@ export function useFloatingDock() {
     };
     const point = { x: rect.left, y: rect.top };
     dragPointRef.current = point;
-    setDragPoint(point);
     event.currentTarget.setPointerCapture(event.pointerId);
-    event.preventDefault();
   };
+
+  // Discard the synthetic click that browsers may dispatch after dragging.
+  const consumeDragClick = () => {
+    const wasDrag = draggedClickRef.current;
+    draggedClickRef.current = false;
+    return wasDrag;
+  };
+
+  // Arrow-pad actions snap horizontally and move vertically in fixed 48px steps.
+  // Converting pixels to the normalized persisted position keeps behavior
+  // consistent on large and small desktop viewports.
+  const moveDock = (direction: "left" | "right" | "up" | "down") => {
+    if (window.innerWidth <= 760) return; // Mobile dock is an anchored drawer.
+    const { height } = getDockSize();
+    const { min, max } = topBounds(window.innerHeight, height);
+    const distance = max - min;
+    setPlacement((current) => {
+      const next: Placement =
+        direction === "left" || direction === "right"
+          ? { ...current, side: direction }
+          : { ...current, vertical: clamp(current.vertical + (direction === "up" ? -1 : 1) *
+              (distance > 0 ? ARROW_STEP_PX / distance : 0), 0, 1) };
+      if (next.side !== current.side || next.vertical !== current.vertical) storePlacement(next);
+      return next;
+    });
+  };
+
+  // Position this popup OUTSIDE the dock's scrolling box, so opening it never
+  // changes the dock's height/centering or hides any navigation links.
+  const moveControlsStyle: CSSProperties = (() => {
+    const width = geometry?.width ?? 68;
+    const h = geometry?.height ?? 460;
+    const vw = geometry?.viewportWidth ?? 1200;
+    const vh = geometry?.viewportHeight ?? 800;
+    const left = placement.side === "left" ? EDGE_GAP : Math.max(EDGE_GAP, vw - width - EDGE_GAP);
+    const popupLeft = placement.side === "left" ? left + width + 12 : left - MOVE_PANEL_WIDTH - 12;
+    return {
+      position: "fixed",
+      left: clamp(popupLeft, 12, Math.max(12, vw - MOVE_PANEL_WIDTH - 12)),
+      top: clamp(positionTop(placement.vertical, vh, h), 76, Math.max(76, vh - MOVE_PANEL_HEIGHT - 12)),
+    };
+  })();
+
+  const { height: measuredHeight } = getDockSize();
+  const bounds = typeof window === "undefined"
+    ? { min: TOP_GAP, max: TOP_GAP + 1 }
+    : topBounds(window.innerHeight, measuredHeight);
+  const canMoveUp = placement.vertical > 0.0001 && bounds.max > bounds.min;
+  const canMoveDown = placement.vertical < 0.9999 && bounds.max > bounds.min;
 
   const handleKeyboardMove = (event: KeyboardEvent<HTMLButtonElement>) => {
     const step = event.shiftKey ? 0.2 : 0.08;
@@ -203,5 +262,10 @@ export function useFloatingDock() {
     handlePointerCancel: stopPointer,
     handleKeyboardMove,
     resetPosition,
+    moveDock,
+    moveControlsStyle,
+    canMoveUp,
+    canMoveDown,
+    consumeDragClick,
   };
 }

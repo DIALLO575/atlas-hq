@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-type IconName = "pin" | "grip" | "chevron-left" | "chevron-right" | "rotate-ccw" | "grid" | "layers" | "activity" | "settings" | "search" | "bot" | "apps" | "inbox" | "link" | "spark" | "arrow-up-right" | "arrow-right" | "menu" | "close";
+type IconName = "pin" | "grip" | "chevron-left" | "chevron-right" | "rotate-ccw" | "grid" | "layers" | "activity" | "settings" | "search" | "bot" | "apps" | "inbox" | "link" | "spark" | "arrow-up-right" | "arrow-right" | "arrow-left" | "arrow-up" | "arrow-down" | "menu" | "close";
 
 const paths: Record<IconName, React.ReactNode> = {
   pin: <><path d="m16 3 5 5-3 1-3 5-2 2-4-4 2-2 5-3 0-4Z"/><path d="m9 15-6 6"/></>,
@@ -20,6 +20,9 @@ const paths: Record<IconName, React.ReactNode> = {
   spark: <><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-2-5.8L4 11l6-2.2L12 3Z"/><path d="m19 15 1 2.5 2 1-2 1-1 2.5-1-2.5-2-1 2-1 1-2.5Z"/></>,
   "arrow-up-right": <><path d="M7 17 17 7M7 7h10v10"/></>,
   "arrow-right": <><path d="M5 12h14M13 6l6 6-6 6"/></>,
+  "arrow-left": <><path d="M19 12H5m6 6-6-6 6-6"/></>,
+  "arrow-up": <><path d="M12 19V5m-6 6 6-6 6 6"/></>,
+  "arrow-down": <><path d="M12 5v14m6-6-6 6-6-6"/></>,
   menu: <><path d="M4 7h16M4 12h16M4 17h16"/></>,
   close: <><path d="m18 6-12 12M6 6l12 12"/></>,
 };
