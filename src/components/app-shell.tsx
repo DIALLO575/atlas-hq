@@ -33,11 +33,14 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "Atlas";
 
   useEffect(() => {
-    try {
-      setExpanded(window.localStorage.getItem("atlas:dock-expanded") === "true");
-    } catch {
-      // Storage may be unavailable in restricted browsing environments.
-    }
+    const restore = window.setTimeout(() => {
+      try {
+        setExpanded(window.localStorage.getItem("atlas:dock-expanded") === "true");
+      } catch {
+        // Storage may be unavailable in restricted browsing environments.
+      }
+    }, 0);
+    return () => window.clearTimeout(restore);
   }, []);
 
   useEffect(() => {
