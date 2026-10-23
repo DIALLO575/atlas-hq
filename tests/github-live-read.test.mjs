@@ -62,7 +62,7 @@ test("rejects unverified/unbounded repository selection before any GitHub reques
     }), (error) => error instanceof GitHubReadError && error.code === "INVALID_INPUT");
   }
   await assert.rejects(mintReadOnlyInstallationToken({
-    appId: 1, privateKey, installationId: 1, repositoryIds: [10],
+    appId: 1, privateKey, installationId: 1, repositoryIds: [10], now,
     request: async () => json({ token: "x", expires_at: "2026-10-23T13:00:00Z",
       permissions: { pull_requests: "read" }, repositories: [repo(15, "other/secret")] }, 201),
   }), /exceeds approved/);
