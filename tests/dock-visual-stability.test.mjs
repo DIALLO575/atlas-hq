@@ -60,3 +60,30 @@ test("a single stable dock survives route navigation without a remount", async (
   assert.match(styles, /will-change: auto/);
   assert.match(styles, /transition: none/);
 });
+
+
+test("clicking Déplacer opens an accessible, non-reflowing four-direction controller", async () => {
+  const [shell, hook, styles, icon] = await Promise.all([
+    read("../src/components/app-shell.tsx"),
+    read("../src/components/use-floating-dock.ts"),
+    read("../src/app/dock-studio.css"),
+    read("../src/components/icon.tsx"),
+  ]);
+  assert.match(shell, /aria-expanded=\{moveControlsOpen\}/);
+  assert.match(shell, /id="atlas-dock-move-panel"/);
+  assert.match(shell, /className="atlas-dock-move-pad"/);
+  assert.match(shell, /aria-label="Monter le dock"/);
+  assert.match(shell, /aria-label="Descendre le dock"/);
+  assert.match(shell, /aria-label="Envoyer le dock à gauche"/);
+  assert.match(shell, /aria-label="Envoyer le dock à droite"/);
+  assert.match(shell, /onClick=\{\(\) => moveDock\("up"\)\}/);
+  assert.match(shell, /onClick=\{\(\) => moveDock\("right"\)\}/);
+  assert.match(hook, /ARROW_STEP_PX = 48/);
+  assert.match(hook, /storePlacement\(next\)/);
+  assert.match(hook, /Math\.hypot/);
+  assert.match(hook, /consumeDragClick/);
+  assert.match(styles, /position: "fixed"|\.atlas-dock-move-panel \{/);
+  assert.match(styles, /z-index: 44/);
+  assert.match(icon, /"arrow-up"/);
+  assert.match(icon, /"arrow-down"/);
+});

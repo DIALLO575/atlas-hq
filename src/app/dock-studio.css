@@ -243,3 +243,60 @@
     transition: transform .2s ease;
   }
 }
+
+/* Compact directional pad, rendered as a sibling so it never resizes the dock. */
+.atlas-dock-move-panel {
+  z-index: 44;
+  box-sizing: border-box;
+  width: 162px;
+  padding: 11px;
+  border: 1px solid #e9e4f5;
+  border-radius: 16px;
+  background: rgba(255,255,255,.99);
+  box-shadow: 0 16px 40px rgba(44,35,98,.13);
+  color: #29253e;
+}
+.atlas-dock-move-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.atlas-dock-move-heading strong {font-size: 11px; font-weight: 710;}
+.atlas-dock-move-heading button {
+  display: grid;place-items: center;
+  width: 25px;height: 25px;
+  background: #f7f5fb;border: 0;border-radius: 8px;
+  color: #87829b;cursor: pointer;
+}
+.atlas-dock-move-heading button svg {width: 13px;height: 13px;}
+.atlas-dock-move-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 35px);
+  grid-template-rows: repeat(3, 33px);
+  justify-content: center;
+  gap: 4px;
+}
+.atlas-dock-move-pad button {
+  display: grid;place-items: center;
+  width: 35px;height: 33px;
+  border: 1px solid #ebe5f7;
+  border-radius: 9px;background: #f7f4ff;color: #7354d0;
+  cursor: pointer;
+}
+.atlas-dock-move-pad button:hover:not(:disabled) {
+  background: #eee7ff;border-color: #cfc0f3;
+}
+.atlas-dock-move-pad button:disabled {opacity: .34;cursor: not-allowed;}
+.atlas-dock-move-pad button svg {width: 16px;height: 16px;}
+.atlas-dock-move-up {grid-area: 1 / 2;}
+.atlas-dock-move-left {grid-area: 2 / 1;}
+.atlas-dock-move-reset {grid-area: 2 / 2;background: #fff!important;}
+.atlas-dock-move-right {grid-area: 2 / 3;}
+.atlas-dock-move-down {grid-area: 3 / 2;}
+.atlas-dock-move-footnote {margin: 8px 0 0;text-align: center;color: #a09bb0;font-size: 9px;}
+@media(max-width:760px) {
+  /* The phone dock is a fixed drawer; direction controls apply to the desktop capsule. */
+  .atlas-dock-move-panel {display: none;}
+}
