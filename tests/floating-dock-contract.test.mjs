@@ -10,15 +10,15 @@ test("Smart Dock has a dedicated drag handle and does not hijack navigation clic
     read("../src/components/use-floating-dock.ts"),
   ]);
   assert.match(shell, /useFloatingDock\(\)/);
-  assert.match(shell, /ref=\{dock\.dockRef\}/);
-  assert.match(shell, /onPointerDown=\{dock\.handlePointerDown\}/);
-  assert.match(shell, /onPointerMove=\{dock\.handlePointerMove\}/);
-  assert.match(shell, /onPointerUp=\{dock\.handlePointerUp\}/);
-  assert.match(shell, /onPointerCancel=\{dock\.handlePointerCancel\}/);
+  assert.match(shell, /ref=\{dockRef\}/);
+  assert.match(shell, /onPointerDown=\{handlePointerDown\}/);
+  assert.match(shell, /onPointerMove=\{handlePointerMove\}/);
+  assert.match(shell, /onPointerUp=\{handlePointerUp\}/);
+  assert.match(shell, /onPointerCancel=\{handlePointerCancel\}/);
   assert.match(shell, /aria-label="Déplacer le menu flottant"/);
-  assert.match(shell, /onKeyDown=\{dock\.handleKeyboardMove\}/);
-  assert.match(shell, /onDoubleClick=\{dock\.resetPosition\}/);
-  assert.match(shell, /data-dock-side=\{dock\.side\}/);
+  assert.match(shell, /onKeyDown=\{handleKeyboardMove\}/);
+  assert.match(shell, /onDoubleClick=\{resetPosition\}/);
+  assert.match(shell, /data-dock-side=\{dockSide\}/);
   assert.match(hook, /setPointerCapture/);
   assert.match(hook, /releasePointerCapture/);
   assert.match(hook, /event\.currentTarget\.hasPointerCapture/);
@@ -54,5 +54,5 @@ test("expanded or right-side docks reserve content space; mobile is a static dra
   assert.match(styles, /touch-action: none/);
   assert.match(shell, /aria-expanded=\{expanded\}/);
   assert.match(shell, /atlas-mobile-bottom/);
-  assert.match(layout, /import "\.\/smart-dock\.css"/);
+  assert.match(layout, /import "\.\/smart-css"/);
 });

@@ -31,7 +31,11 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const dock = useFloatingDock();
+  const {
+    dockRef, side: dockSide, dragging: dockDragging, dockStyle,
+    handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel,
+    handleKeyboardMove, resetPosition,
+  } = useFloatingDock();
   const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "Atlas";
 
   useEffect(() => {
@@ -69,7 +73,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const linkClass = (href: string) => "atlas-dock-link" + (pathname === href ? " atlas-dock-active" : "");
 
   return (
-    <div data-dock-side={dock.side} className={"app-shell atlas-shell" + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dock.dragging ? " atlas-dock-is-dragging" : "")}>
+    <div data-dock-side={dockSide} className={"app-shell atlas-shell" + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dockDragging ? " atlas-dock-is-dragging" : "")}>
       <a className="skip-link" href="#main-content">Aller au contenu principal</a>
       <header className="atlas-topbar">
         <div className="atlas-topbar-start">
@@ -91,18 +95,18 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </div>
       </header>
 
-      <aside ref={dock.dockRef} style={dock.dockStyle} className="atlas-dock atlas-smart-dock" aria-label="Navigation principale">
+      <aside ref={dockRef} style={dockStyle} className="atlas-dock atlas-smart-dock" aria-label="Navigation principale">
         <div className="atlas-dock-title">
           <button className="atlas-dock-grip" type="button"
             title="Déplacer le menu · Double-clic pour recentrer"
             aria-label="Déplacer le menu flottant"
             aria-describedby="atlas-dock-help"
-            onPointerDown={dock.handlePointerDown}
-            onPointerMove={dock.handlePointerMove}
-            onPointerUp={dock.handlePointerUp}
-            onPointerCancel={dock.handlePointerCancel}
-            onKeyDown={dock.handleKeyboardMove}
-            onDoubleClick={dock.resetPosition}>
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
+            onKeyDown={handleKeyboardMove}
+            onDoubleClick={resetPosition}>
             <Icon name="grip" />
             <span className="atlas-dock-title-text">ATLAS DOCK</span>
           </button>
@@ -112,7 +116,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           <button className="atlas-expand-toggle" type="button" onClick={toggleExpanded}
             aria-label={expanded ? "Réduire le menu" : "Agrandir le menu"}
             title={expanded ? "Réduire le menu" : "Agrandir le menu"} aria-expanded={expanded}>
-            <Icon name={expanded ? (dock.side === "left" ? "chevron-left" : "chevron-right") : (dock.side === "left" ? "chevron-right" : "chevron-left")} />
+            <Icon name={expanded ? (dockSide === "left" ? "chevron-left" : "chevron-right") : (dockSide === "left" ? "chevron-right" : "chevron-left")} />
           </button>
         </div>
         <nav className="atlas-dock-nav" aria-label="Sections principales">
@@ -136,12 +140,12 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </nav>
         <div className="atlas-dock-account">
           <SessionControls />
-          <button className="atlas-dock-reset" type="button" onClick={dock.resetPosition} title="Remettre le dock au centre-gauche">
+          <button className="atlas-dock-reset" type="button" onClick={resetPosition} title="Remettre le dock au centre-gauche">
             <Icon name="rotate-ccw" /> Recentrer le dock
           </button>
         </div>
       </aside>
-      {dock.dragging && <div className="atlas-dock-dropguides" aria-hidden="true">
+      {dockDragging && <div className="atlas-dock-dropguides" aria-hidden="true">
         <span className="atlas-dock-dropguide atlas-dock-dropguide-left">Gauche</span>
         <span className="atlas-dock-dropguide atlas-dock-dropguide-right">Droite</span>
       </div>}
