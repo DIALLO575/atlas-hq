@@ -18,7 +18,7 @@ create table if not exists public.atlas_github_installations (
   updated_at timestamptz not null default now(),
   constraint github_ready_requires_proof check (
     status <> 'repositories-ready' or (
-      repository_selection = 'selected'
+      repository_selection is not distinct from 'selected'
       and ownership_verified_at is not null
       and repositories_verified_at is not null
     )
