@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/icon";
 import { BrandLogo } from "@/components/brand-logo";
 import { appCategories, atlasApps, type AppCategory } from "@/lib/app-catalog";
@@ -9,7 +9,11 @@ function normalized(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
 }
 
-export function AppsDirectory() {
+export function AppsDirectory({ githubSlot, githubConfigured, hasVerifiedGitHub }: {
+  githubSlot?: ReactNode;
+  githubConfigured?: boolean;
+  hasVerifiedGitHub?: boolean;
+}) {
   const [category, setCategory] = useState<(typeof appCategories)[number]>("Toutes");
   const [query, setQuery] = useState("");
 
@@ -28,11 +32,13 @@ export function AppsDirectory() {
         <span className="atlas-apps-connected-icon"><Icon name="link" /></span>
         <div>
           <h2 id="apps-connected-title">Mes connexions</h2>
-          <p>Vos applications réellement connectées apparaîtront ici dès l’activation des intégrations.</p>
+          <p>{hasVerifiedGitHub ? "Installation GitHub vérifiée. Les ressources restent soumises aux permissions du Workspace." :
+    "Vos applications réellement connectées apparaîtront ici dès l’activation des intégrations."}</p>
         </div>
-        <span className="atlas-apps-empty-pill">Aucune connexion active</span>
+        <span className="atlas-apps-empty-pill">{hasVerifiedGitHub ? "GitHub autorisé" : "Aucune connexion active"}</span>
       </section>
 
+      {githubSlot}
       <section className="atlas-directory" aria-labelledby="atlas-directory-title">
         <header className="atlas-directory-heading">
           <div>
@@ -69,16 +75,22 @@ export function AppsDirectory() {
               <article className="atlas-integration-card" key={app.slug}>
                 <div className="atlas-integration-top">
                   <span className="atlas-integration-logo"><BrandLogo slug={app.slug} size={40} /></span>
-                  <span className="atlas-integration-status">À venir</span>
+                  <span className="atlas-integration-status">{app.slug === "github"
+                  ? hasVerifiedGitHub ? "Installation vérifiée" : githubConfigured ? "Connexion disponible" : "Configuration requise"
+                  : "À venir"}</span>
                 </div>
                 <h3>{app.name}</h3>
                 <p className="atlas-integration-description">{app.description}</p>
                 <div className="atlas-integration-category">{app.category}</div>
                 <div className="atlas-integration-footer">
                   <span>Non connectée</span>
-                  <button type="button" disabled aria-label={"Connexion à " + app.name + " bientôt disponible"} title="Intégration en préparation">
-                    Connecter <Icon name="arrow-up-right" />
-                  </button>
+                  {app.slug === "github" && githubConfigured ?
+                    <a href="#atlas-github-connection" className="atlas-apps-connect-link">
+                      Configurer <Icon name="arrow-up-right" />
+                    </a> :
+                    <button type="button" disabled aria-label={"Connexion à " + app.name + " bientôt disponible"} title="Intégration en préparation">
+                      Connecter <Icon name="arrow-up-right" />
+                    </button>}
                 </div>
               </article>
             ))}
@@ -91,7 +103,7 @@ export function AppsDirectory() {
             <button type="button" onClick={() => { setQuery(""); setCategory("Toutes"); }}>Réinitialiser les filtres</button>
           </div>
         )}
-        <p className="atlas-directory-footnote">Catalogue de présentation. Les connexions ne sont pas encore disponibles dans cette version d’Atlas.</p>
+        <p className="atlas-directory-footnote">Catalogue de présentation. Les connexions ne sont pas encore disponibles pour les autres applications.</p>
       </section>
     </>
   );
