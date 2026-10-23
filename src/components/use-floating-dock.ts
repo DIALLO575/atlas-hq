@@ -224,10 +224,10 @@ export function useFloatingDock() {
     };
   })();
 
-  const { height: measuredHeight } = getDockSize();
-  const bounds = typeof window === "undefined"
-    ? { min: TOP_GAP, max: TOP_GAP + 1 }
-    : topBounds(window.innerHeight, measuredHeight);
+  // Use the last measured geometry: never read element refs during render.
+  const bounds = geometry
+    ? topBounds(geometry.viewportHeight, geometry.height)
+    : { min: TOP_GAP, max: TOP_GAP + 1 };
   const canMoveUp = placement.vertical > 0.0001 && bounds.max > bounds.min;
   const canMoveDown = placement.vertical < 0.9999 && bounds.max > bounds.min;
 
