@@ -5,6 +5,7 @@
   "exports": {
     "./webhook-contract": "./src/webhook-contract.mjs",
     "./pagination-contract": "./src/pagination-contract.mjs",
-    "./installation-flow": "./src/installation-flow.mjs"
+    "./installation-flow": "./src/installation-flow.mjs",
+    "./github-app-client": "./src/github-app-client.mjs"
   }
 }

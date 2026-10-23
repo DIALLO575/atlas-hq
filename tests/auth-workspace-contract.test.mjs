@@ -23,6 +23,8 @@ const [proxy, login, actions, contract, selector, shell, envExample, workspacePa
   read("../README.md"),
   readdir(new URL("../supabase/migrations/", import.meta.url)),
 ]);
+const duo = await read("../src/app/login/duo-auth.tsx");
+const policy = await read("../src/lib/auth/password-policy.ts");
 
 test("the six cockpit sections are protected by verified Supabase claims", () => {
   for (const href of ["/", "/workspaces", "/missions", "/agents", "/apps", "/inbox"]) assert.ok(shell.includes(`href: "${href}"`));
@@ -32,11 +34,36 @@ test("the six cockpit sections are protected by verified Supabase claims", () =>
 });
 
 test("login and logout use server auth actions and expose safe user messages", () => {
-  assert.match(login, /role=\{reason === "credentials" \|\| reason === "invalid-input" \? "alert" : "status"\}/);
+  const surface = `${login}\n${duo}`;
+  assert.match(surface, /role="alert"/);
+  assert.match(surface, /Adresse ou mot de passe incorrect\./);
+  assert.match(surface, /Connexion indisponible/);
+  assert.match(surface, /Les paramètres publics d’authentification manquent\./);
+  assert.doesNotMatch(surface, /Connectez vos données/);
+  assert.doesNotMatch(surface, /Avancez plus loin/);
+  assert.doesNotMatch(surface, /Accédez à votre espace Atlas/);
+  assert.doesNotMatch(surface, /Rejoignez Atlas et centralisez vos données en toute simplicité/);
+  assert.doesNotMatch(surface, /ou continuer avec/);
+  assert.doesNotMatch(surface, /Aucun accès n’est accordé en mode démonstration/);
+  assert.doesNotMatch(surface, /Aucun accès de démonstration/);
+  assert.match(surface, /name="next"/);
+  assert.match(surface, /aria-disabled=\{true\}/);
+  assert.match(surface, /disabled/);
   assert.match(actions, /signInWithPassword/);
+  assert.match(actions, /supabase\.auth\.signUp/);
+  assert.match(actions, /full_name/);
+  assert.match(actions, /export async function requestPasswordReset/);
+  assert.doesNotMatch(actions, /resetPasswordForEmail/);
+  assert.doesNotMatch(duo, /requestPasswordReset|La demande de réinitialisation a été acceptée/);
+  assert.match(duo, /Le choix d’un nouveau mot de passe n’est pas disponible sur cet écran\./);
+  assert.match(duo, /action=\{signIn\}/);
+  assert.match(duo, /action=\{signUp\}/);
   assert.match(actions, /auth\.signOut\(\)/);
   assert.match(actions, /requestedPath\.startsWith\("\/\/"\)/);
-  assert.match(login, /name="next"/);
+  assert.match(actions, /createSupabaseServerClient/);
+  assert.match(policy, /Au moins 8 caractères/);
+  assert.doesNotMatch(surface, /accounts\.google|login\.microsoftonline|appleid\.apple/);
+  assert.doesNotMatch(login, /NEXT_PUBLIC_|service_role|sb_secret|publishable/i);
   assert.doesNotMatch(actions, /service_role|sb_secret/i);
 });
 

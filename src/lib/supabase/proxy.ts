@@ -5,6 +5,8 @@ import { getSupabasePublicConfig } from "./config";
 export async function updateSupabaseSession(request: NextRequest) {
   const config = getSupabasePublicConfig();
   const isLogin = request.nextUrl.pathname === "/login";
+  // The confirmation link arrives before a session exists, so this route must run.
+  const isAuthCallback = request.nextUrl.pathname === "/auth/callback";
 
   if (!config) {
     if (isLogin) return NextResponse.next();
@@ -33,6 +35,7 @@ export async function updateSupabaseSession(request: NextRequest) {
     const { data, error } = await supabase.auth.getClaims();
     if (!error && data?.claims?.sub) claims = { sub: data.claims.sub };
   } catch {
+    if (isAuthCallback) return response;
     if (isLogin) {
       const url = request.nextUrl.clone();
       url.searchParams.set("reason", "auth-unavailable");
@@ -56,7 +59,7 @@ export async function updateSupabaseSession(request: NextRequest) {
     return redirect;
   }
 
-  if (!isLogin && !isAuthenticated) {
+  if (!isLogin && !isAuthCallback && !isAuthenticated) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
