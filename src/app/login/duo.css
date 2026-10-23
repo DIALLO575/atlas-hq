@@ -1,0 +1,400 @@
+@font-face {
+  font-family: AtlasDuo;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+.duo-auth {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: #e8eef8;
+  color-scheme: dark;
+  font-family: AtlasDuo, Inter, "Liberation Sans", sans-serif;
+  background:
+    radial-gradient(720px 620px at -8% 108%, rgba(37, 99, 235, 0.38), transparent 62%),
+    radial-gradient(680px 560px at 112% -12%, rgba(30, 64, 175, 0.42), transparent 58%),
+    radial-gradient(420px 320px at 78% 108%, rgba(59, 130, 246, 0.16), transparent 70%),
+    #070b16;
+}
+
+.duo-auth svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.duo-stage {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 28px;
+  padding: 54px 32px 32px;
+}
+
+.duo-stage[data-panel="configuration"] { align-items: center; padding-top: 28px; }
+
+.duo-card {
+  width: 400px;
+  flex: none;
+  padding: 28px 28px 22px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(18, 28, 48, 0.96), rgba(10, 16, 30, 0.98));
+  border: 1px solid rgba(148, 176, 230, 0.16);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.duo-logo {
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 40px;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.duo-logo span { color: #60a5fa; }
+
+.duo-tag {
+  margin: 10px 0 22px;
+  text-align: center;
+  color: #9aa6bd;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.duo-card h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.duo-sub {
+  margin: 6px 0 18px;
+  color: #9aa6bd;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.duo-banner,
+.duo-status {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.duo-banner {
+  background: rgba(154, 47, 47, 0.22);
+  color: #ffb4b4;
+  border: 1px solid rgba(255, 160, 160, 0.28);
+}
+
+.duo-status {
+  background: rgba(59, 130, 246, 0.14);
+  color: #d7e6ff;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+}
+
+.duo-field { margin: 0 0 12px; }
+
+.duo-auth label {
+  display: block;
+  margin: 0 0 6px;
+  color: #e8eef8;
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.duo-control { position: relative; }
+
+.duo-auth input:not([type="checkbox"]):not([type="hidden"]) {
+  width: 100%;
+  height: 46px;
+  margin: 0;
+  padding: 0 14px 0 40px;
+  border: 1px solid #2a3854;
+  border-radius: 12px;
+  background: #10182a;
+  color: #fff;
+  font: 450 14px/1.2 AtlasDuo, Inter, "Liberation Sans", sans-serif;
+}
+
+.duo-auth input::placeholder { color: #6d7b93; }
+
+.duo-auth input:not([type="checkbox"]):focus {
+  outline: 2px solid rgba(59, 130, 246, 0.85);
+  outline-offset: 1px;
+  border-color: #3b82f6;
+}
+
+.duo-auth input:-webkit-autofill {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  box-shadow: 0 0 0 1000px #10182a inset;
+}
+
+.duo-lead {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8b9bb4;
+  display: grid;
+  pointer-events: none;
+}
+
+.duo-lead svg { width: 16px; height: 16px; }
+
+.duo-control.has-toggle input { padding-right: 42px; }
+
+.duo-field.is-invalid input {
+  border-color: #e07a7a;
+  background: #160f16;
+}
+
+.duo-auth input:disabled {
+  color: #9aa6bd;
+  background: #0c1320;
+}
+
+.duo-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  transform: translateY(-50%);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8b9bb4;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.duo-toggle svg { width: 16px; height: 16px; }
+
+.duo-msg { margin: 6px 0 0; color: #ffb4b4; font-size: 12px; line-height: 1.35; }
+
+.duo-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 0 14px;
+}
+
+.duo-auth label.duo-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #c5d0e2;
+  font-size: 13px;
+  font-weight: 480;
+}
+
+.duo-check input {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid #7d8da8;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.duo-text-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #60a5fa;
+  font: 620 13px AtlasDuo, Inter, "Liberation Sans", sans-serif;
+  cursor: pointer;
+}
+
+.duo-rules {
+  list-style: none;
+  margin: 2px 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.duo-rules li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #9aa6bd;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.duo-rules li.is-met { color: #8fd0b0; }
+
+.duo-tick {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  color: #8ea0b8;
+  display: grid;
+}
+
+.duo-rules li.is-met .duo-tick { color: #8fd0b0; }
+
+.duo-tick svg { width: 14px; height: 14px; stroke-width: 2; }
+
+.duo-submit {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #4c94ff 0%, #1d6ef5 100%);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(29, 110, 245, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 640 15px AtlasDuo, Inter, "Liberation Sans", sans-serif;
+  cursor: pointer;
+}
+
+.duo-submit svg { position: absolute; right: 16px; width: 18px; height: 18px; }
+
+.duo-submit.is-busy { box-shadow: none; opacity: 0.85; }
+
+.duo-submit.is-busy .duo-spin { position: static; margin-right: 8px; animation: duo-spin 0.8s linear infinite; }
+
+@keyframes duo-spin { to { transform: rotate(360deg); } }
+
+.duo-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 12px;
+  color: #7e8ba3;
+  font-size: 12px;
+}
+
+.duo-or::before,
+.duo-or::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: rgba(148, 176, 230, 0.22);
+}
+
+.duo-social { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+.duo-social button {
+  height: 48px;
+  border: 1px solid #2a3854;
+  border-radius: 12px;
+  background: #121a2c;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.duo-social svg,
+.duo-social svg * { stroke: none; }
+
+.duo-social svg { width: 18px; height: 18px; }
+
+.duo-switch {
+  margin: 16px 0 0;
+  text-align: center;
+  color: #9aa6bd;
+  font-size: 13px;
+}
+
+.duo-switch .duo-text-button { font-weight: 650; }
+
+.duo-footnote,
+.duo-outside {
+  color: #7e8ba3;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.duo-footnote { margin: 18px 0 0; }
+
+.duo-outside {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  margin: 0;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.duo-confirm-mark {
+  width: 42px;
+  height: 42px;
+  margin: 8px 0 16px;
+  border-radius: 21px;
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+  display: grid;
+  place-items: center;
+}
+
+.duo-confirm-mark svg { width: 22px; height: 22px; }
+
+.duo-confirm .duo-sub { margin-bottom: 0; }
+
+.duo-auth button:focus-visible,
+.duo-auth a:focus-visible,
+.duo-auth input:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.85);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1099px) {
+  .duo-stage { align-items: center; padding: 24px; }
+  .duo-card { width: min(100%, 420px); }
+  .duo-stage[data-panel="login"] .is-signup,
+  .duo-stage[data-panel="reset"] .is-signup,
+  .duo-stage[data-panel="signup"] .is-login,
+  .duo-stage[data-panel="check-email"] .is-login { display: none; }
+}
+
+@media (max-width: 700px) {
+  .duo-stage { align-items: center; padding: 16px; }
+  .duo-card { width: 100%; padding: 22px 18px 16px; border-radius: 24px; }
+  .duo-logo { font-size: 34px; }
+  .duo-tag { margin: 8px 0 14px; font-size: 12px; }
+  .duo-card h1 { font-size: 22px; }
+  .duo-sub { margin-bottom: 12px; font-size: 13px; }
+  .duo-field { margin-bottom: 10px; }
+  .duo-auth input:not([type="checkbox"]):not([type="hidden"]) { height: 42px; }
+  .duo-submit,
+  .duo-social button { height: 44px; }
+  .duo-rules { gap: 3px; margin-bottom: 10px; }
+  .duo-rules li { font-size: 12px; }
+  .duo-or { margin: 12px 0 10px; }
+  .duo-switch { margin-top: 12px; }
+}
