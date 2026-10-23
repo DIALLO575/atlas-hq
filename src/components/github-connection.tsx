@@ -134,3 +134,23 @@ export function GitHubConnection({ workspaceId, canInstall, isConfigured }: {
     </section>}
   </section>;
 }
+
+export function GitHubWorkspacePicker({ workspaces, isConfigured }: {
+  workspaces: Array<{ id: string; name: string; role: "owner" | "admin" | "member" }>;
+  isConfigured: boolean;
+}) {
+  const [workspaceId, setWorkspaceId] = useState(workspaces[0]?.id ?? "");
+  const selected = workspaces.find((workspace) => workspace.id === workspaceId);
+  return <section aria-label="GitHub par Workspace">
+    {workspaces.length > 1 && <div>
+      <label htmlFor="github-workspace">Workspace GitHub</label>
+      <select id="github-workspace" value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
+        {workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
+      </select>
+    </div>}
+    {workspaceId ? <GitHubConnection key={workspaceId} workspaceId={workspaceId}
+      canInstall={selected?.role === "owner" || selected?.role === "admin"}
+      isConfigured={isConfigured}/> :
+      <p>Créez d’abord un Workspace pour y connecter GitHub.</p>}
+  </section>;
+}
