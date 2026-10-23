@@ -64,3 +64,9 @@ Le manifeste est dans `public/manifest.webmanifest`, l’icône dans `public/ico
 ## Sécurité et périmètre
 
 Aucun secret, client Supabase ou donnée opérationnelle n’est inclus. Les fichiers `.env*` sont ignorés par Git; `.env.example` ne contient qu’un réglage public indicatif. Chaque plateforme connectée restera sa propre source de vérité. Aucune intégration backend n’est activée dans cette fondation.
+
+### Workspace roles and migration order
+
+Within a workspace, an `owner` or `admin` may add a different authenticated user as `member` or `admin`; this includes an admin nominating another admin in that same workspace. Membership writes are authorized against the target workspace, so an admin cannot write membership to another workspace, and neither admins nor owners can grant `owner` through the membership table. Owner membership is created only by the workspace insert trigger from the server-verified `created_by` value. A person may participate in several workspaces only through a separate membership authorized for each one.
+
+Keep the Supabase migration sequence as versioned: `20261023071054_auth_workspaces_rls.sql` is already recorded on the official project's migration history and explicitly enables RLS on both new tables; `20261023072200_fail_closed_rls_auto_enable.sql` replaces the historical auto-enable handler without swallowing errors; `20261023073700_limit_workspace_update_columns.sql` revokes table-level UPDATE and grants only `name` and `updated_at`. Do not edit or reorder a migration already applied to the official database. The SQL regression test checks this privilege matrix, owner immutability, admin nomination, cross-workspace denial, and propagation of an injected RLS auto-enable failure.

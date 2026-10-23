@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [proxy, login, actions, contract, selector, shell, envExample, workspacePage, sessionControls, styles, workspaceActions, migration, triggerMigration, isolationTest, immutableOwnership] = await Promise.all([
+const [proxy, login, actions, contract, selector, shell, envExample, workspacePage, sessionControls, styles, workspaceActions, migration, triggerMigration, isolationTest, immutableOwnership, readme, migrationFiles] = await Promise.all([
   read("../src/lib/supabase/proxy.ts"),
   read("../src/app/login/page.tsx"),
   read("../src/app/login/actions.ts"),
@@ -19,6 +19,8 @@ const [proxy, login, actions, contract, selector, shell, envExample, workspacePa
   read("../supabase/migrations/20261023072200_fail_closed_rls_auto_enable.sql"),
   read("../supabase/tests/workspace_rls.sql"),
   read("../supabase/migrations/20261023073700_limit_workspace_update_columns.sql"),
+  read("../README.md"),
+  readdir(new URL("../supabase/migrations/", import.meta.url)),
 ]);
 
 test("the six cockpit sections are protected by verified Supabase claims", () => {
@@ -72,10 +74,20 @@ test("workspace migration binds reads and writes to auth.uid with tenant RLS", (
   assert.match(migration, /after insert on public\.workspaces/);
   assert.match(immutableOwnership, /revoke update on public\.workspaces from authenticated/);
   assert.match(immutableOwnership, /grant update \(name, updated_at\) on public\.workspaces to authenticated/);
+  assert.match(isolationTest, /has_column_privilege\('authenticated', 'public\.workspaces', 'name', 'UPDATE'\)/);
+  assert.match(isolationTest, /has_column_privilege\('authenticated', 'public\.workspaces', 'updated_at', 'UPDATE'\)/);
+  assert.match(isolationTest, /has_column_privilege\('authenticated', 'public\.workspaces', 'created_by', 'UPDATE'\)/);
+  assert.match(isolationTest, /has_table_privilege\('authenticated', 'public\.workspaces', 'UPDATE'\)/);
+  assert.match(isolationTest, /name = 'User A renamed workspace', updated_at = now\(\) \+ interval '1 minute'/);
+  assert.match(isolationTest, /role = 'admin'/);
   assert.match(isolationTest, /User A workspace isolation failed/);
   assert.match(isolationTest, /User B workspace isolation failed/);
   assert.match(isolationTest, /Forged created_by was accepted/);
   assert.match(isolationTest, /Cross-tenant membership write was accepted/);
+  assert.match(isolationTest, /Admin granted the owner role/);
+  assert.match(isolationTest, /Workspace admin wrote to a different tenant/);
+  assert.match(readme, /admin nominating another admin in that same workspace/i);
+  assert.match(readme, /cannot write membership to another workspace, and neither admins nor owners can grant `owner`/i);
 });
 
 test("RLS auto-enable fails closed and its SQL regression test checks the trigger", () => {
@@ -85,6 +97,17 @@ test("RLS auto-enable fails closed and its SQL regression test checks the trigge
   assert.match(triggerMigration, /raise exception 'Expected ensure_rls event trigger is missing or misconfigured'/);
   assert.match(isolationTest, /RLS auto-enable still swallows failures/);
   assert.match(isolationTest, /RLS auto-enable did not protect a new public table/);
+  assert.match(isolationTest, /forced rls_auto_enable failure/);
+  assert.match(isolationTest, /RLS auto-enable swallowed a failure/);
+  const ordered = migrationFiles.filter((file) => file.endsWith(".sql")).sort();
+  const workspaceMigration = ordered.findIndex((file) => file.includes("auth_workspaces_rls"));
+  const failClosedMigration = ordered.findIndex((file) => file.includes("fail_closed_rls_auto_enable"));
+  const columnGrantMigration = ordered.findIndex((file) => file.includes("limit_workspace_update_columns"));
+  assert.ok(workspaceMigration >= 0 && workspaceMigration < failClosedMigration && failClosedMigration < columnGrantMigration);
+  assert.match(migration, /create table if not exists public\.workspaces/);
+  assert.match(migration, /drop policy if exists/g);
+  assert.match(triggerMigration, /create or replace function public\.rls_auto_enable/);
+  assert.match(immutableOwnership, /revoke update on public\.workspaces from authenticated/);
 });
 
 test("only public Supabase settings are documented for the browser", () => {
