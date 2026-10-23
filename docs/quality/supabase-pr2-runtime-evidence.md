@@ -52,7 +52,6 @@ The SQL tool exposes only the final row of a multi-statement request, not indivi
 
 ## Method and limits
 
-- Read-only calls: project identity, migration history, table metadata, migration statements, post-test catalog, and security/performance advisors.
-- Test call: exact SQL file via Supabase MCP `execute_sql` against the disposable project only.
-- No Supabase CLI, `psql`, Dashboard editor or project migration API was used. No statement targeted the official project.
+- Earlier disposable-project run only: read-only calls covered project identity, migration history, table metadata, migration statements, post-test catalog, and security/performance advisors; the exact SQL test file was sent through Supabase MCP `execute_sql` to the disposable project. No Supabase CLI, `psql`, Dashboard editor or project migration API was used in that run.
+- The later official-project writes were the two migrations identified at the top of this report, applied through Supabase MCP `apply_migration`.
 - The earlier SQL runtime proof is for the disposable project and tested Git head only. It does not constitute a runtime SQL-test run on the official project. The MCP response does not preserve a per-assertion transcript; results above are supported by the script's exception-based assertions, successful execution response, and post-run catalog query.
