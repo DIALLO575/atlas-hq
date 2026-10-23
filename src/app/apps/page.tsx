@@ -8,7 +8,8 @@ import { githubConnectSettings } from "@/lib/github/connect";
 
 export const dynamic = "force-dynamic";
 
-export default async function AppsPage() {
+export default async function AppsPage({ searchParams }: { searchParams: Promise<{ github?: string }> }) {
+  const { github } = await searchParams;
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
   const { data: memberships } = user && supabase
@@ -25,6 +26,8 @@ export default async function AppsPage() {
   return <AppShell><main className="main-content" id="main-content">
     <PageHeading eyebrow="INTÉGRATIONS ATLAS" title="Mes Apps"
       description="Connectez des applications et consultez les ressources réellement autorisées."/>
+    {github === "connected" ? <p role="status">Installation GitHub vérifiée et enregistrée. Vous pouvez consulter les dépôts autorisés.</p> :
+      github ? <p role="alert">La connexion GitHub n&apos;a pas abouti. Vous pouvez réessayer après avoir vérifié la configuration.</p> : null}
     <GitHubWorkspacePicker workspaces={workspaces} isConfigured={isConfigured}/>
     <section className="apps-grid" aria-label="Autres applications">
       {demoApps.filter((app) => app.name !== "GitHub").map((app) =>
