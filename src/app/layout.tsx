@@ -1,18 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import { InstallPrompt } from "@/components/install-prompt";
 import "./globals.css";
+import "./atlas-redesign.css";
 
 export const metadata: Metadata = {
-  title: "ATLAS HQ — votre cockpit",
-  description: "Le cockpit personnel pour retrouver vos espaces et avancer sereinement.",
-  applicationName: "ATLAS HQ",
+  title: "Atlas — Agents, apps et missions",
+  description: "Votre espace pour coordonner vos agents IA, vos applications et vos missions.",
+  applicationName: "Atlas",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "ATLAS HQ", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Atlas", statusBarStyle: "default" },
   icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101415",
+  themeColor: "#faf9fd",
   width: "device-width",
   initialScale: 1,
 };
