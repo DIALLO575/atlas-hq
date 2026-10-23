@@ -188,7 +188,7 @@ export function AppsDirectory() {
               <h2 id="atlas-app-detail-heading">{selected.name}</h2>
               <span className="atlas-apps-detail-category">{selected.category}</span>
               <p>{selected.useCase}</p>
-              <div className="atlas-apps-detail-notice"><Icon name="link" /> Connexion à venir : aucun accès à votre compte n'est demandé.</div>
+              <div className="atlas-apps-detail-notice"><Icon name="link" /> Connexion à venir : aucun accès à votre compte n’est demandé.</div>
               <button className="atlas-apps-detail-favorite" type="button" onClick={() => toggleFavorite(selected.slug)}>
                 <Icon name="pin" /> {favorites.includes(selected.slug) ? "Retirer des favoris" : "Ajouter à mes favoris"}
               </button>
@@ -198,10 +198,10 @@ export function AppsDirectory() {
           <section className="atlas-apps-side-panel atlas-apps-attention">
             <div className="atlas-apps-attention-heading"><h2><Icon name="inbox" /> Besoin de vous</h2><span>À venir</span></div>
             <div className="atlas-apps-attention-empty"><span><Icon name="inbox" /></span><strong>Aucune demande affichée</strong>
-              <p>Les validations et demandes d'accès apparaîtront ici lorsque les intégrations seront actives.</p>
-              <Link href="/inbox">Voir l'Inbox <Icon name="arrow-right" /></Link></div>
+              <p>Les validations et demandes d’accès apparaîtront ici lorsque les intégrations seront actives.</p>
+              <Link href="/inbox">Voir l’Inbox <Icon name="arrow-right" /></Link></div>
           </section>
-          <div className="atlas-apps-disclaimer">Les logos et marques appartiennent à leurs propriétaires. L'affichage dans le catalogue ne signifie pas qu'un connecteur est opérationnel.</div>
+          <div className="atlas-apps-disclaimer">Les logos et marques appartiennent à leurs propriétaires. L’affichage dans le catalogue ne signifie pas qu’un connecteur est opérationnel.</div>
         </aside>
       </div>
     </>

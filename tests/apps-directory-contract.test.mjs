@@ -44,7 +44,7 @@ test("Mes Apps is a proper working discovery interface, not fictitious integrati
   assert.match(directory, /setSelected/);
   assert.match(directory, /Aucune connexion suivie/);
   assert.match(directory, /Connexion à venir/);
-  assert.match(directory, /Les validations et demandes d'accès apparaîtront/);
+  assert.match(directory, /Les validations et demandes d’accès apparaîtront/);
   assert.doesNotMatch(directory, /8 apps connectées|Approbations \(3\)|Connectée<\/span>/);
   assert.match(catalogue, /recommendedApps = atlasApps\.filter/);
   assert.match(catalogue, /HubSpot/);
