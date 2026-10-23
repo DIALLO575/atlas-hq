@@ -42,6 +42,9 @@ async function collection(request, token, pathname, field, cap) {
     records.push(...value[field]);
     if (records.length > cap || value.total_count > cap) throw new GitHubAuthorizationError("GITHUB_SELECTION_TOO_LARGE");
     const next = getNextPageUrl(link);
+    if (!next && typeof link === "string" && /rel\\s*=\\s*"?next"?/i.test(link)) {
+      throw new GitHubAuthorizationError("GITHUB_INVALID_PAGINATION");
+    }
     if (!next) {
       if (records.length !== value.total_count) throw new GitHubAuthorizationError("GITHUB_INCOMPLETE_SELECTION");
       return records;
