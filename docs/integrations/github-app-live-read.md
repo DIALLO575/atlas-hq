@@ -30,7 +30,7 @@ import {
 const { token } = await mintReadOnlyInstallationToken({
   appId, privateKey, installationId, repositoryIds,
 });
-const github = createGitHubReadClient({ token, repositoryIds });
+const github = createGitHubReadClient({ token, installationId, repositoryIds });
 const { repositories } = await github.listRepositories();
 const { pullRequests } = await github.listPullRequests(repositories[0].id);
 const context = await github.getPullRequest(repositories[0].id, pullRequests[0].number);
