@@ -41,6 +41,11 @@
   padding: 54px 32px 32px;
 }
 
+.duo-stage[data-panel="login"] .is-signup,
+.duo-stage[data-panel="reset"] .is-signup,
+.duo-stage[data-panel="signup"] .is-login,
+.duo-stage[data-panel="check-email"] .is-login { display: none; }
+
 .duo-stage[data-panel="configuration"] { align-items: center; padding-top: 28px; }
 
 .duo-card {
@@ -376,10 +381,6 @@
 @media (max-width: 1099px) {
   .duo-stage { align-items: center; padding: 24px; }
   .duo-card { width: min(100%, 420px); }
-  .duo-stage[data-panel="login"] .is-signup,
-  .duo-stage[data-panel="reset"] .is-signup,
-  .duo-stage[data-panel="signup"] .is-login,
-  .duo-stage[data-panel="check-email"] .is-login { display: none; }
 }
 
 @media (max-width: 700px) {
