@@ -1,5 +1,6 @@
+import { cookies } from "next/headers";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
-import { DuoAuth } from "./duo-auth";
+import { AccessThemeControl, DuoAuth } from "./duo-auth";
 import "./duo.css";
 
 type LoginSearch = {
@@ -17,10 +18,12 @@ function destinationFrom(next: string | undefined) {
 export default async function LoginPage({ searchParams }: { searchParams: Promise<LoginSearch> }) {
   const params = await searchParams;
   const destination = destinationFrom(params.next);
+  const theme = (await cookies()).get("atlas-access-theme")?.value === "light" ? "light" : "dark";
 
   if (!getSupabasePublicConfig()) {
     return (
-      <main className="duo-auth">
+      <main className="duo-auth" data-theme={theme}>
+        <AccessThemeControl initial={theme} />
         <div className="duo-stage" data-panel="configuration">
           <article className="duo-card" aria-labelledby="configuration-title">
             <p className="duo-logo"><span>A</span>tlas</p>
@@ -33,8 +36,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   }
 
   return (
-    <main className="duo-auth">
-      <DuoAuth destination={destination} reason={params.reason ?? ""} vue={params.vue ?? ""} gaps={params.gaps ?? ""} />
+    <main className="duo-auth" data-theme={theme}>
+      <DuoAuth destination={destination} reason={params.reason ?? ""} vue={params.vue ?? ""} gaps={params.gaps ?? ""} theme={theme} />
     </main>
   );
 }

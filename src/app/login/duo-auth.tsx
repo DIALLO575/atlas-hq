@@ -18,6 +18,25 @@ const PanelContext = createContext<{ select: (panel: Panel) => void; destination
   destination: "/",
 });
 
+export type AccessTheme = "dark" | "light";
+
+export function AccessThemeControl({ initial }: { initial: AccessTheme }) {
+  const [theme, setTheme] = useState<AccessTheme>(initial);
+
+  function choose(next: AccessTheme, current: HTMLElement) {
+    setTheme(next);
+    document.cookie = `atlas-access-theme=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    current.closest("main.duo-auth")?.setAttribute("data-theme", next);
+  }
+
+  return (
+    <div className="duo-theme" role="group" aria-label="Thème">
+      <button type="button" aria-pressed={theme === "light"} onClick={(event) => choose("light", event.currentTarget)}>Clair</button>
+      <button type="button" aria-pressed={theme === "dark"} onClick={(event) => choose("dark", event.currentTarget)}>Sombre</button>
+    </div>
+  );
+}
+
 function panelFrom(vue: string, reason: string): Panel {
   if (reason === "check-email") return "check-email";
   if (vue === "oublie" || reason === "reset-accepted" || reason === "reset-failed") return "reset";
@@ -292,7 +311,7 @@ function CheckEmail() {
   );
 }
 
-export function DuoAuth({ destination, reason, vue, gaps }: { destination: string; reason: string; vue: string; gaps: string }) {
+export function DuoAuth({ destination, reason, vue, gaps, theme }: { destination: string; reason: string; vue: string; gaps: string; theme: AccessTheme }) {
   const [panel, setPanel] = useState<Panel>(() => panelFrom(vue, reason));
   const [serverReason, setServerReason] = useState(reason);
   const [serverGaps, setServerGaps] = useState(gaps);
@@ -312,6 +331,7 @@ export function DuoAuth({ destination, reason, vue, gaps }: { destination: strin
 
   return (
     <PanelContext.Provider value={{ select: selectPanel, destination }}>
+      <AccessThemeControl initial={theme} />
       <div className="duo-stage" data-panel={panel}>
         <article className="duo-card is-login" aria-labelledby={panel === "reset" ? "reset-title" : "login-title"}>
           {panel === "reset" ? <ResetForm /> : <LoginForm destination={destination} reason={serverReason} />}
