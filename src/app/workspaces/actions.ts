@@ -1,6 +1,8 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { Workspace, WorkspaceResult } from "@/lib/workspaces/contract";
 
 async function resolveWorkspaces(): Promise<{ userId: string; workspaces: Workspace[] } | null> {
@@ -69,4 +71,16 @@ export async function createWorkspace(name: string): Promise<WorkspaceResult> {
   } catch {
     return { status: "error", message: "Impossible de créer le workspace." };
   }
+}
+
+/** The existing createWorkspace() remains the authority for session/RLS checks. */
+export async function createWorkspaceFromForm(formData: FormData) {
+  const name = String(formData.get("name") ?? "");
+  const result = await createWorkspace(name);
+  if (result.status === "ready") {
+    revalidatePath("/workspaces");
+    revalidatePath("/apps");
+    redirect("/workspaces");
+  }
+  redirect("/workspaces?createError=1");
 }
