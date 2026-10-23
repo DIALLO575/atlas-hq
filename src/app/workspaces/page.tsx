@@ -1,6 +1,10 @@
 import { AppShell } from "@/components/app-shell";
-import { DemoNotice, EmptyPanel, PageHeading } from "@/components/page-elements";
+import { EmptyPanel, PageHeading } from "@/components/page-elements";
+import { listWorkspaces } from "@/app/workspaces/actions";
 
-export default function WorkspacesPage() {
-  return <AppShell><main className="main-content" id="main-content"><PageHeading eyebrow="ESPACE DE TRAVAIL" title="Workspaces" description="Retrouvez vos espaces de travail et leurs éléments liés au même endroit."/><DemoNotice/><EmptyPanel title="Contrat workspace indisponible">Le schéma backend vérifié ne fournit pas encore de liste ni d’appartenance workspace. Cette vue s’activera quand le contrat sera disponible.</EmptyPanel><p className="section-footnote">Aucun workspace n’est inventé ou sélectionné à votre place.</p></main></AppShell>;
+export default async function WorkspacesPage() {
+  const result = await listWorkspaces();
+  return <AppShell><main className="main-content" id="main-content"><PageHeading eyebrow="ESPACE DE TRAVAIL" title="Workspaces" description="Vos espaces sont filtrés côté serveur selon votre appartenance vérifiée."/>
+    {result.status === "ready" && result.workspaces.length > 0 ? <section className="spaces-grid" aria-label="Vos workspaces">{result.workspaces.map((workspace) => <article className="space-card" key={workspace.id}><h2>{workspace.name}</h2><p>Rôle : {workspace.role}</p></article>)}</section> : <EmptyPanel title={result.status === "ready" ? "Aucun workspace attribué" : "Workspaces indisponibles"}>{result.status === "ready" ? "Un workspace apparaîtra ici après votre ajout par un administrateur." : result.message}</EmptyPanel>}
+  </main></AppShell>;
 }

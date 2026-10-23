@@ -31,11 +31,12 @@ test("cockpit navigation exposes six primary destinations and transversal access
 });
 
 test("new sections and transversal pages are honest empty states", () => {
-  for (const page of [workspaces, missions, inbox, related, chief, settings]) {
+  for (const page of [missions, inbox, related, chief, settings]) {
     assert.match(page, /<DemoNotice\/>/);
     assert.match(page, /<EmptyPanel/);
   }
-  assert.match(workspaces, /Contrat workspace indisponible/);
+  assert.match(workspaces, /listWorkspaces\(\)/);
+  assert.match(workspaces, /workspace\.name/);
   assert.match(missions, /Aucune mission/);
   assert.match(inbox, /Votre Inbox est vide/);
   assert.match(related, /Aucun lien n’est déduit ou inventé/);

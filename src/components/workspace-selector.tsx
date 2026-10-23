@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { workspaceAdapter, type WorkspaceResult } from "@/lib/workspaces/contract";
+import { listWorkspaces, selectWorkspace as updateSelectedWorkspace } from "@/app/workspaces/actions";
+import type { WorkspaceResult } from "@/lib/workspaces/contract";
 
 export function WorkspaceSelector() {
   const [result, setResult] = useState<WorkspaceResult | { status: "loading" }>({ status: "loading" });
 
   useEffect(() => {
     let alive = true;
-    void workspaceAdapter.listForCurrentUser().then((value) => {
+    void listWorkspaces().then((value) => {
       if (alive) setResult(value);
     }).catch(() => {
       if (alive) setResult({ status: "error", message: "Impossible de charger les workspaces." });
@@ -24,14 +25,6 @@ export function WorkspaceSelector() {
     return <div className="workspace-switch workspace-switch-disabled" role="alert">{result.message}</div>;
   }
 
-  if (result.status === "unavailable") {
-    return <div className="workspace-switch workspace-switch-disabled" aria-describedby="workspace-unavailable">
-      <span className="workspace-avatar" aria-hidden="true">—</span>
-      <span><strong>Workspaces indisponibles</strong><small id="workspace-unavailable">Le contrat backend n’est pas encore disponible.</small></span>
-      <span className="switch-chevron" aria-hidden="true">⌄</span>
-    </div>;
-  }
-
   if (result.workspaces.length === 0) {
     return <div className="workspace-switch workspace-switch-disabled" role="status">Aucun workspace attribué</div>;
   }
@@ -39,7 +32,7 @@ export function WorkspaceSelector() {
   const selectedWorkspace = result.workspaces.find((workspace) => workspace.id === result.selectedId) ?? result.workspaces[0];
   const selectWorkspace = async (workspaceId: string) => {
     try {
-      setResult(await workspaceAdapter.selectForCurrentUser(workspaceId));
+      setResult(await updateSelectedWorkspace(workspaceId));
     } catch {
       setResult({ status: "error", message: "Impossible de changer de workspace." });
     }

@@ -38,14 +38,16 @@ npm run build
 - Connexion par e-mail/mot de passe et déconnexion utilisent Supabase Auth et des cookies `@supabase/ssr`. Le proxy rafraîchit la session et vérifie les claims avant le rendu protégé.
 - Configurez uniquement `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` depuis `.env.example`. Une clé `service_role` ou `sb_secret` ne doit jamais être utilisée côté client ni ajoutée à un `NEXT_PUBLIC_*`.
 - En absence de configuration, la page de connexion expose un état explicite et aucun écran protégé n’est rendu. Les erreurs de connexion restent génériques et n’exposent pas les réponses Auth.
-- Le sélecteur de workspace utilise le contrat typé de `src/lib/workspaces/contract.ts`. L’inspection du projet Supabase `ovzmmsxqfifneqqgnrzd` a trouvé `atlas_connections`, `atlas_provider_objects` et `atlas_sync_cursors`, mais aucune table de workspace ou de membership. L’adaptateur retourne donc « indisponible » sans inventer de workspace ni appeler un endpoint inexistant. Il attend un contrat backend avec liste et sélection filtrées pour l’utilisateur courant.
+- `workspaces` et `workspace_members` sont versionnés dans `supabase/migrations/20261023071054_auth_workspaces_rls.sql`; les rôles sont `owner`, `admin` et `member`. Les actions serveur de `src/app/workspaces/actions.ts` résolvent la session avec `auth.getUser()`, filtrent les appartenances avec cet identifiant vérifié et revalident toute sélection. Les politiques RLS dérivent l’accès tenant de `auth.uid()`; un identifiant propriétaire envoyé par le client n’est pas utilisé.
+- `supabase/migrations/20261023072200_fail_closed_rls_auto_enable.sql` supprime le gestionnaire `WHEN OTHERS` qui journalisait puis avalait les erreurs d’activation RLS. Un échec d’`ALTER TABLE ... ENABLE ROW LEVEL SECURITY` annule maintenant le DDL. Le script `supabase/tests/workspace_rls.sql` contrôle l’isolation de deux utilisateurs, la falsification du propriétaire, les écritures inter-tenant et la protection des nouvelles tables publiques; lancez-le avec `supabase test db` sur une base locale/jetable.
+- `supabase/migrations/20261023073700_limit_workspace_update_columns.sql` empêche de changer `created_by` après création. La structure cible `apps/web` et `packages/*`, avec l’ordre de migration exact et les raisons de ne pas déplacer l’application dans cette branche, sont documentés dans `docs/architecture/monorepo-layout.md`.
 - Les pages HTML authentifiées ne sont pas stockées dans le service worker et aucun contenu protégé n’est montré hors ligne. Seuls le manifeste, l’icône et les assets statiques sont mis en cache.
 
 ### Critères d’acceptation
 
 1. Les routes Accueil, Workspaces, Missions, Agents & Équipes, Mes Apps et Inbox redirigent vers la connexion sans session valide.
 2. Une session valide permet l’accès, affiche l’état du compte, renouvelle les cookies via SSR et permet la déconnexion.
-3. Les états chargement, configuration absente, erreur d’identifiants, aucun workspace et contrat workspace indisponible sont accessibles et explicites.
+3. Les états chargement, configuration absente, erreur d’identifiants, aucun workspace et erreur de requête workspace sont accessibles et explicites.
 4. Aucun secret privilégié ne figure dans le code client, l’exemple d’environnement ou les tests.
 5. Le changement de workspace s’active seulement quand le contrat backend retourne plusieurs workspaces autorisés.
 
