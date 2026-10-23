@@ -26,7 +26,10 @@ test("Apps directory shows honest integration status and interactive discovery",
     read("../src/components/brand-logo.tsx"),
     read("../src/app/page.tsx"),
   ]);
-  assert.match(page, /<AppsDirectory\s*\/>/);
+  assert.match(page, /<AppsDirectory/);
+  assert.match(page, /<GitHubWorkspacePicker/);
+  assert.match(directory, /githubSlot/);
+  assert.match(directory, /app\.slug === "github"/);
   assert.match(directory, /useState/);
   assert.match(directory, /aria-pressed/);
   assert.match(directory, /Non connectée/);
