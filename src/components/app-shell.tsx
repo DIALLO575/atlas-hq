@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 import { SessionControls } from "@/components/session-controls";
 import { WorkspaceSelector } from "@/components/workspace-selector";
@@ -29,15 +29,27 @@ const mobileItems = [navItems[0], navItems[2], navItems[5]];
 // Retain only the expanded/collapsed preference between client-side navigations.
 let cachedExpanded: boolean | null = null;
 
+// Route pages keep their existing <AppShell> wrappers, but the actual dock lives
+// once in the persistent root layout. Nested wrappers render only page content.
+const AppShellContext = createContext(false);
+
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
+  const insidePersistentShell = useContext(AppShellContext);
+  if (insidePersistentShell) return <>{children}</>;
+  return <AppShellFrame>{children}</AppShellFrame>;
+}
+
+export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
   const [expanded, setExpanded] = useState(() => cachedExpanded ?? false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moveControlsOpen, setMoveControlsOpen] = useState(false);
   const {
     dockRef, side: dockSide, dragging: dockDragging, dockStyle,
     handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel,
-    handleKeyboardMove, resetPosition,
+    handleKeyboardMove, resetPosition, moveDock, placeDock, centerDock, moveControlsStyle,
+    canMoveUp, canMoveDown, consumeDragClick,
   } = useFloatingDock();
 
   useEffect(() => {
@@ -61,7 +73,10 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         setMenuOpen(false);
         router.push("/search");
       }
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setMoveControlsOpen(false);
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -76,11 +91,27 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
     });
   };
 
-  const closeMenu = () => setMenuOpen(false);
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setMoveControlsOpen(false);
+  };
+
+  useEffect(() => {
+    if (!moveControlsOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) ||
+          (!event.target.closest(".atlas-dock-move-panel") && !event.target.closest(".atlas-dock-grip"))) {
+        setMoveControlsOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [moveControlsOpen]);
   const linkClass = (href: string) => "atlas-dock-link" + (pathname === href ? " atlas-dock-active" : "");
   const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "Atlas";
 
   return (
+    <AppShellContext.Provider value={true}>
     <div data-dock-side={dockSide} className={"app-shell atlas-shell" + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dockDragging ? " atlas-dock-is-dragging" : "")}>
       <a className="skip-link" href="#main-content">Aller au contenu principal</a>
 
@@ -104,23 +135,36 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </div>
       </header>
 
-      <aside ref={dockRef} style={dockStyle} className="atlas-dock atlas-smart-dock" aria-label="Navigation principale">
+      <aside ref={dockRef} style={dockStyle} data-dock-position={dockSide}
+        className="atlas-dock atlas-smart-dock" aria-label="Navigation principale">
+        <span className="sr-only" role="status" aria-live="polite">
+          Dock {dockSide === "top" ? "en haut, centré" : dockSide === "bottom" ? "en bas, centré" : dockSide === "left" ? "à gauche" : "à droite"}
+        </span>
         <div className="atlas-dock-title">
           <button className="atlas-dock-grip" type="button"
-            title="Déplacer le menu · Double-clic pour recentrer"
+            title="Déplacer le menu · Cliquer pour afficher les flèches"
             aria-label="Déplacer le menu flottant"
             aria-describedby="atlas-dock-help"
+            aria-controls="atlas-dock-move-panel"
+            aria-expanded={moveControlsOpen}
             onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
+            onPointerMove={(event) => {
+              handlePointerMove(event);
+              if (event.buttons === 1 && moveControlsOpen) setMoveControlsOpen(false);
+            }}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerCancel}
             onKeyDown={handleKeyboardMove}
-            onDoubleClick={resetPosition}>
+            onDoubleClick={resetPosition}
+            onClick={() => {
+              if (consumeDragClick() || window.innerWidth <= 760) return;
+              setMoveControlsOpen((open) => !open);
+            }}>
             <Icon name="grip" />
             <span className="atlas-dock-title-text">NAVIGATION</span>
           </button>
           <span className="sr-only" id="atlas-dock-help">
-            Glissez la poignée pour déplacer le menu. Avec le clavier, utilisez les flèches ; double-cliquez pour recentrer.
+            Cliquez pour ouvrir les flèches et les positions gauche, droite, haut et bas. Utilisez le bouton central pour recentrer, ou glissez pour déplacer librement.
           </span>
           <button className="atlas-expand-toggle" type="button" onClick={toggleExpanded}
             aria-label={expanded ? "Réduire le menu" : "Agrandir le menu"}
@@ -156,6 +200,36 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </div>
       </aside>
 
+      {moveControlsOpen && !dockDragging && (
+        <section id="atlas-dock-move-panel" className="atlas-dock-move-panel" style={moveControlsStyle}
+          aria-label="Déplacer le dock">
+          <div className="atlas-dock-move-heading">
+            <strong>Déplacer le dock</strong>
+            <button type="button" aria-label="Fermer les commandes de déplacement"
+              onClick={() => setMoveControlsOpen(false)}><Icon name="close" /></button>
+          </div>
+          <div className="atlas-dock-move-pad" role="group" aria-label="Direction du dock">
+            <button type="button" className="atlas-dock-move-up" aria-label="Monter le dock"
+              disabled={!canMoveUp} onClick={() => moveDock("up")}><Icon name="arrow-up" /></button>
+            <button type="button" className="atlas-dock-move-left" aria-label="Envoyer le dock à gauche"
+              disabled={dockSide === "left"} onClick={() => moveDock("left")}><Icon name="arrow-left" /></button>
+            <button type="button" className="atlas-dock-move-reset" aria-label="Centrer le dock sur ce bord"
+              title="Centrer sur ce bord" onClick={centerDock}><Icon name="rotate-ccw" /></button>
+            <button type="button" className="atlas-dock-move-right" aria-label="Envoyer le dock à droite"
+              disabled={dockSide === "right"} onClick={() => moveDock("right")}><Icon name="arrow-right" /></button>
+            <button type="button" className="atlas-dock-move-down" aria-label="Descendre le dock"
+              disabled={!canMoveDown} onClick={() => moveDock("down")}><Icon name="arrow-down" /></button>
+          </div>
+          <div className="atlas-dock-edge-choices" role="group" aria-label="Placer le dock sur un bord">
+            <button type="button" onClick={() => { placeDock("top"); setMoveControlsOpen(false); }} aria-pressed={dockSide === "top"}
+              className={dockSide === "top" ? "is-active" : ""}><Icon name="arrow-up" /> En haut</button>
+            <button type="button" onClick={() => { placeDock("bottom"); setMoveControlsOpen(false); }} aria-pressed={dockSide === "bottom"}
+              className={dockSide === "bottom" ? "is-active" : ""}><Icon name="arrow-down" /> En bas</button>
+          </div>
+          <p className="atlas-dock-move-footnote">Haut / bas : 48 px · centrage automatique</p>
+          <button type="button" className="atlas-dock-return" onClick={resetPosition}>Position initiale</button>
+        </section>
+      )}
       {dockDragging && <div className="atlas-dock-dropguides" aria-hidden="true">
         <span className="atlas-dock-dropguide atlas-dock-dropguide-left">Gauche</span>
         <span className="atlas-dock-dropguide atlas-dock-dropguide-right">Droite</span>
@@ -176,5 +250,6 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </button>
       </nav>
     </div>
+    </AppShellContext.Provider>
   );
 }

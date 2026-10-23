@@ -12,7 +12,7 @@ test("Smart Dock has a dedicated drag handle and does not hijack navigation clic
   assert.match(shell, /useFloatingDock\(\)/);
   assert.match(shell, /ref=\{dockRef\}/);
   assert.match(shell, /onPointerDown=\{handlePointerDown\}/);
-  assert.match(shell, /onPointerMove=\{handlePointerMove\}/);
+  assert.match(shell, /handlePointerMove\(event\)/);
   assert.match(shell, /onPointerUp=\{handlePointerUp\}/);
   assert.match(shell, /onPointerCancel=\{handlePointerCancel\}/);
   assert.match(shell, /aria-label="Déplacer le menu flottant"/);
@@ -30,7 +30,7 @@ test("Smart Dock snaps to an edge, stays inside the viewport, and remembers its 
   const hook = await read("../src/components/use-floating-dock.ts");
   assert.match(hook, /localStorage\.getItem\(STORAGE_KEY\)/);
   assert.match(hook, /localStorage\.setItem\(STORAGE_KEY/);
-  assert.match(hook, /side: point\.x \+ width \/ 2 >= window\.innerWidth \/ 2 \? "right" : "left"/);
+  assert.match(hook, /point\.x \+ width \/ 2 >= window\.innerWidth \/ 2 \? "right" : "left"/);
   assert.match(hook, /topBounds\(window\.innerHeight, height\)/);
   assert.match(hook, /clamp\(event\.clientX - start\.offsetX/);
   assert.match(hook, /ResizeObserver/);

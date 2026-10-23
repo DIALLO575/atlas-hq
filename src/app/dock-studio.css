@@ -221,3 +221,336 @@
   .atlas-shell .atlas-dock.atlas-smart-dock,
   .atlas-shell .atlas-smart-dock .atlas-dock-link {transition: none;}
 }
+
+
+/* Stable anchor on first paint and across Next.js route transitions.
+   The default vertical midpoint equals the hook's normalized 0.5 placement:
+   center = viewport midpoint + (TOP_GAP - BOTTOM_GAP) / 2 = 50% + 37px.
+   Never animate absolute left/top: navigation must not appear to drag the dock. */
+.atlas-shell .atlas-dock.atlas-smart-dock {
+  left: 24px;
+  top: calc(50% + 37px);
+  transform: translateY(-50%);
+  transition: none;
+  will-change: auto;
+}
+.atlas-shell .atlas-dock.atlas-smart-dock .atlas-dock-link {
+  transition: none;
+}
+@media (max-width: 760px) {
+  .atlas-shell .atlas-dock.atlas-smart-dock,
+  .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock {
+    transition: transform .2s ease;
+  }
+}
+
+/* Compact directional pad, rendered as a sibling so it never resizes the dock. */
+.atlas-dock-move-panel {
+  z-index: 44;
+  box-sizing: border-box;
+  width: 162px;
+  padding: 11px;
+  border: 1px solid #e9e4f5;
+  border-radius: 16px;
+  background: rgba(255,255,255,.99);
+  box-shadow: 0 16px 40px rgba(44,35,98,.13);
+  color: #29253e;
+}
+.atlas-dock-move-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.atlas-dock-move-heading strong {font-size: 11px; font-weight: 710;}
+.atlas-dock-move-heading button {
+  display: grid;place-items: center;
+  width: 25px;height: 25px;
+  background: #f7f5fb;border: 0;border-radius: 8px;
+  color: #87829b;cursor: pointer;
+}
+.atlas-dock-move-heading button svg {width: 13px;height: 13px;}
+.atlas-dock-move-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 35px);
+  grid-template-rows: repeat(3, 33px);
+  justify-content: center;
+  gap: 4px;
+}
+.atlas-dock-move-pad button {
+  display: grid;place-items: center;
+  width: 35px;height: 33px;
+  border: 1px solid #ebe5f7;
+  border-radius: 9px;background: #f7f4ff;color: #7354d0;
+  cursor: pointer;
+}
+.atlas-dock-move-pad button:hover:not(:disabled) {
+  background: #eee7ff;border-color: #cfc0f3;
+}
+.atlas-dock-move-pad button:disabled {opacity: .34;cursor: not-allowed;}
+.atlas-dock-move-pad button svg {width: 16px;height: 16px;}
+.atlas-dock-move-up {grid-area: 1 / 2;}
+.atlas-dock-move-left {grid-area: 2 / 1;}
+.atlas-dock-move-reset {grid-area: 2 / 2;background: #fff!important;}
+.atlas-dock-move-right {grid-area: 2 / 3;}
+.atlas-dock-move-down {grid-area: 3 / 2;}
+.atlas-dock-move-footnote {margin: 8px 0 0;text-align: center;color: #a09bb0;font-size: 9px;}
+@media(max-width:760px) {
+  /* The phone dock is a fixed drawer; direction controls apply to the desktop capsule. */
+  .atlas-dock-move-panel {display: none;}
+}
+
+
+/* Four-edge docking — top and bottom are centered horizontal capsules.
+   Apply only to desktop: the mobile navigation stays a predictable drawer. */
+@media (min-width: 761px) {
+  .atlas-shell[data-dock-side="top"] .atlas-dock.atlas-smart-dock,
+  .atlas-shell[data-dock-side="bottom"] .atlas-dock.atlas-smart-dock {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100vw - 48px);
+    min-height: 60px;
+    max-height: 76px;
+    height: auto;
+    padding: 8px 12px;
+    border-radius: 999px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    overflow: hidden;
+    transition: none;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-dock.atlas-smart-dock {
+    top: 98px;
+  }
+  .atlas-shell[data-dock-side="bottom"] .atlas-dock.atlas-smart-dock {
+    top: auto;
+    bottom: 22px;
+  }
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-dock.atlas-smart-dock,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-dock.atlas-smart-dock {
+    width: min(1050px, calc(100vw - 48px));
+    padding: 8px 13px;
+    border-radius: 999px;
+    justify-content: center;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-dock-title,
+  .atlas-shell[data-dock-side="bottom"] .atlas-dock-title,
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-dock-title,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-dock-title {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    width: auto;
+    min-height: 38px;
+    height: 38px;
+    flex: none;
+    margin: 0;
+    padding: 0;
+    gap: 3px;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-smart-dock .atlas-dock-title-text,
+  .atlas-shell[data-dock-side="bottom"] .atlas-smart-dock .atlas-dock-title-text {
+    display: none;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-dock-nav,
+  .atlas-shell[data-dock-side="bottom"] .atlas-dock-nav {
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    flex: 0 1 auto;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-dock-nav::-webkit-scrollbar,
+  .atlas-shell[data-dock-side="bottom"] .atlas-dock-nav::-webkit-scrollbar { display: none; }
+  .atlas-shell[data-dock-side="top"] .atlas-smart-dock .atlas-dock-link,
+  .atlas-shell[data-dock-side="bottom"] .atlas-smart-dock .atlas-dock-link,
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-smart-dock .atlas-dock-link,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-smart-dock .atlas-dock-link {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 39px;
+    height: 39px;
+    min-height: 39px;
+    padding: 0;
+    border-radius: 13px;
+    gap: 7px;
+  }
+  /* Expanded horizontal mode shows readable names and can scroll gently when
+     the viewport cannot fit every shortcut. Collapsed mode keeps icons only. */
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-smart-dock .atlas-dock-link,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-smart-dock .atlas-dock-link {
+    width: auto;
+    padding: 0 9px;
+  }
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-smart-dock .atlas-dock-label,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-smart-dock .atlas-dock-label {
+    display: inline;
+    max-width: 95px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-dock-separator,
+  .atlas-shell[data-dock-side="bottom"] .atlas-dock-separator {
+    margin: 0 5px;
+    width: 1px;
+    height: 28px;
+    flex: none;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-dock-account,
+  .atlas-shell[data-dock-side="bottom"] .atlas-dock-account { display: none; }
+
+  /* Center page content below a top dock and keep room above a bottom dock. */
+  .atlas-shell[data-dock-side="top"] .atlas-main-frame,
+  .atlas-shell[data-dock-side="bottom"] .atlas-main-frame,
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-main-frame,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-main-frame {
+    margin-left: 24px;
+    margin-right: 24px;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-main-frame,
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-main-frame {
+    padding-top: 177px;
+  }
+  .atlas-shell[data-dock-side="bottom"] .atlas-main-frame,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-main-frame {
+    padding-bottom: 104px;
+  }
+  .atlas-shell[data-dock-side="top"] .atlas-topbar,
+  .atlas-shell[data-dock-side="bottom"] .atlas-topbar,
+  .atlas-shell[data-dock-side="top"].atlas-expanded .atlas-topbar,
+  .atlas-shell[data-dock-side="bottom"].atlas-expanded .atlas-topbar {
+    left: 24px;
+    right: 24px;
+  }
+  .atlas-shell[data-dock-side="top"].atlas-dock-is-dragging .atlas-dock.atlas-smart-dock,
+  .atlas-shell[data-dock-side="bottom"].atlas-dock-is-dragging .atlas-dock.atlas-smart-dock {
+    /* Inline left/top/transform positions the capsule while it is dragged. */
+    bottom: auto;
+  }
+}
+.atlas-dock-edge-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 9px;
+}
+.atlas-dock-edge-choices button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px 4px;
+  border: 1px solid #ebe6f5;
+  border-radius: 8px;
+  background: #faf9fd;
+  color: #777088;
+  font: 600 10px var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.atlas-dock-edge-choices button svg { width: 12px; height: 12px; }
+.atlas-dock-edge-choices button:hover,
+.atlas-dock-edge-choices button.is-active { background: #eee7ff; color: #7150cc; border-color: #d9cbfa; }
+.atlas-dock-return {
+  display: block;
+  margin: 9px auto 0;
+  padding: 5px 7px;
+  border: 0;
+  background: transparent;
+  color: #8072a6;
+  cursor: pointer;
+  font: 600 10px var(--font-body);
+}
+
+
+/* Reliable horizontal docking: an explicit inline fixed-position anchor wins
+   against earlier vertical CSS rules and avoids left/right/top style leftovers.
+   Match the data attribute ON the dock, rather than only on its ancestor. */
+@media (min-width: 761px) {
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="top"],
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="bottom"] {
+    position: fixed;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    left: 50%;
+    right: auto;
+    width: max-content;
+    max-width: calc(100vw - 48px);
+    min-height: 60px;
+    max-height: 76px;
+    height: auto;
+    padding: 8px 12px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+    overflow: hidden;
+    transition: none;
+    will-change: auto;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="top"] {
+    top: 100px;
+    bottom: auto;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="bottom"] {
+    top: auto;
+    bottom: 22px;
+  }
+  .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock[data-dock-position="top"],
+  .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock[data-dock-position="bottom"] {
+    width: min(1050px, calc(100vw - 48px));
+    min-height: 60px;
+    max-height: 76px;
+    flex-direction: row;
+    justify-content: center;
+    border-radius: 999px;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="top"] .atlas-dock-title,
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="bottom"] .atlas-dock-title,
+  .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock[data-dock-position="top"] .atlas-dock-title,
+  .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock[data-dock-position="bottom"] .atlas-dock-title {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    width: auto;
+    height: 38px;
+    min-height: 38px;
+    margin: 0;
+    padding: 0;
+    gap: 3px;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="top"] .atlas-dock-nav,
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="bottom"] .atlas-dock-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="top"] .atlas-dock-separator,
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="bottom"] .atlas-dock-separator {
+    height: 28px;
+    width: 1px;
+    margin: 0 5px;
+    flex: none;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="top"] .atlas-dock-account,
+  .atlas-shell .atlas-dock.atlas-smart-dock[data-dock-position="bottom"] .atlas-dock-account {
+    display: none;
+  }
+}
