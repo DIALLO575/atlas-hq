@@ -1,12 +1,20 @@
 # Supabase PR #2 runtime evidence
 
-## Scope and timestamp
+## Official project migrations (2026-10-23 11:23 UTC)
+
+The authorized Supabase MCP applied the exact SQL from the two PR migration files to official project `ovzmmsxqfifneqqgnrzd` (DIALLO575's Project, `eu-west-1`). Migration history now records `20261023112332 / fail_closed_rls_auto_enable` and `20261023112337 / limit_workspace_update_columns`, following the already-present `20261023071054 / auth_workspaces_rls`. The original `20261023071054` migration was not replayed or edited.
+
+Post-apply catalog verification found `ensure_rls` on `ddl_command_end` for `CREATE TABLE`, `CREATE TABLE AS`, and `SELECT INTO`, calling `public.rls_auto_enable` with `search_path=pg_catalog`; `anon` and `authenticated` do not have EXECUTE. Column privilege inspection found `authenticated` can update `name` and `updated_at`, and cannot update `id`, `created_by`, or `created_at`. A table-level UPDATE privilege check was not included in the successful query; the migration explicitly revokes it before granting the two columns.
+
+The initial privilege query referenced nonexistent `owner_id` and returned a column error; no database write occurred from that read-only query. It was replaced by a query against actual `information_schema.columns`, which returned the matrix above.
+
+## Earlier disposable-project test evidence (2026-10-23 09:42 UTC)
 
 - Evidence captured: 2026-10-23 09:42 UTC (post-run catalog/advisor checks observed at 09:42:27–09:42:28 UTC).
 - PR: [#2](https://github.com/DIALLO575/atlas-hq/pull/2), branch `feat/auth-workspace-supabase`.
 - Git head at test time: `2daf7476c7fc285448e85b03f42378346aeabb43`.
 - Database target: disposable project `atlas-pr2-rls-test-20261023`, ref `jnhzhsqdfaoetwnzpokc`, region `eu-west-1`, status `ACTIVE_HEALTHY`.
-- The official project `ovzmmsxqfifneqqgnrzd` was not queried or modified in this run.
+- This section records the earlier disposable-project run only; the later official MCP migration application and verification are documented above.
 
 ## Exact migration mapping
 
@@ -47,4 +55,4 @@ The SQL tool exposes only the final row of a multi-statement request, not indivi
 - Read-only calls: project identity, migration history, table metadata, migration statements, post-test catalog, and security/performance advisors.
 - Test call: exact SQL file via Supabase MCP `execute_sql` against the disposable project only.
 - No Supabase CLI, `psql`, Dashboard editor or project migration API was used. No statement targeted the official project.
-- Runtime proof is for the disposable project and tested Git head only. The MCP response does not preserve a per-assertion transcript; results above are supported by the script's exception-based assertions, successful execution response, and post-run catalog query.
+- The earlier SQL runtime proof is for the disposable project and tested Git head only. It does not constitute a runtime SQL-test run on the official project. The MCP response does not preserve a per-assertion transcript; results above are supported by the script's exception-based assertions, successful execution response, and post-run catalog query.
