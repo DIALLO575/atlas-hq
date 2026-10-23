@@ -43,10 +43,9 @@ test("new sections and transversal pages are honest empty states", () => {
   assert.match(chief, /ne sont pas envoyées depuis cette interface/);
 });
 
-test("real GitHub connector is distinct from demo apps and agents show a truthful empty state", () => {
+test("premium Mes Apps preserves its directory and offers the real GitHub connector", () => {
+  assert.match(apps, /<AppsDirectory/);
   assert.match(apps, /<GitHubWorkspacePicker/);
-  assert.match(apps, /demoApps\.filter/);
-  assert.match(apps, /Les autres connecteurs sont encore en préparation/);
   assert.match(agents, /Aucun agent connecté/);
   assert.match(agents, /Aucune conversation ni activité d’agent n’est simulée/);
   assert.match(demoData, /export const demoApps/);
