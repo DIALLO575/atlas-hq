@@ -105,9 +105,14 @@ test("RLS auto-enable fails closed and its SQL regression test checks the trigge
   const columnGrantMigration = ordered.findIndex((file) => file.includes("limit_workspace_update_columns"));
   assert.ok(workspaceMigration >= 0 && workspaceMigration < failClosedMigration && failClosedMigration < columnGrantMigration);
   assert.match(migration, /create table if not exists public\.workspaces/);
+  assert.match(migration, /create schema if not exists private/);
+  assert.match(migration, /create table if not exists public\.workspace_members/);
+  assert.match(migration, /create or replace function private\.is_workspace_member/);
+  assert.match(migration, /drop trigger if exists workspaces_add_owner_membership/);
   assert.match(migration, /drop policy if exists/g);
   assert.match(triggerMigration, /create or replace function public\.rls_auto_enable/);
   assert.match(immutableOwnership, /revoke update on public\.workspaces from authenticated/);
+  assert.match(immutableOwnership, /grant update \(name, updated_at\) on public\.workspaces to authenticated/);
 });
 
 test("only public Supabase settings are documented for the browser", () => {
@@ -117,3 +122,4 @@ test("only public Supabase settings are documented for the browser", () => {
   assert.deepEqual(configuredKeys, ["NEXT_PUBLIC_APP_NAME", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]);
   assert.doesNotMatch(proxy + login + actions + contract + selector + shell, /SUPABASE_SERVICE_ROLE|service_role|sb_secret/i);
 });
+
