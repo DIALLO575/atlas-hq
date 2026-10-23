@@ -12,7 +12,7 @@ test("Smart Dock has a dedicated drag handle and does not hijack navigation clic
   assert.match(shell, /useFloatingDock\(\)/);
   assert.match(shell, /ref=\{dockRef\}/);
   assert.match(shell, /onPointerDown=\{handlePointerDown\}/);
-  assert.match(shell, /onPointerMove=\{handlePointerMove\}/);
+  assert.match(shell, /handlePointerMove\(event\)/);
   assert.match(shell, /onPointerUp=\{handlePointerUp\}/);
   assert.match(shell, /onPointerCancel=\{handlePointerCancel\}/);
   assert.match(shell, /aria-label="Déplacer le menu flottant"/);
