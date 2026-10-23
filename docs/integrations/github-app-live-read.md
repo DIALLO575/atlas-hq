@@ -16,27 +16,39 @@ It replaces neither the PR #4 installation flow nor the existing read-only capab
 - Use `cache: no-store` and GitHub's pinned REST API version.
 - Offline Node tests cover JWT signatures, token scoping, pagination, tenant isolation and error handling.
 
-## Server-side usage
+## Consolidated server-side usage (PR #4 + PR #10)
+
+Use the `authorized-reader.mjs` boundary rather than passing browser-supplied
+installation IDs or repository IDs to a token minting function. The `lookup` port
+must be implemented by a trusted server-side datastore with tenant/workspace
+authorization; it is **not implemented by this branch**.
 
 ```js
-import {
-  mintReadOnlyInstallationToken,
-  createGitHubReadClient,
-} from "@atlas-hq/connector-github-contract/github-app-client";
+import { createAuthorizedGitHubReader } from
+  "@atlas-hq/connector-github-contract/authorized-reader";
 
-// appId, privateKey and installationId must be resolved server-side.
-// repositoryIds MUST come from a durable and verified workspace/installation binding,
-// never from an untrusted request parameter, GitHub setup callback alone or browser state.
-const { token } = await mintReadOnlyInstallationToken({
-  appId, privateKey, installationId, repositoryIds,
+// Derive tenantId from the authenticated Supabase session and membership.
+// Resolve installationId from a verified connection record, not query params.
+const github = await createAuthorizedGitHubReader({
+  tenantId,
+  installationId,
+  lookup: async ({ tenantId, installationId }) =>
+    loadVerifiedInstallationForWorkspace(tenantId, installationId),
+  appId: serverConfig.githubAppId,
+  privateKey: await readServerSecret("github-app-private-key"),
 });
-const github = createGitHubReadClient({ token, installationId, repositoryIds });
 const { repositories } = await github.listRepositories();
 const { pullRequests } = await github.listPullRequests(repositories[0].id);
 const context = await github.getPullRequest(repositories[0].id, pullRequests[0].number);
 ```
 
-The above is an integration example, **not an ATLAS API route already connected to a user**. Do not supply arbitrary installation IDs or repo IDs from the browser.
+The example's persistence and configuration functions are **placeholders** and are
+not provided by this PR. The bridge checks tenant/installation identity,
+`repositories-ready`, explicit `selected` repository access, and nonempty unique
+numeric repository IDs before issuing a narrowly scoped installation token.
+The caller receives only read methods, not the token. In a production deployment,
+a server-side store must also implement revocation and authoritative revalidation
+of changes to provider installation grants.
 
 ## Required before enabling Mes Apps → GitHub
 
