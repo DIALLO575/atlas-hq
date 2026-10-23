@@ -30,7 +30,10 @@ test("Mes Apps is a proper working discovery interface, not fictitious integrati
     read("../src/app/page.tsx"),
     read("../src/app/apps-redesign.css"),
   ]);
-  assert.match(page, /<AppsDirectory\s*\/>/);
+  assert.match(page, /<AppsDirectory/);
+  assert.match(page, /<GitHubWorkspacePicker/);
+  assert.match(directory, /githubSlot/);
+  assert.match(directory, /app.slug === "github"/);
   assert.match(page, /Vos applications, au même endroit/);
   assert.match(page, /href="#apps-catalog"/);
   assert.match(directory, /useState/);

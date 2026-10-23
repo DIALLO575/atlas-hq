@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/icon";
 import { BrandLogo } from "@/components/brand-logo";
 import { appCategories, atlasApps, recommendedApps, type CatalogApp } from "@/lib/app-catalog";
@@ -15,7 +15,11 @@ function normalized(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
 }
 
-export function AppsDirectory() {
+export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifiedGitHub = false }: {
+  githubSlot?: ReactNode;
+  githubConfigured?: boolean;
+  hasVerifiedGitHub?: boolean;
+}) {
   const [filter, setFilter] = useState<Filter>("Toutes");
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -73,15 +77,17 @@ export function AppsDirectory() {
         <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon"><Icon name="apps" /></span><div><strong>{atlasApps.length}</strong><span>Apps à découvrir</span><small>Catalogue Atlas</small></div></div>
         <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon is-lilac"><Icon name="layers" /></span><div><strong>{appCategories.length - 1}</strong><span>Catégories</span><small>Outils pour vos équipes</small></div></div>
         <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon is-indigo"><Icon name="spark" /></span><div><strong>{recommendedApps.length}</strong><span>Recommandées</span><small>À explorer en priorité</small></div></div>
-        <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon is-rose"><Icon name="link" /></span><div><strong className="atlas-apps-stat-word">À venir</strong><span>Connexions actives</span><small>Intégrations en préparation</small></div></div>
+        <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon is-rose"><Icon name="link" /></span><div><strong className="atlas-apps-stat-word">{hasVerifiedGitHub ? "GitHub" : "À venir"}</strong><span>Connexions actives</span><small>{hasVerifiedGitHub ? "Installation vérifiée" : "Intégrations en préparation"}</small></div></div>
       </section>
 
       <section className="atlas-apps-connected-banner" aria-label="État des connexions">
         <span className="atlas-apps-connected-symbol"><Icon name="link" /></span>
-        <div><strong>Vos connexions, bientôt au même endroit</strong>
-          <p>Le catalogue est disponible. Le suivi des connexions réelles et les autorisations arrivent dans une prochaine étape.</p></div>
-        <span className="atlas-apps-soon">Aucune connexion suivie</span>
+        <div><strong>{hasVerifiedGitHub ? "GitHub est autorisé dans votre espace" : "Vos connexions, bientôt au même endroit"}</strong>
+          <p>{hasVerifiedGitHub ? "Consultez les dépôts autorisés dans votre Workspace." : "Le catalogue est disponible. La connexion GitHub est en cours d’activation ; les autres connecteurs arrivent ensuite."}</p></div>
+        <span className="atlas-apps-soon">{hasVerifiedGitHub ? "GitHub vérifié" : "Aucune connexion suivie"}</span>
       </section>
+
+      {githubSlot}
 
       <div className="atlas-apps-toolbar" id="apps-catalog">
         <div className="atlas-apps-filters" role="group" aria-label="Filtrer les applications">
@@ -126,11 +132,13 @@ export function AppsDirectory() {
                       <p className="atlas-app-tile-description">{app.description}</p>
                       <div className="atlas-app-tile-meta"><span>{app.category}</span>{app.recommended && <span className="atlas-app-recommend-dot" title="Recommandée">✦</span>}</div>
                       <div className="atlas-app-tile-footer">
-                        <span className="atlas-app-connection-state"><i />À venir</span>
-                        <button className="atlas-app-details" type="button" onClick={() => setSelected(selected?.slug === app.slug ? null : app)}
-                          aria-label={"Voir les détails de " + app.name} aria-expanded={selected?.slug === app.slug}>
-                          Détails <Icon name="arrow-up-right" />
-                        </button>
+                        <span className="atlas-app-connection-state"><i />{app.slug === "github" ? hasVerifiedGitHub ? "GitHub vérifié" : githubConfigured ? "Connexion possible" : "À configurer" : "À venir"}</span>
+                        {app.slug === "github" && githubConfigured ?
+                          <a className="atlas-app-details" href="#atlas-github-connection" aria-label="Connecter GitHub au Workspace">Connecter <Icon name="arrow-up-right" /></a> :
+                          <button className="atlas-app-details" type="button" onClick={() => setSelected(selected?.slug === app.slug ? null : app)}
+                            aria-label={"Voir les détails de " + app.name} aria-expanded={selected?.slug === app.slug}>
+                            Détails <Icon name="arrow-up-right" />
+                          </button>}
                       </div>
                     </article>
                   ))}
@@ -188,7 +196,7 @@ export function AppsDirectory() {
               <h2 id="atlas-app-detail-heading">{selected.name}</h2>
               <span className="atlas-apps-detail-category">{selected.category}</span>
               <p>{selected.useCase}</p>
-              <div className="atlas-apps-detail-notice"><Icon name="link" /> Connexion à venir : aucun accès à votre compte n’est demandé.</div>
+              <div className="atlas-apps-detail-notice"><Icon name="link" /> {selected.slug === "github" ? "Utilisez le panneau GitHub pour autoriser vos dépôts. Aucune connexion n’est simulée." : "Connexion à venir : aucun accès à votre compte n’est demandé."}</div>
               <button className="atlas-apps-detail-favorite" type="button" onClick={() => toggleFavorite(selected.slug)}>
                 <Icon name="pin" /> {favorites.includes(selected.slug) ? "Retirer des favoris" : "Ajouter à mes favoris"}
               </button>
