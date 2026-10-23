@@ -100,7 +100,7 @@ export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifie
           <span className="atlas-apps-inline-logo"><BrandLogo slug={selected.slug} size={33} /></span>
           <div className="atlas-apps-inline-copy">
             <div className="atlas-apps-inline-title"><h2 id="atlas-app-detail-heading">{selected.name}</h2><span>{selected.category}</span></div>
-            <p>{selected.useCase} <strong>Connexion à venir.</strong> Aucun compte n’est connecté depuis le catalogue.</p>
+            <p>{selected.useCase} {selected.slug === "github" ? <strong>Le Control Center lit les dépôts et PR autorisés.</strong> : <strong>Connexion à venir.</strong>}</p>
           </div>
           <div className="atlas-apps-inline-buttons">
             <button type="button" className="atlas-apps-inline-favorite" onClick={() => toggleFavorite(selected.slug)}>
@@ -138,8 +138,8 @@ export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifie
                       <div className="atlas-app-tile-meta"><span>{app.category}</span>{app.recommended && <span className="atlas-app-recommend-dot" title="Recommandée">✦</span>}</div>
                       <div className="atlas-app-tile-footer">
                         <span className="atlas-app-connection-state"><i />{app.slug === "github" ? hasVerifiedGitHub ? "GitHub vérifié" : githubConfigured ? "Connexion possible" : "À configurer" : "À venir"}</span>
-                        {app.slug === "github" && githubConfigured ?
-                          <a className="atlas-app-details" href="#atlas-github-connection" aria-label="Connecter GitHub au Workspace">Connecter <Icon name="arrow-up-right" /></a> :
+                        {app.slug === "github" ?
+                          <a className="atlas-app-details" href="/apps/github" aria-label="Ouvrir GitHub Control Center">Piloter <Icon name="arrow-up-right" /></a> :
                           <button className="atlas-app-details" type="button" onClick={() => setSelected(selected?.slug === app.slug ? null : app)}
                             aria-label={"Voir les détails de " + app.name} aria-expanded={selected?.slug === app.slug}>
                             Détails <Icon name="arrow-up-right" />
