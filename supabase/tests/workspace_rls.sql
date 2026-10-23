@@ -23,6 +23,7 @@ declare
   visible_count integer;
   visible_membership_count integer;
   changed_count integer;
+  privilege text;
 begin
   select count(*) into visible_count from public.workspaces;
   select count(*) into visible_membership_count from public.workspace_members;
@@ -44,6 +45,44 @@ begin
   if pg_catalog.has_table_privilege('authenticated', 'public.workspaces', 'UPDATE') then
     raise exception 'authenticated has table-level UPDATE on workspaces';
   end if;
+  foreach privilege in array array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] loop
+    if pg_catalog.has_table_privilege('anon', 'public.workspaces', privilege) then
+      raise exception 'anon has % on workspaces', privilege;
+    end if;
+    if pg_catalog.has_table_privilege('anon', 'public.workspace_members', privilege) then
+      raise exception 'anon has % on workspace_members', privilege;
+    end if;
+  end loop;
+  if not pg_catalog.has_table_privilege('authenticated', 'public.workspaces', 'SELECT')
+     or not pg_catalog.has_table_privilege('authenticated', 'public.workspaces', 'INSERT')
+     or not pg_catalog.has_table_privilege('authenticated', 'public.workspaces', 'DELETE') then
+    raise exception 'authenticated workspace table privileges are incomplete';
+  end if;
+  if not pg_catalog.has_table_privilege('authenticated', 'public.workspace_members', 'SELECT')
+     or not pg_catalog.has_table_privilege('authenticated', 'public.workspace_members', 'INSERT')
+     or not pg_catalog.has_table_privilege('authenticated', 'public.workspace_members', 'DELETE') then
+    raise exception 'authenticated workspace_members privileges are incomplete';
+  end if;
+  foreach privilege in array array['UPDATE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] loop
+    if pg_catalog.has_table_privilege('authenticated', 'public.workspaces', privilege)
+       and privilege <> 'UPDATE' then
+      raise exception 'authenticated has unnecessary % on workspaces', privilege;
+    end if;
+    if pg_catalog.has_table_privilege('authenticated', 'public.workspace_members', privilege) then
+      raise exception 'authenticated has unnecessary % on workspace_members', privilege;
+    end if;
+  end loop;
+  if pg_catalog.has_table_privilege('authenticated', 'public.workspace_members', 'UPDATE') then
+    raise exception 'authenticated has table-level UPDATE on workspace_members';
+  end if;
+  if exists (
+    select 1 from pg_catalog.pg_attribute a
+    where a.attrelid in ('public.workspaces'::regclass, 'public.workspace_members'::regclass)
+      and a.attnum > 0 and not a.attisdropped
+      and pg_catalog.has_any_column_privilege('anon', a.attrelid, a.attname)
+  ) then
+    raise exception 'anon has column privileges on workspace tables';
+  end if;
   if exists (
     select 1
     from pg_catalog.pg_attribute a
@@ -54,6 +93,14 @@ begin
       and pg_catalog.has_column_privilege('authenticated', a.attrelid, a.attname, 'UPDATE')
   ) then
     raise exception 'authenticated has UPDATE on a workspace column outside name and updated_at';
+  end if;
+  if exists (
+    select 1 from pg_catalog.pg_attribute a
+    where a.attrelid = 'public.workspace_members'::regclass
+      and a.attnum > 0 and not a.attisdropped
+      and pg_catalog.has_column_privilege('authenticated', a.attrelid, a.attname, 'UPDATE')
+  ) then
+    raise exception 'authenticated has UPDATE on a workspace_members column';
   end if;
 
   update public.workspaces

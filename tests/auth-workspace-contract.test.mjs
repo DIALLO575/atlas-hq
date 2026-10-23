@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [proxy, login, actions, contract, selector, shell, envExample, workspacePage, sessionControls, styles, workspaceActions, migration, triggerMigration, isolationTest, immutableOwnership, readme, migrationFiles] = await Promise.all([
+const [proxy, login, actions, contract, selector, shell, envExample, workspacePage, sessionControls, styles, workspaceActions, migration, triggerMigration, isolationTest, immutableOwnership, aclMigration, readme, migrationFiles] = await Promise.all([
   read("../src/lib/supabase/proxy.ts"),
   read("../src/app/login/page.tsx"),
   read("../src/app/login/actions.ts"),
@@ -19,6 +19,7 @@ const [proxy, login, actions, contract, selector, shell, envExample, workspacePa
   read("../supabase/migrations/20261023072200_fail_closed_rls_auto_enable.sql"),
   read("../supabase/tests/workspace_rls.sql"),
   read("../supabase/migrations/20261023073700_limit_workspace_update_columns.sql"),
+  read("../supabase/migrations/20261023113800_minimize_workspace_table_privileges.sql"),
   read("../README.md"),
   readdir(new URL("../supabase/migrations/", import.meta.url)),
 ]);
@@ -78,6 +79,12 @@ test("workspace migration binds reads and writes to auth.uid with tenant RLS", (
   assert.match(isolationTest, /has_column_privilege\('authenticated', 'public\.workspaces', 'updated_at', 'UPDATE'\)/);
   assert.match(isolationTest, /has_column_privilege\('authenticated', 'public\.workspaces', 'created_by', 'UPDATE'\)/);
   assert.match(isolationTest, /has_table_privilege\('authenticated', 'public\.workspaces', 'UPDATE'\)/);
+  assert.match(isolationTest, /has_table_privilege\('anon', 'public\.workspaces', privilege\)/);
+  assert.match(isolationTest, /has_table_privilege\('anon', 'public\.workspace_members', privilege\)/);
+  assert.match(isolationTest, /has_table_privilege\('authenticated', 'public\.workspace_members', 'UPDATE'\)/);
+  assert.match(isolationTest, /has_any_column_privilege\('anon'/);
+  assert.match(isolationTest, /workspace_members privileges are incomplete/);
+  assert.match(isolationTest, /unnecessary % on workspace_members/);
   assert.match(isolationTest, /name = 'User A renamed workspace', updated_at = now\(\) \+ interval '1 minute'/);
   assert.match(isolationTest, /role = 'admin'/);
   assert.match(isolationTest, /User A workspace isolation failed/);
@@ -103,7 +110,8 @@ test("RLS auto-enable fails closed and its SQL regression test checks the trigge
   const workspaceMigration = ordered.findIndex((file) => file.includes("auth_workspaces_rls"));
   const failClosedMigration = ordered.findIndex((file) => file.includes("fail_closed_rls_auto_enable"));
   const columnGrantMigration = ordered.findIndex((file) => file.includes("limit_workspace_update_columns"));
-  assert.ok(workspaceMigration >= 0 && workspaceMigration < failClosedMigration && failClosedMigration < columnGrantMigration);
+  const minimalAclMigration = ordered.findIndex((file) => file.includes("minimize_workspace_table_privileges"));
+  assert.ok(workspaceMigration >= 0 && workspaceMigration < failClosedMigration && failClosedMigration < columnGrantMigration && columnGrantMigration < minimalAclMigration);
   assert.match(migration, /create table if not exists public\.workspaces/);
   assert.match(migration, /create schema if not exists private/);
   assert.match(migration, /create table if not exists public\.workspace_members/);
@@ -113,6 +121,11 @@ test("RLS auto-enable fails closed and its SQL regression test checks the trigge
   assert.match(triggerMigration, /create or replace function public\.rls_auto_enable/);
   assert.match(immutableOwnership, /revoke update on public\.workspaces from authenticated/);
   assert.match(immutableOwnership, /grant update \(name, updated_at\) on public\.workspaces to authenticated/);
+  assert.match(aclMigration, /revoke all privileges on table public\.workspaces, public\.workspace_members/);
+  assert.match(aclMigration, /from public, anon, authenticated/);
+  assert.match(aclMigration, /grant select, insert, delete on table public\.workspaces to authenticated/);
+  assert.match(aclMigration, /grant update \(name, updated_at\) on table public\.workspaces to authenticated/);
+  assert.match(aclMigration, /grant select, insert, delete on table public\.workspace_members to authenticated/);
 });
 
 test("only public Supabase settings are documented for the browser", () => {

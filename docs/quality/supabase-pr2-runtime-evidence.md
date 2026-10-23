@@ -1,5 +1,21 @@
 # Supabase PR #2 runtime evidence
 
+## Final ACL hardening (2026-10-23 11:40 UTC)
+
+Migration `20261023113800_minimize_workspace_table_privileges.sql` was applied through Supabase MCP to official project `ovzmmsxqfifneqqgnrzd` (DIALLO575's Project, `eu-west-1`). Supabase recorded it as version `20261023114031 / minimize_workspace_table_privileges`. The SQL applied is the exact text in the PR migration file; project migration history was read back after application.
+
+The migration revokes all table privileges from `PUBLIC`, `anon`, and `authenticated`, removes existing per-column grants, then grants `authenticated` only `SELECT`, `INSERT`, and `DELETE` on both tables plus column `UPDATE` on `workspaces.name` and `workspaces.updated_at`. It does not change any RLS policy.
+
+Post-apply catalog checks used read-only `SELECT` queries:
+
+- `anon`: no table privilege on either table and no column grants.
+- `authenticated`: `SELECT`, `INSERT`, `DELETE` on both tables; no table `UPDATE`, `TRUNCATE`, `REFERENCES`, or `TRIGGER`.
+- Column grants: only `UPDATE` on `workspaces.name` and `workspaces.updated_at`; `workspace_members` has no column `UPDATE`.
+- RLS remains enabled on both tables; all seven existing policies remain present, including `workspaces_update_admin` and the three membership policies.
+- The catalog-only checks were used on the official project instead of fixture/runtime tests: those tests insert into `auth.users` and workspace tables and would alter auth/data during execution. Their rollback behavior does not make that appropriate for this project check.
+
+Security advisor: no findings. Performance advisor: two informational findings, the existing unindexed `workspaces.created_by` foreign key and unused `workspace_members_user_id_idx` index.
+
 ## Official project migrations (2026-10-23 11:23 UTC)
 
 The authorized Supabase MCP applied the exact SQL from the two PR migration files to official project `ovzmmsxqfifneqqgnrzd` (DIALLO575's Project, `eu-west-1`). Migration history now records `20261023112332 / fail_closed_rls_auto_enable` and `20261023112337 / limit_workspace_update_columns`, following the already-present `20261023071054 / auth_workspaces_rls`. The original `20261023071054` migration was not replayed or edited.
