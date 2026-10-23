@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   createInstallationState, readInstallationState,
-} from "../../../../packages/connectors/github/src/installation-flow.mjs";
+} from "../../../packages/connectors/github/src/installation-flow.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const githubConnectCookieName = "atlas_github_connect";
