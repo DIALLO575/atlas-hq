@@ -23,7 +23,7 @@ test("GitHub installation records are NOT writable by users and are protected by
 test("ready state is impossible without both ownership proof and repository verification", () => {
   assert.match(migration, /constraint github_ready_requires_proof check/);
   assert.match(migration, /status <> 'repositories-ready'/);
-  assert.match(migration, /repository_selection = 'selected'/);
+  assert.match(migration, /repository_selection is not distinct from 'selected'/);
   assert.match(migration, /ownership_verified_at is not null/);
   assert.match(migration, /repositories_verified_at is not null/);
   assert.match(migration, /installation_id bigint primary key check \(installation_id > 0\)/);
