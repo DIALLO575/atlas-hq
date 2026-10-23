@@ -64,5 +64,5 @@ test("Mes Apps uses real APIs while refusing to advertise unconfigured capabilit
   assert.match(ui, /\/api\/apps\/github\/connect\/start/);
   assert.match(ui, /isConfigured/);
   assert.match(ui, /GitHub App ATLAS HQ n’est pas encore configurée/);
-  assert.match(verifier, /installation\.account/);
+  assert.match(verifier, /item\?\.account\?\.id === person\.id/);
 });
