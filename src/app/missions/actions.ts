@@ -17,7 +17,7 @@ async function context(workspaceId: string) {
   if (error || !user) return null;
   return { supabase, userId: user.id, role: result.workspaces.find((space) => space.id === workspaceId)!.role };
 }
-function returnTo(path: "missions" | "inbox", workspaceId: string, key: "created" | "updated" | "requested" | "decided" | "error") {
+function returnTo(path: "missions" | "inbox", workspaceId: string, key: "created" | "updated" | "requested" | "decided" | "error"): never {
   revalidatePath("/missions");
   revalidatePath("/inbox");
   redirect("/" + path + "?workspaceId=" + encodeURIComponent(workspaceId) + "&result=" + key);

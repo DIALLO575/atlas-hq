@@ -98,7 +98,7 @@ export default async function MissionsPage({ searchParams }: { searchParams: Pro
                 </div>
                 <h3>{mission.title}</h3>
                 <p>{mission.description || "Aucune description ajoutée."}</p>
-                <div className="atlas-flow-card-meta"><Icon name="layers"/> {data.selected.name}
+                <div className="atlas-flow-card-meta"><Icon name="layers"/> {data.selected!.name}
                   <span>·</span> {shortDate(mission.updatedAt)}</div>
                 <div className="atlas-flow-card-footer">
                   {mission.status === "planned" && <form action={updateAtlasMission}>
