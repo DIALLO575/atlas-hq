@@ -1,6 +1,8 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { emailConfirmRedirect, requestOriginFrom } from "@/lib/auth/email-redirect";
 import { isValidEmail, passwordMeetsRules } from "@/lib/auth/password-policy";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -66,10 +68,13 @@ export async function signUp(formData: FormData) {
   if (!supabase) redirect(loginQuery("configuration", requestedPath));
 
   try {
+    const emailRedirectTo = emailConfirmRedirect(requestOriginFrom(await headers()));
+    const options: { data: { full_name: string }; emailRedirectTo?: string } = { data: { full_name: name } };
+    if (emailRedirectTo) options.emailRedirectTo = emailRedirectTo;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options,
     });
     if (error) {
       const code = "code" in error ? String(error.code) : "";
