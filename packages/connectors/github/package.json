@@ -6,6 +6,7 @@
     "./webhook-contract": "./src/webhook-contract.mjs",
     "./pagination-contract": "./src/pagination-contract.mjs",
     "./installation-flow": "./src/installation-flow.mjs",
-    "./github-app-client": "./src/github-app-client.mjs"
+    "./github-app-client": "./src/github-app-client.mjs",
+    "./authorized-reader": "./src/authorized-reader.mjs"
   }
 }
