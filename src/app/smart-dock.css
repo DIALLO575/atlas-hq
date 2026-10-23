@@ -1,0 +1,218 @@
+/* Atlas Smart Dock: draggable, edge-snapping navigation. Overrides the base visual system. */
+.atlas-shell .atlas-dock.atlas-smart-dock {
+  will-change: left, top;
+  border: 1px solid rgba(227, 221, 245, .95);
+  background: linear-gradient(160deg, rgba(255,255,255,.98), rgba(251,249,255,.97));
+  box-shadow: 0 18px 52px rgba(61,44,117,.13), 0 4px 15px rgba(52,43,99,.045), inset 0 1px 0 #fff;
+  backdrop-filter: blur(19px);
+  transition: width .24s cubic-bezier(.18,.78,.3,1), border-radius .24s ease, box-shadow .2s ease, left .28s cubic-bezier(.18,.78,.3,1), top .26s ease;
+  overscroll-behavior: contain;
+}
+.atlas-shell .atlas-dock.atlas-smart-dock:hover {
+  box-shadow: 0 23px 60px rgba(61,44,117,.15), 0 5px 14px rgba(52,43,99,.06);
+}
+.atlas-shell.atlas-dock-is-dragging .atlas-dock.atlas-smart-dock {
+  z-index: 42;
+  transition: none;
+  cursor: grabbing;
+  box-shadow: 0 30px 75px rgba(72,46,142,.23), 0 0 0 4px rgba(124,93,224,.09);
+  border-color: #c4b3ef;
+}
+.atlas-dock.atlas-smart-dock .atlas-dock-title {
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 11px;
+  min-height: 78px;
+  justify-content: center;
+  padding: 0;
+}
+.atlas-smart-dock .atlas-dock-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  background: transparent;
+  color: #aaa0c6;
+  height: 36px;
+  width: 40px;
+  min-width: 40px;
+  border: 1px dashed transparent;
+  border-radius: 12px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: color .14s, background .14s, border-color .14s;
+}
+.atlas-smart-dock .atlas-dock-grip svg {width: 19px; height: 19px; fill:currentColor; stroke:none;}
+.atlas-smart-dock .atlas-dock-grip:hover,.atlas-smart-dock .atlas-dock-grip:focus-visible {
+  background: #f6f1ff;
+  border-color: #e8def9;
+  color: #7b5add;
+}
+.atlas-dock-is-dragging .atlas-dock-grip {cursor:grabbing;}
+.atlas-smart-dock .atlas-expand-toggle {
+  width: 38px;
+  height: 32px;
+  border-radius: 12px;
+  background: #f2edff;
+  color: #7250d1;
+  border: 1px solid #e9e0fb;
+}
+.atlas-smart-dock .atlas-expand-toggle:hover {background: #e8dfff;color:#5f3ebf;}
+.atlas-smart-dock .atlas-expand-toggle svg {width:17px;height:17px;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-title {
+  min-height: 42px;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 0 4px 0 1px;
+  gap: 8px;
+}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-grip {
+  min-width: 0;
+  flex: 1;
+  width: auto;
+  justify-content: flex-start;
+  padding: 0 9px;
+}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-title-text {
+  display:inline;
+  padding:0;
+  font-size:9px;
+  font-weight:760;
+  color:#8c80a9;
+  letter-spacing:.12em;
+}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-expand-toggle {width:34px;height:34px;flex:none;}
+.atlas-smart-dock .atlas-dock-link {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: background .15s ease, color .15s ease, transform .15s ease;
+}
+.atlas-smart-dock .atlas-dock-link:hover {
+  background: #f6f1ff;
+  color: #6c4bd0;
+  transform: translateX(1px);
+}
+.atlas-smart-dock .atlas-dock-link svg {transition:transform .16s cubic-bezier(.2,.7,.3,1);transform-origin:center;}
+.atlas-smart-dock .atlas-dock-link:hover svg {transform:scale(1.13);}
+.atlas-smart-dock .atlas-dock-link.atlas-dock-active {
+  background: linear-gradient(125deg,#f0eafd,#f6f1ff);
+  color:#7653d9;
+}
+.atlas-smart-dock .atlas-dock-link.atlas-dock-active::before {
+  content:"";
+  position:absolute;
+  top:27%;
+  bottom:27%;
+  width:3px;
+  border-radius:4px;
+  background:#805ce3;
+  left:0;
+}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-link {
+  border-radius:12px;
+  min-height:40px;
+  gap:12px;
+}
+.atlas-smart-dock .atlas-dock-separator {background:#e9e4f5;margin:10px 9px;}
+.atlas-smart-dock .atlas-dock-account {border-top:1px solid #e9e4f5;}
+.atlas-smart-dock .atlas-dock-reset {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border:1px solid #ede7f8;
+  border-radius:11px;
+  background:#f9f7ff;
+  color:#8b75b8;
+  width:100%;
+  min-height:33px;
+  padding:7px 9px;
+  margin:12px 0 0;
+  font-size:10px;
+  cursor:pointer;
+}
+.atlas-smart-dock .atlas-dock-reset:hover {background:#f0eaff;color:#6d4fcb;}
+.atlas-smart-dock .atlas-dock-reset svg {width:14px;height:14px;}
+.atlas-dock-dropguides {
+  position:fixed;inset:0;
+  z-index:20;
+  pointer-events:none;
+}
+.atlas-dock-dropguide {
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  display:grid;
+  place-items:center;
+  height:170px;width:72px;
+  border:1px dashed #c3b0f3;
+  border-radius:23px;
+  background:#eee8ff88;
+  color:#7854d8;
+  font-size:10px;
+  font-weight:710;
+  letter-spacing:.02em;
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+}
+.atlas-dock-dropguide-left {left:15px;}
+.atlas-dock-dropguide-right {right:15px;}
+/* Whichever side owns the dock, the page and top bar leave adequate room. */
+.atlas-shell[data-dock-side="right"] .atlas-main-frame {margin-left:24px;margin-right:132px;}
+.atlas-shell[data-dock-side="right"].atlas-expanded .atlas-main-frame {margin-left:24px;margin-right:280px;}
+.atlas-shell[data-dock-side="right"] .atlas-topbar {left:30px;right:144px;}
+.atlas-shell[data-dock-side="right"].atlas-expanded .atlas-topbar {left:30px;right:292px;}
+@media (max-width: 1280px) {
+  .atlas-shell[data-dock-side="right"] .atlas-main-frame {margin-left:14px;margin-right:116px;}
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-main-frame {margin-left:14px;margin-right:272px;}
+  .atlas-shell[data-dock-side="right"] .atlas-topbar {left:19px;right:126px;}
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-topbar {left:19px;right:278px;}
+}
+@media (max-width: 760px) {
+  /* Mobile navigation is a predictable drawer and bottom tabs, not a free-floating draggable target. */
+  .atlas-shell .atlas-dock.atlas-smart-dock, .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock {
+    top:77px!important;
+    left:12px!important;
+    right:auto!important;
+    transform:translateX(-125%)!important;
+    width:252px;
+    transition:transform .2s ease;
+    box-shadow:0 16px 60px #28234132;
+    border-radius:22px;
+    padding:13px;
+  }
+  .atlas-shell.atlas-mobile-open .atlas-dock.atlas-smart-dock {
+    transform:translateX(0)!important;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock .atlas-dock-title,
+  .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock .atlas-dock-title {
+    flex-direction:row;
+    min-height:35px;
+    justify-content:flex-start;
+    padding-left:5px;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock .atlas-dock-grip {
+    cursor:default;
+    touch-action:auto;
+    width:auto;
+    min-width:0;
+    flex:1;
+    justify-content:flex-start;
+    padding:0 6px;
+  }
+  .atlas-shell .atlas-dock.atlas-smart-dock .atlas-dock-title-text {display:inline;}
+  .atlas-shell .atlas-dock.atlas-smart-dock .atlas-expand-toggle {display:none;}
+  .atlas-shell .atlas-dock.atlas-smart-dock .atlas-dock-account {display:block;}
+  .atlas-shell[data-dock-side="right"] .atlas-main-frame,
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-main-frame {margin:0;padding:78px 0 0;}
+  .atlas-shell[data-dock-side="right"] .atlas-topbar,
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-topbar {left:12px;right:12px;}
+  .atlas-dock-dropguides {display:none;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .atlas-shell .atlas-dock.atlas-smart-dock,.atlas-smart-dock .atlas-dock-link,.atlas-smart-dock .atlas-dock-link svg {transition:none;}
+}

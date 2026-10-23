@@ -1,75 +1,83 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
-import Link from "next/link";
-import { DemoNotice } from "@/components/page-elements";
+import { ChiefComposer } from "@/components/chief-composer";
+import { BrandLogo } from "@/components/brand-logo";
+import { atlasApps } from "@/lib/app-catalog";
 
-const spaces = [
-  { name: "Notion", detail: "Espaces de travail", mark: "N", tone: "notion" },
-  { name: "GitHub", detail: "Code & projets", mark: "GH", tone: "github" },
-  { name: "Linear", detail: "Tâches & suivi", mark: "L", tone: "linear" },
-  { name: "OpenMausBot", detail: "Assistants", mark: "◎", tone: "maus" },
+const summaries = [
+  { label: "Approbations", value: "À activer", note: "Décisions et autorisations", icon: "inbox" as const, href: "/inbox", tone: "rose" },
+  { label: "Agents IA", value: "À connecter", note: "Assistants et équipes", icon: "bot" as const, href: "/agents", tone: "violet" },
+  { label: "Missions", value: "À connecter", note: "Suivi des tâches", icon: "activity" as const, href: "/missions", tone: "blue" },
 ];
+
+const suggestedApps = atlasApps.slice(0, 3);
 
 export default function Home() {
   return (
     <AppShell>
-      <main className="main-content" id="main-content">
-        <div className="welcome-row">
+      <main className="main-content atlas-home" id="main-content">
+        <div className="atlas-home-heading">
           <div>
-            <p className="eyebrow">VUE PERSONNELLE</p>
-            <h1>Bonjour <span aria-hidden="true">✳</span></h1>
-            <p className="welcome-copy">Votre espace de travail, enfin réuni au même endroit.</p>
+            <p className="atlas-overline">VOTRE ESPACE ATLAS</p>
+            <h1>Tout ce qui compte, au même endroit<span className="atlas-heading-spark" aria-hidden="true"> ✦</span></h1>
+            <p className="atlas-home-lead">Vos agents IA, applications et missions, coordonnés en un seul espace.</p>
           </div>
-          <Link className="icon-button search-button" href="/search" aria-label="Rechercher dans ATLAS HQ">
-            <Icon name="search" /> <span>Rechercher</span><kbd>⌘ K</kbd>
-          </Link>
+          <Link className="atlas-primary-action" href="/apps"><Icon name="link" /> Explorer les apps</Link>
         </div>
 
-        <DemoNotice />
-
-        <section className="focus-card" aria-labelledby="focus-title">
-          <div className="focus-content">
-            <div className="focus-label"><span className="live-dot" /> ESPACE PERSONNEL</div>
-            <h2 id="focus-title">Tout commence<br className="mobile-break" /> par une bonne vue d’ensemble.</h2>
-            <p>Vos projets et vos outils, rassemblés dans un cockpit clair. Connectez vos espaces quand vous serez prêt.</p>
-            <a className="button button-light" href="#espaces">Explorer mes espaces <Icon name="arrow-up-right" /></a>
-          </div>
-          <div className="focus-art" aria-hidden="true">
-            <div className="orbit orbit-one" /><div className="orbit orbit-two" />
-            <div className="core-mark"><span>A</span><i /></div>
-            <div className="orbit-node node-one">N</div><div className="orbit-node node-two">GH</div><div className="orbit-node node-three">L</div>
-          </div>
-          <div className="card-index">01 <span>—</span> 04</div>
-        </section>
-
-        <div className="section-heading" id="espaces">
-          <div><p className="eyebrow">VOTRE ÉCOSYSTÈME</p><h2>Espaces à connecter</h2></div>
-          <Link className="text-button" href="/apps">Voir Mes Apps <Icon name="arrow-right" /></Link>
-        </div>
-
-        <section className="spaces-grid" aria-label="État des espaces de travail">
-          {spaces.map((space) => (
-            <article className="space-card" key={space.name}>
-              <div className={`space-mark ${space.tone}`} aria-hidden="true">{space.mark}</div>
-              <div className="space-info"><h3>{space.name}</h3><p>{space.detail}</p></div>
-              <span className="connection-state"><span /> À connecter</span>
-              <Link className="space-arrow" href="/apps" aria-label={`Voir ${space.name} dans Mes Apps`}><Icon name="arrow-up-right" /></Link>
-            </article>
+        <section className="atlas-summary-grid" aria-label="Vue rapide">
+          {summaries.map((item) => (
+            <Link key={item.href} href={item.href} className="atlas-summary-card">
+              <span className={"atlas-summary-icon atlas-icon-" + item.tone}><Icon name={item.icon} /></span>
+              <span className="atlas-summary-copy"><span className="atlas-summary-label">{item.label}</span><strong>{item.value}</strong><small>{item.note}</small></span>
+              <Icon name="arrow-up-right" className="atlas-summary-arrow" />
+            </Link>
           ))}
         </section>
 
-        <section className="bottom-grid" aria-label="Résumé">
-          <article className="panel activity-panel">
-            <div className="panel-heading"><div><p className="eyebrow">EN UN COUP D’ŒIL</p><h2>Activité récente</h2></div><span className="quiet-tag">EN ATTENTE</span></div>
-            <div className="empty-state"><div className="empty-icon"><Icon name="activity" /></div><div><h3>Votre fil d’activité est prêt</h3><p>Les événements apparaîtront ici après la connexion de vos outils.</p></div></div>
-          </article>
-          <article className="panel note-panel">
-            <div className="panel-heading"><div><p className="eyebrow">POUR BIEN DÉMARRER</p><h2>Un cockpit à votre rythme</h2></div><div className="spark-icon">✳</div></div>
-            <p className="note-copy">Commencez par connecter les espaces que vous utilisez le plus. Vos outils restent les sources de vérité.</p>
-            <a href="#espaces" className="inline-link">Voir les espaces <Icon name="arrow-right" /></a>
-          </article>
-        </section>
-        <footer className="page-footer"><span>ATLAS HQ <span className="footer-dot">·</span> votre espace de travail</span><span>Une interface simple, avec ou sans IA.</span></footer>
+        <div className="atlas-home-primary">
+          <section className="atlas-panel atlas-attention-panel" aria-labelledby="atlas-attention-heading">
+            <div className="atlas-panel-heading">
+              <div className="atlas-panel-heading-title"><span className="atlas-heading-icon atlas-icon-rose"><Icon name="inbox" /></span><h2 id="atlas-attention-heading">Besoin de vous</h2></div>
+              <Link className="atlas-subtle-link" href="/inbox">Tout voir <Icon name="arrow-right" /></Link>
+            </div>
+            <div className="atlas-attention-empty">
+              <span className="atlas-empty-symbol"><Icon name="inbox" /></span>
+              <strong>Vos approbations arriveront ici.</strong>
+              <p>Accès demandés, validations et décisions des agents : rien ne sera approuvé sans votre action.</p>
+            </div>
+            <div className="atlas-panel-footer"><span className="atlas-footnote-dot" /> Aucune source d’approbation connectée <Link href="/apps">Connecter <Icon name="arrow-right" /></Link></div>
+          </section>
+
+          <ChiefComposer />
+        </div>
+
+        <div className="atlas-home-secondary">
+          <section className="atlas-panel atlas-agents-panel" aria-labelledby="atlas-agents-heading">
+            <div className="atlas-panel-heading">
+              <div className="atlas-panel-heading-title"><span className="atlas-heading-icon atlas-icon-violet"><Icon name="bot" /></span><h2 id="atlas-agents-heading">Agents & nouveautés</h2></div>
+              <Link className="atlas-subtle-link" href="/agents">Voir les agents <Icon name="arrow-right" /></Link>
+            </div>
+            <div className="atlas-list-empty"><span className="atlas-list-empty-dot" /><div><strong>En attente de votre premier agent</strong><p>Connectez Hermes, un chatbot ou un autre agent pour suivre ses demandes et son activité.</p></div></div>
+          </section>
+
+          <section className="atlas-panel atlas-apps-panel" aria-labelledby="atlas-apps-heading">
+            <div className="atlas-panel-heading">
+              <div className="atlas-panel-heading-title"><span className="atlas-heading-icon atlas-icon-blue"><Icon name="apps" /></span><h2 id="atlas-apps-heading">Mes applications</h2></div>
+              <Link className="atlas-subtle-link" href="/apps">Catalogue <Icon name="arrow-right" /></Link>
+            </div>
+            <p className="atlas-apps-caption">Suggestions d’intégrations · Aucune app connectée</p>
+            <div className="atlas-suggested-apps">
+              {suggestedApps.map((app) => (
+                <Link href="/apps" key={app.name} className="atlas-mini-app">
+                  <span className="atlas-mini-app-icon"><BrandLogo slug={app.slug} size={22} /></span><span>{app.name}</span><Icon name="arrow-up-right" />
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+        <p className="atlas-home-footer">Atlas affiche les données réelles uniquement après connexion de vos services.</p>
       </main>
     </AppShell>
   );

@@ -1,0 +1,302 @@
+/* Atlas Dock Studio — independent light control island + sidecar tools panel. */
+.atlas-shell .atlas-dock.atlas-smart-dock {
+  width: 82px;
+  padding: 12px 10px 13px;
+  border-radius: 32px;
+  max-height: calc(100dvh - 104px);
+  border: 1px solid #e8e5f1;
+  background: linear-gradient(160deg,#ffffff 0%,#fcfbff 100%);
+  color: #37364d;
+  box-shadow: 0 17px 43px rgba(56,50,106,.09),0 3px 10px rgba(56,50,106,.04),inset 0 1px 0 #fff;
+}
+.atlas-shell .atlas-dock.atlas-smart-dock:hover {
+  box-shadow: 0 20px 48px rgba(56,50,106,.11),0 5px 14px rgba(56,50,106,.04);
+}
+.atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock {
+  width: 264px;
+  padding: 13px;
+  border-radius: 27px;
+}
+.atlas-shell.atlas-dock-is-dragging .atlas-dock.atlas-smart-dock {
+  border-color: #cfc6e9;
+  background:linear-gradient(160deg,#fff,#f8f6ff);
+  box-shadow:0 23px 60px rgba(68,55,135,.16),0 0 0 4px rgba(146,126,207,.08);
+}
+.atlas-shell .atlas-smart-dock .atlas-dock-grip {
+  color:#9c93b5;
+  background:#f7f5fb;
+  border-color:#efeaf6;
+}
+.atlas-shell .atlas-smart-dock .atlas-dock-grip:hover,.atlas-shell .atlas-smart-dock .atlas-dock-grip:focus-visible {
+  background:#f0ecfc;
+  border-color:#d8ccef;
+  color:#7457ce;
+}
+.atlas-shell .atlas-smart-dock .atlas-expand-toggle {
+  background:#f2effb;
+  border-color:#eae4f6;
+  color:#7559c9;
+}
+.atlas-shell .atlas-smart-dock .atlas-expand-toggle:hover {
+  background:#e8e1fa;
+  color:#6546bf;
+}
+.atlas-shell .atlas-smart-dock .atlas-dock-title-text {color:#9c96ac;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-title-text {color:#9991b0;}
+.atlas-dock-identity {display:grid;place-items:center;position:relative;width:46px;height:46px;margin:1px auto 13px;border:1px solid #e6def6;border-radius:16px;background:linear-gradient(145deg,#f2edff,#faf8ff);box-shadow:inset 0 1px #fff;}
+.atlas-dock-identity span {font-size:23px;font-weight:840;color:#7754d6;font-style:italic;letter-spacing:-.15em;padding-right:4px;}
+.atlas-dock-identity i {position:absolute;width:7px;height:7px;right:-3px;bottom:-3px;background:#a8dbb8;border:2px solid #fff;border-radius:50%;}
+.atlas-expanded .atlas-dock-identity {margin:5px 0 14px 11px;width:47px;height:47px;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link {
+  color:#77748e;
+  border-radius:15px;
+  min-height:43px;
+  padding:0 19px;
+}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:hover {
+  color:#6e50ca;
+  background:#f4f0fd;
+  transform:none;
+}
+.atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active {
+  color:#7050cf;
+  background:#efebfa;
+  box-shadow:none;
+}
+.atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active::before {display:none;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active svg {color:#744ada;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link svg {width:20px;height:20px;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-link {min-height:42px;gap:13px;padding-left:14px;font-weight:580;}
+.atlas-shell .atlas-smart-dock .atlas-dock-separator {height:1px;margin:13px 7px;background:#ece7f5;}
+.atlas-shell .atlas-smart-dock .atlas-dock-section-name {display:none;font-size:9px;color:#a19bb2;letter-spacing:.1em;font-weight:700;padding:3px 9px 9px;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-section-name {display:block;}
+.atlas-dock-tools-section {display:flex;flex-direction:column;gap:5px;}
+.atlas-dock-tool-toggle {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  position:relative;
+  border:1px solid #e8def9;
+  border-radius:15px;
+  min-height:45px;
+  width:100%;
+  background:#f2edfb;
+  color:#7757cf;
+  box-shadow:none;
+  font:700 12px var(--font-body);
+  cursor:pointer;
+  transition:none;
+}
+.atlas-dock-tool-toggle:hover,.atlas-dock-tool-toggle.is-open {background:#e9e1fa;color:#6648bc;}
+.atlas-dock-tool-toggle svg {width:21px;height:21px;}
+.atlas-dock-tool-toggle-plus {display:none;font-size:17px;font-weight:500;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-tool-toggle {justify-content:flex-start;padding:0 14px;min-height:44px;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-tool-toggle .atlas-dock-label {display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-tool-toggle-plus {display:inline;margin-left:auto;}
+.atlas-dock-pins {gap:2px;}
+.atlas-shell .atlas-smart-dock .atlas-dock-pin-link {min-height:34px;color:#817996;}
+.atlas-shell .atlas-smart-dock .atlas-dock-pin-link svg {width:17px;height:17px;opacity:.86;}
+.atlas-shell.atlas-expanded .atlas-smart-dock .atlas-dock-pin-link {min-height:34px;font-size:11px;}
+.atlas-shell .atlas-smart-dock .atlas-dock-account {border-top-color:#eae5f2;}
+.atlas-shell .atlas-smart-dock .atlas-dock-account .profile-row strong,
+.atlas-shell .atlas-smart-dock .atlas-dock-account .profile-row small {color:#48465e;}
+.atlas-shell .atlas-smart-dock .atlas-dock-account .profile-avatar {background:#eee8fa;color:#7557ca;}
+.atlas-shell .atlas-smart-dock .atlas-dock-account .sign-out-button,
+.atlas-shell .atlas-smart-dock .atlas-dock-reset {color:#807491;border-color:#e9e4f2;background:#faf8ff;}
+.atlas-shell .atlas-smart-dock .atlas-dock-reset:hover {background:#efebf9;color:#7155bf;}
+/* Distinct adjacent tool surface; separate background, radius, border and visual hierarchy. */
+.atlas-toolspace {
+  position:fixed;
+  z-index:31;
+  left:124px;
+  top:50%;
+  transform:translateY(-50%);
+  width:366px;
+  max-width:calc(100vw - 180px);
+  max-height:calc(100dvh - 105px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  color:#2b2640;
+  background:rgba(255,255,255,.98);
+  border:1px solid #e8e2f7;
+  border-radius:25px;
+  box-shadow:0 28px 80px rgba(48,29,111,.15),0 4px 16px rgba(58,34,113,.06);
+  padding:16px;
+  animation:none;
+}
+.atlas-expanded .atlas-toolspace {left:312px;}
+.atlas-shell[data-dock-side="right"] .atlas-toolspace {left:auto;right:124px;}
+.atlas-shell[data-dock-side="right"].atlas-expanded .atlas-toolspace {right:312px;}
+.atlas-toolspace-header {display:flex;align-items:center;gap:11px;border-bottom:1px solid #f0edf7;padding:4px 2px 14px;}
+.atlas-toolspace-monogram {display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:linear-gradient(150deg,#9269f2,#6843d7);font-size:22px;font-style:italic;color:#fff;font-weight:800;letter-spacing:-.12em;padding-right:4px;}
+.atlas-toolspace-header-copy {flex:1;min-width:0;}
+.atlas-toolspace-eyebrow {display:block;letter-spacing:.11em;font-size:9px;font-weight:700;color:#a69bbf;margin-bottom:3px;}
+.atlas-toolspace-header h2 {font-size:16px;font-weight:760;color:#24213a;letter-spacing:-.035em;margin:0;}
+.atlas-toolspace-close {display:grid;place-items:center;width:32px;height:32px;border:1px solid #ece8f6;border-radius:11px;color:#8a7cae;background:#faf9fd;cursor:pointer;}
+.atlas-toolspace-close svg {width:15px;height:15px;}
+.atlas-toolspace-close:hover {color:#6941d0;background:#f2edff;}
+.atlas-toolspace-intro {display:flex;align-items:center;gap:12px;padding:15px 13px;margin:15px 0;border:1px solid #eee7fc;border-radius:16px;background:linear-gradient(120deg,#f3edff,#fcfaff);}
+.atlas-toolspace-orb {flex:none;display:grid;place-items:center;width:37px;height:37px;border-radius:13px;background:#7952da;color:#fff;}
+.atlas-toolspace-orb svg {width:18px;height:18px;}
+.atlas-toolspace-intro strong {font-size:11px;color:#3c325a;}
+.atlas-toolspace-intro p {font-size:10px;color:#867c9f;line-height:1.5;margin:4px 0 0;}
+.atlas-toolspace-tabs {display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:#f6f4fb;border-radius:13px;margin-bottom:14px;}
+.atlas-toolspace-tabs button {display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;border:0;border-radius:10px;background:transparent;color:#8c82a4;font:650 11px var(--font-body);cursor:pointer;}
+.atlas-toolspace-tabs button.is-active {color:#6845cb;background:#fff;box-shadow:0 2px 10px #4e34851a;}
+.atlas-toolspace-tabs svg {width:15px;height:15px;}
+.atlas-toolspace-search {display:flex;align-items:center;gap:9px;padding:0 12px;border:1px solid #ebe8f2;border-radius:12px;height:42px;background:#fff;}
+.atlas-toolspace-search:focus-within {border-color:#baaaf1;}
+.atlas-toolspace-search svg {width:16px;height:16px;color:#9a90b2;}
+.atlas-toolspace-search input {flex:1;min-width:0;background:transparent;border:0;outline:0;font:11px var(--font-body);color:#2f2941;}
+.atlas-toolspace-search input::placeholder {color:#aaa4b6;}
+.atlas-toolspace-search kbd {font:10px var(--font-body);color:#b4acbf;}
+.atlas-toolspace-section-header {display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 1px 9px;}
+.atlas-toolspace-section-header h3 {margin:0;font-size:11px;font-weight:730;color:#423b5c;}
+.atlas-toolspace-section-header>span {font-size:10px;color:#a39bb1;}
+.atlas-toolspace-section-header a {display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#7954d5;font-weight:660;}
+.atlas-toolspace-section-header a svg {width:12px;height:12px;}
+.atlas-toolspace-tool-list {display:flex;flex-direction:column;gap:4px;}
+.atlas-toolspace-tool {display:flex;align-items:center;gap:6px;border:1px solid transparent;border-radius:12px;}
+.atlas-toolspace-tool:hover {border-color:#eee9f9;background:#faf8ff;}
+.atlas-toolspace-tool-main {display:flex;align-items:center;gap:10px;min-width:0;flex:1;padding:8px 4px;}
+.atlas-toolspace-tool-icon {display:grid;place-items:center;flex:none;width:32px;height:32px;background:#f0eaff;border-radius:10px;color:#7250ce;}
+.atlas-toolspace-tool-icon svg {width:16px;height:16px;}
+.atlas-toolspace-tool-main>span:last-child {min-width:0;display:flex;flex-direction:column;gap:3px;}
+.atlas-toolspace-tool-main strong {font-size:11px;color:#37314f;}
+.atlas-toolspace-tool-main small {font-size:9px;color:#9189a4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:255px;}
+.atlas-toolspace-pin {display:grid;place-items:center;flex:none;width:29px;height:29px;margin:0 4px;border:0;border-radius:9px;background:#f6f3fa;color:#aea7bd;cursor:pointer;}
+.atlas-toolspace-pin svg {width:15px;height:15px;}
+.atlas-toolspace-pin.is-pinned {background:#eee7ff;color:#7954d3;}
+.atlas-toolspace-pin:disabled {cursor:not-allowed;opacity:.42;}
+.atlas-toolspace-no-results {text-align:center;padding:15px;color:#978fa8;font-size:11px;}
+.atlas-toolspace-integrations {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.atlas-toolspace-integrations a {display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;min-width:0;padding:10px 5px;border:1px solid #efebf6;border-radius:13px;background:#fff;}
+.atlas-toolspace-integrations a:hover {border-color:#d7c8f6;background:#fcfaff;}
+.atlas-toolspace-integrations a>span {display:grid;place-items:center;width:29px;height:29px;}
+.atlas-toolspace-integrations strong {font-size:10px;color:#3f3851;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;}
+.atlas-toolspace-integrations small {font-size:9px;color:#aaa2b7;}
+.atlas-toolspace-footnote {font-size:9px;color:#9c95ae;line-height:1.5;margin:13px 3px 4px;}
+.atlas-toolspace-agent-status {padding:23px 14px 17px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#faf7ff;border:1px solid #eee7fc;border-radius:16px;}
+.atlas-toolspace-agent-visual {display:grid;place-items:center;width:49px;height:49px;border:1px solid #e3d8fc;border-radius:17px;background:#ebe2ff;color:#7550d2;margin-bottom:12px;}
+.atlas-toolspace-agent-visual svg {width:23px;height:23px;}
+.atlas-toolspace-agent-status strong {font-size:12px;color:#41355b;}
+.atlas-toolspace-agent-status p {max-width:260px;font-size:10px;color:#9185a9;line-height:1.6;}
+.atlas-toolspace-agent-status a {display:flex;align-items:center;gap:6px;padding:9px 13px;background:#7550d4;border-radius:10px;color:#fff;font-size:10px;font-weight:650;}
+.atlas-toolspace-agent-status a svg {width:12px;height:12px;}
+.atlas-toolspace-safety {display:flex;flex-direction:column;gap:7px;}
+.atlas-toolspace-safety>div {display:grid;grid-template-columns:25px 1fr;column-gap:10px;padding:9px 11px;border:1px solid #f0ebf7;border-radius:11px;}
+.atlas-toolspace-safety span {grid-row:span 2;display:grid;place-items:center;width:25px;height:25px;border-radius:9px;background:#f1ebff;color:#7951d5;font-size:10px;font-weight:740;}
+.atlas-toolspace-safety strong {font-size:10px;color:#403651;}
+.atlas-toolspace-safety small {font-size:9px;color:#968ca4;margin-top:4px;}
+.atlas-toolspace-mobile-scrim {display:none;}
+/* Reserve an actual safe area for the independent navigation island. */
+.atlas-shell .atlas-main-frame {margin-left:149px;}
+.atlas-shell.atlas-expanded .atlas-main-frame {margin-left:325px;}
+.atlas-shell .atlas-topbar {left:161px;}
+.atlas-shell.atlas-expanded .atlas-topbar {left:333px;}
+.atlas-shell[data-dock-side="right"] .atlas-main-frame {margin-left:24px;margin-right:149px;}
+.atlas-shell[data-dock-side="right"].atlas-expanded .atlas-main-frame {margin-left:24px;margin-right:325px;}
+.atlas-shell[data-dock-side="right"] .atlas-topbar {left:30px;right:161px;}
+.atlas-shell[data-dock-side="right"].atlas-expanded .atlas-topbar {left:30px;right:333px;}
+@media (min-width:1201px) {
+  .atlas-shell.atlas-tools-open .atlas-main-frame {margin-left:520px;}
+  .atlas-shell.atlas-tools-open .atlas-topbar {left:532px;}
+  .atlas-shell.atlas-tools-open.atlas-expanded .atlas-main-frame {margin-left:690px;}
+  .atlas-shell.atlas-tools-open.atlas-expanded .atlas-topbar {left:700px;}
+  .atlas-shell.atlas-tools-open[data-dock-side="right"] .atlas-main-frame {margin-left:24px;margin-right:520px;}
+  .atlas-shell.atlas-tools-open[data-dock-side="right"] .atlas-topbar {left:30px;right:532px;}
+  .atlas-shell.atlas-tools-open.atlas-expanded[data-dock-side="right"] .atlas-main-frame {margin-left:24px;margin-right:690px;}
+  .atlas-shell.atlas-tools-open.atlas-expanded[data-dock-side="right"] .atlas-topbar {left:30px;right:700px;}
+}
+@media (max-width:1280px) {
+  .atlas-shell .atlas-main-frame {margin-left:142px;margin-right:14px;}
+  .atlas-shell.atlas-expanded .atlas-main-frame {margin-left:315px;margin-right:14px;}
+  .atlas-shell .atlas-topbar {left:153px;right:19px;}
+  .atlas-shell.atlas-expanded .atlas-topbar {left:325px;right:19px;}
+  .atlas-shell[data-dock-side="right"] .atlas-main-frame {margin-left:14px;margin-right:142px;}
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-main-frame {margin-left:14px;margin-right:315px;}
+  .atlas-shell[data-dock-side="right"] .atlas-topbar {left:19px;right:153px;}
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-topbar {left:19px;right:325px;}
+}
+@media (max-width:1050px) {
+  .atlas-toolspace {width:320px;left:119px;}
+  .atlas-expanded .atlas-toolspace {left:302px;}
+  .atlas-shell[data-dock-side="right"] .atlas-toolspace {right:119px;}
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-toolspace {right:302px;}
+}
+@media (max-width:760px) {
+  .atlas-shell .atlas-dock.atlas-smart-dock, .atlas-shell.atlas-expanded .atlas-dock.atlas-smart-dock {
+    background:linear-gradient(160deg,#fff,#faf9fe);
+    color:#37364d;
+    border:1px solid #e8e5f1;
+    padding:12px;
+    width:265px;
+  }
+  .atlas-shell .atlas-smart-dock .atlas-dock-link {color:#77748e;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-link.atlas-dock-active {color:#7050cf;background:#efebfa;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-identity {display:none;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-section-name {display:block;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle {justify-content:flex-start;padding:0 14px;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle .atlas-dock-label {display:inline;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-pin-link {padding-left:15px;}
+  .atlas-shell .atlas-smart-dock .atlas-dock-pin-link .atlas-dock-label {display:inline;}
+  .atlas-shell .atlas-main-frame,.atlas-shell.atlas-expanded .atlas-main-frame,
+  .atlas-shell[data-dock-side="right"] .atlas-main-frame,
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-main-frame {margin:0;padding:78px 0 0;}
+  .atlas-shell .atlas-topbar,.atlas-shell.atlas-expanded .atlas-topbar,
+  .atlas-shell[data-dock-side="right"] .atlas-topbar,
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-topbar {top:10px;left:12px;right:12px;}
+  .atlas-toolspace,.atlas-expanded .atlas-toolspace,
+  .atlas-shell[data-dock-side="right"] .atlas-toolspace,
+  .atlas-shell[data-dock-side="right"].atlas-expanded .atlas-toolspace {
+    position:fixed;
+    z-index:38;
+    top:76px;
+    bottom:78px;
+    left:12px;
+    right:12px;
+    transform:none;
+    width:auto;
+    max-width:none;
+    max-height:none;
+    padding:14px;
+    border-radius:20px;
+    animation:none;
+  }
+  .atlas-toolspace-mobile-scrim {
+    display:block;
+    position:fixed;
+    z-index:36;
+    inset:0;
+    border:0;
+    background:rgba(27,17,54,.45);
+    cursor:pointer;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  .atlas-toolspace {animation:none;}
+  .atlas-dock-tool-toggle,.atlas-toolspace-tool {transition:none;}
+}
+
+/* Navigation should update immediately: no flashing, scaling, or entrance animations on tab selection. */
+.atlas-shell .atlas-smart-dock .atlas-dock-link,
+.atlas-shell .atlas-smart-dock .atlas-dock-link svg,
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle,
+.atlas-shell .atlas-toolspace,
+.atlas-shell .atlas-toolspace-tabs button {
+  animation: none;
+  transition: none;
+}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:hover svg {transform:none;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:active,
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle:active,
+.atlas-shell .atlas-toolspace-tabs button:active {transform:none;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:focus:not(:focus-visible),
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle:focus:not(:focus-visible) {outline:none;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link:focus-visible,
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle:focus-visible {outline:2px solid #a98de8;outline-offset:2px;}
+.atlas-shell .atlas-smart-dock .atlas-dock-link,
+.atlas-shell .atlas-smart-dock .atlas-dock-tool-toggle,
+.atlas-shell .atlas-toolspace-tabs button {-webkit-tap-highlight-color:transparent;}
