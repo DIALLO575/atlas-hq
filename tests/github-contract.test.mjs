@@ -104,6 +104,21 @@ test("documented endpoint caps truncate and report whether more data exists", ()
   assert.equal(fileResult.truncated, true);
   const commits = capPaginatedItems(Array.from({ length: 250 }, (_, index) => index), 250, false);
   assert.equal(commits.items.length, 250);
-  assert.equal(commits.truncated, false);
+  assert.equal(commits.truncated, true);
+  for (const [length, maximum, hasNextPage, truncated] of [
+    [249, 250, false, false],
+    [249, 250, true, true],
+    [0, 250, false, false],
+    [0, 250, true, true],
+    [251, 250, false, true],
+    [0, 0, false, false],
+    [0, 0, true, true],
+    [1, 0, false, true],
+  ]) {
+    const items = Array.from({ length }, (_, index) => index);
+    const result = capPaginatedItems(items, maximum, hasNextPage);
+    assert.deepEqual(result.items, items.slice(0, maximum));
+    assert.equal(result.truncated, truncated, `${length}/${maximum}, hasNextPage=${hasNextPage}`);
+  }
   assert.throws(() => capPaginatedItems([], -1, false), TypeError);
 });

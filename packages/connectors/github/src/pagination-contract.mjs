@@ -25,6 +25,6 @@ export function capPaginatedItems(items, maximum, hasNextPage) {
   }
   return {
     items: items.slice(0, maximum),
-    truncated: items.length > maximum || (items.length >= maximum && hasNextPage),
+    truncated: hasNextPage || items.length > maximum || (maximum > 0 && items.length >= maximum),
   };
 }
