@@ -36,8 +36,6 @@ export function GitHubConnection({ workspaceId, canInstall, isConfigured }: {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    setInstallations([]); setSelectedInstallation(null); setRepositories([]);
-    setSelectedRepository(null); setPulls([]); setDetail(null); setError(null);
     if (!workspaceId) return;
     const query = new URLSearchParams({ view: "connections", workspaceId });
     load<{ installations: Installation[] }>(query)
