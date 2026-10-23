@@ -116,7 +116,22 @@ export function useFloatingDock() {
     if (dragPoint) return { position: "fixed", left: dragPoint.x, top: dragPoint.y, right: "auto", transform: "none" };
     // Horizontal docks have a stable CSS center anchor; measuring their new
     // width must never move their horizontal position.
-    if (placement.side === "top" || placement.side === "bottom") return {};
+    // These coordinates are authoritative. Previously horizontal modes relied
+    // on CSS fallback while vertical modes used inline geometry; switching the
+    // positioning system left the dock in the old location in some browsers.
+    // Always set a full fixed-position anchor for every selected edge.
+    if (placement.side === "top") {
+      return {
+        position: "fixed", left: "50%", right: "auto",
+        top: 100, bottom: "auto", transform: "translateX(-50%)",
+      };
+    }
+    if (placement.side === "bottom") {
+      return {
+        position: "fixed", left: "50%", right: "auto",
+        top: "auto", bottom: 22, transform: "translateX(-50%)",
+      };
+    }
     if (!geometry) return {};
     const left = placement.side === "left" ? EDGE_GAP :
       Math.max(EDGE_GAP, geometry.viewportWidth - geometry.width - EDGE_GAP);
@@ -226,11 +241,15 @@ export function useFloatingDock() {
   };
 
   const placeDock = (side: Side) => {
-    setPlacement((current) => {
-      const next: Placement = { side, vertical: side === "top" || side === "bottom" ? 0.5 : current.vertical };
-      if (next.side !== current.side || next.vertical !== current.vertical) storePlacement(next);
-      return next;
-    });
+    const next: Placement = {
+      side,
+      vertical: side === "top" || side === "bottom" ? 0.5 : placement.vertical,
+    };
+    if (next.side === placement.side && next.vertical === placement.vertical) return;
+    // Update visible placement immediately and then persist it. No animation,
+    // no delayed re-measurement and no side effects inside a React state updater.
+    setPlacement(next);
+    storePlacement(next);
   };
 
   // Center on the current edge: horizontally for top/bottom (already anchored
