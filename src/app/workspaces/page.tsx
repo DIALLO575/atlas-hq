@@ -1,18 +1,46 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { EmptyPanel, PageHeading } from "@/components/page-elements";
-import { createWorkspaceFromForm, listWorkspaces } from "@/app/workspaces/actions";
+import { Icon } from "@/components/icon";
+import { listWorkspaces } from "@/app/workspaces/actions";
+import { WorkspacesDashboard } from "@/components/workspaces-dashboard";
 
-export default async function WorkspacesPage() {
-  const result = await listWorkspaces();
-  return <AppShell><main className="main-content" id="main-content"><PageHeading eyebrow="ESPACE DE TRAVAIL" title="Workspaces" description="Vos espaces sont filtrés côté serveur selon votre appartenance vérifiée."/>
-    {result.status === "ready" && <section aria-labelledby="create-workspace-title">
-      <h2 id="create-workspace-title">Créer un workspace</h2>
-      <form action={createWorkspaceFromForm}>
-        <label htmlFor="new-workspace-name">Nom du workspace</label>
-        <input id="new-workspace-name" name="name" required minLength={1} maxLength={120} placeholder="ATLAS FORGE"/>
-        <button type="submit">Créer le workspace</button>
-      </form>
-    </section>}
-    {result.status === "ready" && result.workspaces.length > 0 ? <section className="spaces-grid" aria-label="Vos workspaces">{result.workspaces.map((workspace) => <article className="space-card" key={workspace.id}><h2>{workspace.name}</h2><p>Rôle : {workspace.role}</p></article>)}</section> : <EmptyPanel title={result.status === "ready" ? "Aucun workspace attribué" : "Workspaces indisponibles"}>{result.status === "ready" ? "Un workspace apparaîtra ici après votre ajout par un administrateur." : result.message}</EmptyPanel>}
-  </main></AppShell>;
+export const dynamic = "force-dynamic";
+
+export default async function WorkspacesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ createError?: string }>;
+}) {
+  const [result, params] = await Promise.all([listWorkspaces(), searchParams]);
+  return (
+    <AppShell>
+      <main className="main-content atlas-workspaces-page" id="main-content">
+        <header className="atlas-workspaces-hero">
+          <div className="atlas-workspaces-hero-copy">
+            <p className="atlas-overline">ORGANISATION ATLAS</p>
+            <h1>Vos espaces de travail <span aria-hidden="true">✦</span></h1>
+            <p>Retrouvez vos équipes et vos projets dans des espaces séparés, avec des accès adaptés à chaque membre.</p>
+          </div>
+          {result.status === "ready" && (
+            <a href="#create-workspace" className="atlas-workspaces-primary">
+              <Icon name="layers" /> Créer un workspace <Icon name="arrow-right" />
+            </a>
+          )}
+        </header>
+
+        {result.status === "ready" ? (
+          <WorkspacesDashboard workspaces={result.workspaces} createError={params.createError === "1"} />
+        ) : (
+          <section className="atlas-workspaces-error" role="alert">
+            <span className="atlas-workspaces-error-icon"><Icon name="layers" /></span>
+            <div>
+              <h2>Impossible d’afficher vos workspaces</h2>
+              <p>{result.message}</p>
+              <Link href="/workspaces">Réessayer <Icon name="arrow-right" /></Link>
+            </div>
+          </section>
+        )}
+      </main>
+    </AppShell>
+  );
 }
