@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/icon";
 import { BrandLogo } from "@/components/brand-logo";
@@ -77,17 +76,7 @@ export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifie
         <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon"><Icon name="apps" /></span><div><strong>{atlasApps.length}</strong><span>Apps à découvrir</span><small>Catalogue Atlas</small></div></div>
         <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon is-lilac"><Icon name="layers" /></span><div><strong>{appCategories.length - 1}</strong><span>Catégories</span><small>Outils pour vos équipes</small></div></div>
         <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon is-indigo"><Icon name="spark" /></span><div><strong>{recommendedApps.length}</strong><span>Recommandées</span><small>À explorer en priorité</small></div></div>
-        <div className="atlas-apps-stat"><span className="atlas-apps-stat-icon is-rose"><Icon name="link" /></span><div><strong className="atlas-apps-stat-word">{hasVerifiedGitHub ? "GitHub" : "À venir"}</strong><span>Connexions actives</span><small>{hasVerifiedGitHub ? "Installation vérifiée" : "Intégrations en préparation"}</small></div></div>
       </section>
-
-      <section className="atlas-apps-connected-banner" aria-label="État des connexions">
-        <span className="atlas-apps-connected-symbol"><Icon name="link" /></span>
-        <div><strong>{hasVerifiedGitHub ? "GitHub est autorisé dans votre espace" : "Vos connexions, bientôt au même endroit"}</strong>
-          <p>{hasVerifiedGitHub ? "Consultez les dépôts autorisés dans votre Workspace." : "Le catalogue est disponible. La connexion GitHub est en cours d’activation ; les autres connecteurs arrivent ensuite."}</p></div>
-        <span className="atlas-apps-soon">{hasVerifiedGitHub ? "GitHub vérifié" : "Aucune connexion suivie"}</span>
-      </section>
-
-      {githubSlot}
 
       <div className="atlas-apps-toolbar" id="apps-catalog">
         <div className="atlas-apps-filters" role="group" aria-label="Filtrer les applications">
@@ -105,6 +94,22 @@ export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifie
           {query && <button aria-label="Effacer la recherche" type="button" onClick={() => setQuery("")}><Icon name="close" /></button>}
         </div>
       </div>
+
+      {selected && (
+        <section className="atlas-apps-inline-detail" aria-labelledby="atlas-app-detail-heading">
+          <span className="atlas-apps-inline-logo"><BrandLogo slug={selected.slug} size={33} /></span>
+          <div className="atlas-apps-inline-copy">
+            <div className="atlas-apps-inline-title"><h2 id="atlas-app-detail-heading">{selected.name}</h2><span>{selected.category}</span></div>
+            <p>{selected.useCase} <strong>Connexion à venir.</strong> Aucun compte n’est connecté depuis le catalogue.</p>
+          </div>
+          <div className="atlas-apps-inline-buttons">
+            <button type="button" className="atlas-apps-inline-favorite" onClick={() => toggleFavorite(selected.slug)}>
+              <Icon name="pin" /> {favorites.includes(selected.slug) ? "Retirer des favoris" : "Ajouter aux favoris"}
+            </button>
+            <button type="button" className="atlas-apps-inline-close" onClick={() => setSelected(null)} aria-label="Fermer la fiche d’application"><Icon name="close" /></button>
+          </div>
+        </section>
+      )}
 
       <div className="atlas-apps-content-grid">
         <div className="atlas-apps-main-column">
@@ -179,39 +184,10 @@ export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifie
           </section>
         </div>
 
-        <aside className="atlas-apps-sidebar" aria-label="Actions et informations">
-          <section className="atlas-apps-side-panel">
-            <h2><span className="atlas-apps-side-spark"><Icon name="spark" /></span> Actions rapides</h2>
-            <Link href="#apps-catalog" className="atlas-apps-action-row"><span className="atlas-action-icon"><Icon name="apps" /></span><span><strong>Explorer les intégrations</strong><small>Parcourir les outils disponibles</small></span><Icon name="arrow-right" /></Link>
-            <Link href="/agents" className="atlas-apps-action-row"><span className="atlas-action-icon"><Icon name="bot" /></span><span><strong>Voir mes agents</strong><small>Préparer leurs futurs outils</small></span><Icon name="arrow-right" /></Link>
-            <Link href="/missions" className="atlas-apps-action-row"><span className="atlas-action-icon"><Icon name="activity" /></span><span><strong>Mes missions</strong><small>Retrouver le travail en cours</small></span><Icon name="arrow-right" /></Link>
-          </section>
 
-          {selected && (
-            <section className="atlas-apps-side-panel atlas-apps-inspection" aria-labelledby="atlas-app-detail-heading">
-              <div className="atlas-apps-inspection-header">
-                <span className="atlas-app-reco-logo"><BrandLogo slug={selected.slug} size={34} /></span>
-                <button type="button" onClick={() => setSelected(null)} aria-label="Fermer la fiche d'application"><Icon name="close" /></button>
-              </div>
-              <h2 id="atlas-app-detail-heading">{selected.name}</h2>
-              <span className="atlas-apps-detail-category">{selected.category}</span>
-              <p>{selected.useCase}</p>
-              <div className="atlas-apps-detail-notice"><Icon name="link" /> {selected.slug === "github" ? "Utilisez le panneau GitHub pour autoriser vos dépôts. Aucune connexion n’est simulée." : "Connexion à venir : aucun accès à votre compte n’est demandé."}</div>
-              <button className="atlas-apps-detail-favorite" type="button" onClick={() => toggleFavorite(selected.slug)}>
-                <Icon name="pin" /> {favorites.includes(selected.slug) ? "Retirer des favoris" : "Ajouter à mes favoris"}
-              </button>
-            </section>
-          )}
-
-          <section className="atlas-apps-side-panel atlas-apps-attention">
-            <div className="atlas-apps-attention-heading"><h2><Icon name="inbox" /> Besoin de vous</h2><span>À venir</span></div>
-            <div className="atlas-apps-attention-empty"><span><Icon name="inbox" /></span><strong>Aucune demande affichée</strong>
-              <p>Les validations et demandes d’accès apparaîtront ici lorsque les intégrations seront actives.</p>
-              <Link href="/inbox">Voir l’Inbox <Icon name="arrow-right" /></Link></div>
-          </section>
-          <div className="atlas-apps-disclaimer">Les logos et marques appartiennent à leurs propriétaires. L’affichage dans le catalogue ne signifie pas qu’un connecteur est opérationnel.</div>
-        </aside>
       </div>
+      {githubSlot}
+      <p className="atlas-apps-footer-note">Le catalogue est ouvert à tous. GitHub peut être connecté selon votre espace ; les autres intégrations arrivent progressivement.</p>
     </>
   );
 }

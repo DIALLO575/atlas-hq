@@ -36,7 +36,7 @@ export default async function AppsPage({ searchParams }: { searchParams: Promise
           <div>
             <p className="atlas-overline">MES APPLICATIONS</p>
             <h1>Vos applications, au même endroit <span aria-hidden="true">✦</span></h1>
-            <p>Reliez bientôt vos outils, vos agents IA et vos missions dans un seul espace. En attendant, explorez les intégrations.</p>
+            <p>Explorez les outils qui pourront accompagner vos agents IA et vos missions.</p>
           </div>
           <a className="atlas-apps-explore-cta" href="#apps-catalog"><Icon name="apps" /> Explorer les apps <Icon name="arrow-right" /></a>
         </header>
