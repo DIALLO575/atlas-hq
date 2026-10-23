@@ -1,0 +1,8 @@
+{
+  "name": "@atlas-hq/connector-github-contract",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./webhook-contract": "./src/webhook-contract.mjs"
+  }
+}
