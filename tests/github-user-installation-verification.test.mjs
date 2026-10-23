@@ -90,18 +90,18 @@ test("invalid, missing and duplicated repository IDs are refused", async () => {
   }
 });
 
-test("off-origin pagination is not followed and incomplete lists fail closed", async () => {
+test("invalid pagination is not followed and incomplete lists fail closed", async () => {
   let calls = 0;
   await assert.rejects(verifyPersonalInstallation({
     userToken: "temporary", appId: 123, installationId: 77,
     request: async (url) => {
       calls++;
       if (url.endsWith("/user")) return ok(owner);
-      if (url.includes("/user/installations?")) return ok({ total_count: 1, installations: [installation] },
+      if (url.includes("/user/installations?")) return ok({ total_count: 2, installations: [installation] },
         { link: '<https://evil.test/token>; rel="next"' });
       if (url.includes("/user/installations/77/repositories")) return ok(selected);
       throw new Error("unexpected URL");
     },
   }), GitHubAuthorizationError);
-  assert.equal(calls, 3);
+  assert.equal(calls, 2);
 });
