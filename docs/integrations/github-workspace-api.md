@@ -126,3 +126,24 @@ ingress, background revocation/synchronization, MCP or MausBot in this change.
 The proof is only as fresh as its latest successful authorization; the
 explorer enforces GitHub access again at request time. Provider and RLS
 integration testing must precede production enablement.
+
+
+## Runtime activation evidence — 2026-10-23
+
+The two SQL migrations passed a `BEGIN ... ROLLBACK` dry run against the
+connected official Supabase project `ovzmmsxqfifneqqgnrzd`, then were applied
+using the Supabase migration API. Recorded versions:
+- `20261023210556` — `atlas_github_installations_rls`
+- `20261023210600` — `atlas_github_connect_attempts`
+
+Post-application verification: all three tables exist and are empty (zero
+installation/repository/OAuth-attempt records), `authenticated` cannot insert
+into installations, and cannot read OAuth attempts. Supabase security advisors
+reported the intentional `rls_enabled_no_policy` informational finding for
+the server-only OAuth attempt table, plus an unrelated leaked-password-protection
+Auth warning. Existing project data was not modified by these migrations.
+
+**The historical text above saying the migrations are unapplied described the
+prior PR state and is superseded by this dated section.** GitHub App registration,
+OAuth credentials, protected Vercel environment configuration, webhook/revocation,
+and a live personal account test are still outstanding. **No connection is active.**
