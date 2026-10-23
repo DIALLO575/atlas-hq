@@ -100,9 +100,11 @@ test("top and bottom docks snap to the horizontal center without remounting", as
   assert.match(hook, /candidate\.side !== "bottom"/);
   assert.match(hook, /const placeDock = \(side: Side\)/);
   assert.match(hook, /const centerDock = \(\)/);
-  assert.match(hook, /if \(placement\.side === "top" \|\| placement\.side === "bottom"\) return \{\}/);
-  assert.match(shell, /onClick=\{\(\) => placeDock\("top"\)\}/);
-  assert.match(shell, /onClick=\{\(\) => placeDock\("bottom"\)\}/);
+  assert.match(hook, /if \(placement\.side === "top"\)/);
+  assert.match(hook, /left: "50%"/);
+  assert.match(hook, /bottom: 22/);
+  assert.match(shell, /placeDock\("top"\); setMoveControlsOpen\(false\)/);
+  assert.match(shell, /placeDock\("bottom"\); setMoveControlsOpen\(false\)/);
   assert.match(shell, /onClick=\{centerDock\}/);
   assert.match(shell, /aria-pressed=\{dockSide === "top"\}/);
   assert.match(css, /data-dock-side="top"/);
@@ -113,4 +115,24 @@ test("top and bottom docks snap to the horizontal center without remounting", as
   assert.match(css, /padding-top: 177px/);
   assert.match(css, /padding-bottom: 104px/);
   assert.match(css, /@media \(min-width: 761px\)/);
+});
+
+
+test("the dock's chosen edge uses explicit, centered fixed positions, independent of layout measurement", async () => {
+  const [hook, shell, styles] = await Promise.all([
+    read("../src/components/use-floating-dock.ts"),
+    read("../src/components/app-shell.tsx"),
+    read("../src/app/dock-studio.css"),
+  ]);
+  assert.match(shell, /data-dock-position=\{dockSide\}/);
+  assert.match(shell, /role="status" aria-live="polite"/);
+  assert.match(hook, /if \(placement\.side === "top"\)/);
+  assert.match(hook, /top: 100, bottom: "auto", transform: "translateX\(-50%\)"/);
+  assert.match(hook, /if \(placement\.side === "bottom"\)/);
+  assert.match(hook, /top: "auto", bottom: 22, transform: "translateX\(-50%\)"/);
+  assert.match(hook, /setPlacement\(next\);\s*storePlacement\(next\);/);
+  assert.match(styles, /data-dock-position="top"/);
+  assert.match(styles, /data-dock-position="bottom"/);
+  assert.match(styles, /justify-content: center/);
+  assert.match(styles, /max-width: calc\(100vw - 48px\)/);
 });

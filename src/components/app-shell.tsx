@@ -135,7 +135,11 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
         </div>
       </header>
 
-      <aside ref={dockRef} style={dockStyle} className="atlas-dock atlas-smart-dock" aria-label="Navigation principale">
+      <aside ref={dockRef} style={dockStyle} data-dock-position={dockSide}
+        className="atlas-dock atlas-smart-dock" aria-label="Navigation principale">
+        <span className="sr-only" role="status" aria-live="polite">
+          Dock {dockSide === "top" ? "en haut, centré" : dockSide === "bottom" ? "en bas, centré" : dockSide === "left" ? "à gauche" : "à droite"}
+        </span>
         <div className="atlas-dock-title">
           <button className="atlas-dock-grip" type="button"
             title="Déplacer le menu · Cliquer pour afficher les flèches"
@@ -217,9 +221,9 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
               disabled={!canMoveDown} onClick={() => moveDock("down")}><Icon name="arrow-down" /></button>
           </div>
           <div className="atlas-dock-edge-choices" role="group" aria-label="Placer le dock sur un bord">
-            <button type="button" onClick={() => placeDock("top")} aria-pressed={dockSide === "top"}
+            <button type="button" onClick={() => { placeDock("top"); setMoveControlsOpen(false); }} aria-pressed={dockSide === "top"}
               className={dockSide === "top" ? "is-active" : ""}><Icon name="arrow-up" /> En haut</button>
-            <button type="button" onClick={() => placeDock("bottom")} aria-pressed={dockSide === "bottom"}
+            <button type="button" onClick={() => { placeDock("bottom"); setMoveControlsOpen(false); }} aria-pressed={dockSide === "bottom"}
               className={dockSide === "bottom" ? "is-active" : ""}><Icon name="arrow-down" /> En bas</button>
           </div>
           <p className="atlas-dock-move-footnote">Haut / bas : 48 px · centrage automatique</p>
