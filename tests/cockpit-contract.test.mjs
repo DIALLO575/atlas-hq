@@ -18,6 +18,7 @@ const [shell, apps, agents, search, loading, errors, demoData, workspaces, missi
   read("../src/app/chief/page.tsx"),
   read("../src/app/settings/page.tsx"),
 ]);
+const workspacesDashboard = await read("../src/components/workspaces-dashboard.tsx");
 
 test("cockpit navigation exposes six primary destinations and transversal access", () => {
   for (const route of ["/", "/workspaces", "/missions", "/agents", "/apps", "/inbox"]) assert.ok(shell.includes(`href: "${route}"`));
@@ -36,7 +37,8 @@ test("new sections and transversal pages are honest empty states", () => {
     assert.match(page, /<EmptyPanel/);
   }
   assert.match(workspaces, /listWorkspaces\(\)/);
-  assert.match(workspaces, /workspace\.name/);
+  assert.match(workspaces, /<WorkspacesDashboard/);
+  assert.match(workspacesDashboard, /workspace\.name/);
   assert.match(missions, /Aucune mission/);
   assert.match(inbox, /Votre Inbox est vide/);
   assert.match(related, /Aucun lien n’est déduit ou inventé/);
