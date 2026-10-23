@@ -87,3 +87,30 @@ test("clicking Déplacer opens an accessible, non-reflowing four-direction contr
   assert.match(icon, /"arrow-up"/);
   assert.match(icon, /"arrow-down"/);
 });
+
+
+test("top and bottom docks snap to the horizontal center without remounting", async () => {
+  const [hook, shell, css] = await Promise.all([
+    read("../src/components/use-floating-dock.ts"),
+    read("../src/components/app-shell.tsx"),
+    read("../src/app/dock-studio.css"),
+  ]);
+  assert.match(hook, /type Side = "left" \| "right" \| "top" \| "bottom"/);
+  assert.match(hook, /candidate\.side !== "top"/);
+  assert.match(hook, /candidate\.side !== "bottom"/);
+  assert.match(hook, /const placeDock = \(side: Side\)/);
+  assert.match(hook, /const centerDock = \(\)/);
+  assert.match(hook, /if \(placement\.side === "top" \|\| placement\.side === "bottom"\) return \{\}/);
+  assert.match(shell, /onClick=\{\(\) => placeDock\("top"\)\}/);
+  assert.match(shell, /onClick=\{\(\) => placeDock\("bottom"\)\}/);
+  assert.match(shell, /onClick=\{centerDock\}/);
+  assert.match(shell, /aria-pressed=\{dockSide === "top"\}/);
+  assert.match(css, /data-dock-side="top"/);
+  assert.match(css, /data-dock-side="bottom"/);
+  assert.match(css, /left: 50%/);
+  assert.match(css, /transform: translateX\(-50%\)/);
+  assert.match(css, /flex-direction: row/);
+  assert.match(css, /padding-top: 177px/);
+  assert.match(css, /padding-bottom: 104px/);
+  assert.match(css, /@media \(min-width: 761px\)/);
+});
