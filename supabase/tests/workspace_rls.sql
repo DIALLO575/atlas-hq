@@ -18,6 +18,31 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a1000000-0000-4000-8000-000000000001', true);
 select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
 
+-- Regression: the first workspace INSERT ... RETURNING id must succeed even
+-- before an owner membership is visible to the SELECT/RETURNING RLS check.
+-- The trigger must then create the exact matching owner membership.
+do $
+declare
+  created_id uuid;
+begin
+  insert into public.workspaces (name, created_by)
+  values ('User A fresh workspace', auth.uid())
+  returning id into created_id;
+
+  if created_id is null or not exists (
+    select 1 from public.workspace_members
+    where workspace_id = created_id and user_id = auth.uid() and role = 'owner'
+  ) then
+    raise exception 'New workspace creation or owner assignment failed';
+  end if;
+
+  delete from public.workspaces where id = created_id;
+  if exists (select 1 from public.workspace_members where workspace_id = created_id) then
+    raise exception 'Deleted workspace left orphan owner membership';
+  end if;
+end;
+$;
+
 do $$
 declare
   visible_count integer;
