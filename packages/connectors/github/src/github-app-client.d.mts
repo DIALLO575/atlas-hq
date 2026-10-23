@@ -25,7 +25,7 @@ export type GitHubPullSummary = {
 };
 export type GitHubPullDetail = {
   resource: {
-    provider: "github"; installationRepositoryId: number; owner: string; repository: string;
+    provider: "github"; installationId: number; repositoryId: number; owner: string; repository: string;
     pullRequestNumber: number; headSha: string;
   };
   title: string; body: string | null; state: string; draft: boolean; merged: boolean;
@@ -34,7 +34,7 @@ export type GitHubPullDetail = {
   filesTruncated: boolean; htmlUrl: string;
 };
 export function createGitHubReadClient(input: {
-  token: string; repositoryIds: number[]; request?: GitHubFetch;
+  token: string; installationId: number; repositoryIds: number[]; request?: GitHubFetch;
 }): {
   listRepositories(): Promise<{ repositories: GitHubRepository[]; truncated: boolean }>;
   listPullRequests(repositoryId: number): Promise<{ repository: GitHubRepository; pullRequests: GitHubPullSummary[]; truncated: boolean }>;
