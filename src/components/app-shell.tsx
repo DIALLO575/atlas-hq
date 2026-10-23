@@ -48,7 +48,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   const {
     dockRef, side: dockSide, dragging: dockDragging, dockStyle,
     handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel,
-    handleKeyboardMove, resetPosition, moveDock, moveControlsStyle,
+    handleKeyboardMove, resetPosition, moveDock, placeDock, centerDock, moveControlsStyle,
     canMoveUp, canMoveDown, consumeDragClick,
   } = useFloatingDock();
 
@@ -160,7 +160,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
             <span className="atlas-dock-title-text">NAVIGATION</span>
           </button>
           <span className="sr-only" id="atlas-dock-help">
-            Cliquez pour afficher quatre flèches de déplacement. Glissez pour déplacer librement ; utilisez aussi les flèches du clavier.
+            Cliquez pour ouvrir les flèches et les positions gauche, droite, haut et bas. Utilisez le bouton central pour recentrer, ou glissez pour déplacer librement.
           </span>
           <button className="atlas-expand-toggle" type="button" onClick={toggleExpanded}
             aria-label={expanded ? "Réduire le menu" : "Agrandir le menu"}
@@ -209,14 +209,21 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
               disabled={!canMoveUp} onClick={() => moveDock("up")}><Icon name="arrow-up" /></button>
             <button type="button" className="atlas-dock-move-left" aria-label="Envoyer le dock à gauche"
               disabled={dockSide === "left"} onClick={() => moveDock("left")}><Icon name="arrow-left" /></button>
-            <button type="button" className="atlas-dock-move-reset" aria-label="Recentrer le dock"
-              title="Recentrer" onClick={resetPosition}><Icon name="rotate-ccw" /></button>
+            <button type="button" className="atlas-dock-move-reset" aria-label="Centrer le dock sur ce bord"
+              title="Centrer sur ce bord" onClick={centerDock}><Icon name="rotate-ccw" /></button>
             <button type="button" className="atlas-dock-move-right" aria-label="Envoyer le dock à droite"
               disabled={dockSide === "right"} onClick={() => moveDock("right")}><Icon name="arrow-right" /></button>
             <button type="button" className="atlas-dock-move-down" aria-label="Descendre le dock"
               disabled={!canMoveDown} onClick={() => moveDock("down")}><Icon name="arrow-down" /></button>
           </div>
-          <p className="atlas-dock-move-footnote">Haut / bas : 48 px par appui</p>
+          <div className="atlas-dock-edge-choices" role="group" aria-label="Placer le dock sur un bord">
+            <button type="button" onClick={() => placeDock("top")} aria-pressed={dockSide === "top"}
+              className={dockSide === "top" ? "is-active" : ""}><Icon name="arrow-up" /> En haut</button>
+            <button type="button" onClick={() => placeDock("bottom")} aria-pressed={dockSide === "bottom"}
+              className={dockSide === "bottom" ? "is-active" : ""}><Icon name="arrow-down" /> En bas</button>
+          </div>
+          <p className="atlas-dock-move-footnote">Haut / bas : 48 px · centrage automatique</p>
+          <button type="button" className="atlas-dock-return" onClick={resetPosition}>Position initiale</button>
         </section>
       )}
       {dockDragging && <div className="atlas-dock-dropguides" aria-hidden="true">

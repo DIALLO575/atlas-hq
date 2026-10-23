@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 
-type Side = "left" | "right";
+type Side = "left" | "right" | "top" | "bottom";
 type Placement = { side: Side; vertical: number };
 type Geometry = { width: number; height: number; viewportWidth: number; viewportHeight: number };
 type Drag = { x: number; y: number };
-type DragStart = { pointerId: number; offsetX: number; offsetY: number };
+type DragStart = { pointerId: number; offsetX: number; offsetY: number; startX: number; startY: number };
 
 const STORAGE_KEY = "atlas:dock-position-v1";
 const EDGE_GAP = 24;
@@ -14,7 +14,7 @@ const TOP_GAP = 96;
 const BOTTOM_GAP = 22;
 const ARROW_STEP_PX = 48;
 const MOVE_PANEL_WIDTH = 162;
-const MOVE_PANEL_HEIGHT = 178;
+const MOVE_PANEL_HEIGHT = 256;
 const INITIAL_PLACEMENT: Placement = { side: "left", vertical: 0.5 };
 // Browser-only session cache prevents the dock from jumping when navigating routes.
 let clientPlacement: Placement | null = null;
@@ -38,7 +38,7 @@ function readPlacement(): Placement | null {
     const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null") as unknown;
     if (!saved || typeof saved !== "object") return null;
     const candidate = saved as Partial<Placement>;
-    if ((candidate.side !== "left" && candidate.side !== "right") ||
+    if ((candidate.side !== "left" && candidate.side !== "right" && candidate.side !== "top" && candidate.side !== "bottom") ||
         typeof candidate.vertical !== "number" || !Number.isFinite(candidate.vertical)) return null;
     return { side: candidate.side, vertical: clamp(candidate.vertical, 0, 1) };
   } catch {
@@ -114,6 +114,9 @@ export function useFloatingDock() {
 
   const projectedStyle: CSSProperties = (() => {
     if (dragPoint) return { position: "fixed", left: dragPoint.x, top: dragPoint.y, right: "auto", transform: "none" };
+    // Horizontal docks have a stable CSS center anchor; measuring their new
+    // width must never move their horizontal position.
+    if (placement.side === "top" || placement.side === "bottom") return {};
     if (!geometry) return {};
     const left = placement.side === "left" ? EDGE_GAP :
       Math.max(EDGE_GAP, geometry.viewportWidth - geometry.width - EDGE_GAP);
@@ -139,9 +142,7 @@ export function useFloatingDock() {
       y: clamp(event.clientY - start.offsetY, min, max),
     };
     // The first few pixels are a click/tap, not a drag.
-    if (!dragPointRef.current &&
-        Math.hypot(event.clientX - (start.offsetX + (dockRef.current?.getBoundingClientRect().left ?? point.x)),
-          event.clientY - (start.offsetY + (dockRef.current?.getBoundingClientRect().top ?? point.y))) < 7) return;
+    if (!dragPointRef.current && Math.hypot(event.clientX - start.startX, event.clientY - start.startY) < 7) return;
     draggedClickRef.current = true;
     dragPointRef.current = point;
     setDragPoint(point);
@@ -158,9 +159,22 @@ export function useFloatingDock() {
     if (!point || event.type === "pointercancel") return;
     const { width, height } = getDockSize();
     const { min, max } = topBounds(window.innerHeight, height);
+    const horizontalSide: Side = point.x + width / 2 >= window.innerWidth / 2 ? "right" : "left";
+    const centerY = point.y + height / 2;
+    const distanceTop = Math.abs(centerY - TOP_GAP);
+    const distanceBottom = Math.abs(window.innerHeight - BOTTOM_GAP - centerY);
+    const distanceLeft = point.x;
+    const distanceRight = window.innerWidth - point.x - width;
+    const nearestHorizontalEdge = Math.min(distanceTop, distanceBottom);
+    const nearestVerticalEdge = Math.min(distanceLeft, distanceRight);
+    const side: Side = nearestHorizontalEdge < nearestVerticalEdge
+      ? distanceTop < distanceBottom ? "top" : "bottom"
+      : horizontalSide;
     const next: Placement = {
-      side: point.x + width / 2 >= window.innerWidth / 2 ? "right" : "left",
-      vertical: max > min ? clamp((point.y - min) / (max - min), 0, 1) : 0.5,
+      side,
+      vertical: side === "top" || side === "bottom"
+        ? 0.5
+        : max > min ? clamp((point.y - min) / (max - min), 0, 1) : 0.5,
     };
     setPlacement(next);
     storePlacement(next);
@@ -176,9 +190,10 @@ export function useFloatingDock() {
       pointerId: event.pointerId,
       offsetX: event.clientX - rect.left,
       offsetY: event.clientY - rect.top,
+      startX: event.clientX,
+      startY: event.clientY,
     };
-    const point = { x: rect.left, y: rect.top };
-    dragPointRef.current = point;
+    // A tap never counts as a drag, which prevents position jumps on clicks.
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
@@ -200,10 +215,30 @@ export function useFloatingDock() {
     setPlacement((current) => {
       const next: Placement =
         direction === "left" || direction === "right"
-          ? { ...current, side: direction }
-          : { ...current, vertical: clamp(current.vertical + (direction === "up" ? -1 : 1) *
+          ? { side: direction, vertical: current.side === "top" || current.side === "bottom" ? 0.5 : current.vertical }
+          : { ...current, vertical: current.side === "top" || current.side === "bottom"
+              ? 0.5
+              : clamp(current.vertical + (direction === "up" ? -1 : 1) *
               (distance > 0 ? ARROW_STEP_PX / distance : 0), 0, 1) };
       if (next.side !== current.side || next.vertical !== current.vertical) storePlacement(next);
+      return next;
+    });
+  };
+
+  const placeDock = (side: Side) => {
+    setPlacement((current) => {
+      const next: Placement = { side, vertical: side === "top" || side === "bottom" ? 0.5 : current.vertical };
+      if (next.side !== current.side || next.vertical !== current.vertical) storePlacement(next);
+      return next;
+    });
+  };
+
+  // Center on the current edge: horizontally for top/bottom (already anchored
+  // at 50%), vertically for the left/right vertical dock.
+  const centerDock = () => {
+    setPlacement((current) => {
+      const next: Placement = { ...current, vertical: 0.5 };
+      if (next.vertical !== current.vertical) storePlacement(next);
       return next;
     });
   };
@@ -215,6 +250,15 @@ export function useFloatingDock() {
     const h = geometry?.height ?? 460;
     const vw = geometry?.viewportWidth ?? 1200;
     const vh = geometry?.viewportHeight ?? 800;
+    if (placement.side === "top" || placement.side === "bottom") {
+      return {
+        position: "fixed",
+        left: Math.max(12, (vw - MOVE_PANEL_WIDTH) / 2),
+        top: placement.side === "top"
+          ? Math.min(182, Math.max(76, vh - MOVE_PANEL_HEIGHT - 12))
+          : Math.max(76, vh - MOVE_PANEL_HEIGHT - 106),
+      };
+    }
     const left = placement.side === "left" ? EDGE_GAP : Math.max(EDGE_GAP, vw - width - EDGE_GAP);
     const popupLeft = placement.side === "left" ? left + width + 12 : left - MOVE_PANEL_WIDTH - 12;
     return {
@@ -228,18 +272,23 @@ export function useFloatingDock() {
   const bounds = geometry
     ? topBounds(geometry.viewportHeight, geometry.height)
     : { min: TOP_GAP, max: TOP_GAP + 1 };
-  const canMoveUp = placement.vertical > 0.0001 && bounds.max > bounds.min;
-  const canMoveDown = placement.vertical < 0.9999 && bounds.max > bounds.min;
+  const isVertical = placement.side === "left" || placement.side === "right";
+  const canMoveUp = isVertical && placement.vertical > 0.0001 && bounds.max > bounds.min;
+  const canMoveDown = isVertical && placement.vertical < 0.9999 && bounds.max > bounds.min;
 
   const handleKeyboardMove = (event: KeyboardEvent<HTMLButtonElement>) => {
     const step = event.shiftKey ? 0.2 : 0.08;
     let next: Placement | null = null;
     if (event.key === "ArrowLeft") next = { ...placement, side: "left" };
     if (event.key === "ArrowRight") next = { ...placement, side: "right" };
-    if (event.key === "ArrowUp") next = { ...placement, vertical: clamp(placement.vertical - step, 0, 1) };
-    if (event.key === "ArrowDown") next = { ...placement, vertical: clamp(placement.vertical + step, 0, 1) };
-    if (event.key === "Home") next = { ...placement, vertical: 0 };
-    if (event.key === "End") next = { ...placement, vertical: 1 };
+    if (event.key === "ArrowUp") next = placement.side === "top" || placement.side === "bottom"
+      ? { side: "top", vertical: 0.5 }
+      : { ...placement, vertical: clamp(placement.vertical - step, 0, 1) };
+    if (event.key === "ArrowDown") next = placement.side === "top" || placement.side === "bottom"
+      ? { side: "bottom", vertical: 0.5 }
+      : { ...placement, vertical: clamp(placement.vertical + step, 0, 1) };
+    if (event.key === "Home") next = { ...placement, vertical: 0.5 };
+    if (event.key === "End") next = INITIAL_PLACEMENT;
     if (!next) return;
     event.preventDefault();
     setPlacement(next);
@@ -263,6 +312,8 @@ export function useFloatingDock() {
     handleKeyboardMove,
     resetPosition,
     moveDock,
+    placeDock,
+    centerDock,
     moveControlsStyle,
     canMoveUp,
     canMoveDown,
