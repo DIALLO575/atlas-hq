@@ -38,6 +38,6 @@ export default async function AppsPage() {
           </button>
         </article>)}
     </section>
-    <p className="section-footnote">Les autres connecteurs sont encore en préparation. GitHub ne sera indiqué comme utilisable qu'après une vérification effective de l'installation.</p>
+    <p className="section-footnote">Les autres connecteurs sont encore en préparation. GitHub ne sera indiqué comme utilisable qu&apos;après une vérification effective de l&apos;installation.</p>
   </main></AppShell>;
 }
