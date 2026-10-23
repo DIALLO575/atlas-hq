@@ -4,6 +4,7 @@ import "./globals.css";
 import "./atlas-redesign.css";
 import "./apps-redesign.css";
 import "./smart-dock.css";
+import "./dock-studio.css";
 
 export const metadata: Metadata = {
   title: "Atlas — Agents, apps et missions",

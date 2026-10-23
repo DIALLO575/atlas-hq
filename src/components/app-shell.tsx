@@ -7,6 +7,8 @@ import { Icon } from "@/components/icon";
 import { SessionControls } from "@/components/session-controls";
 import { WorkspaceSelector } from "@/components/workspace-selector";
 import { useFloatingDock } from "@/components/use-floating-dock";
+import { DockToolspace } from "@/components/dock-toolspace";
+import { dockTools, defaultPinnedTools, MAX_PINNED_TOOLS, type DockToolId } from "@/lib/dock-tools";
 
 const navItems = [
   { label: "Accueil", icon: "grid" as const, href: "/" },
@@ -31,11 +33,41 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [toolspaceOpen, setToolspaceOpen] = useState(false);
+  const [pinnedIds, setPinnedIds] = useState<readonly DockToolId[]>(defaultPinnedTools);
   const {
     dockRef, side: dockSide, dragging: dockDragging, dockStyle,
     handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel,
     handleKeyboardMove, resetPosition,
   } = useFloatingDock();
+  const pinnedTools = dockTools.filter((tool) => pinnedIds.includes(tool.id));
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const saved: unknown = JSON.parse(window.localStorage.getItem("atlas:dock-pins-v1") ?? "null");
+        if (!Array.isArray(saved)) return;
+        const safePins = saved
+          .filter((id): id is DockToolId => typeof id === "string" && dockTools.some((tool) => tool.id === id))
+          .filter((id, index, all) => all.indexOf(id) === index)
+          .slice(0, MAX_PINNED_TOOLS);
+        setPinnedIds(safePins);
+      } catch {
+        // Personalization is optional.
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  const togglePin = (id: DockToolId) => {
+    setPinnedIds((current) => {
+      const next = current.includes(id) ? current.filter((item) => item !== id) :
+        current.length < MAX_PINNED_TOOLS ? [...current, id] : current;
+      try { window.localStorage.setItem("atlas:dock-pins-v1", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
   const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "Atlas";
 
   useEffect(() => {
@@ -56,7 +88,10 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         setMenuOpen(false);
         router.push("/search");
       }
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setToolspaceOpen(false);
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -69,11 +104,18 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
       return next;
     });
   };
-  const closeMenu = () => setMenuOpen(false);
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setToolspaceOpen(false);
+  };
+  const toggleToolspace = () => {
+    setMenuOpen(false);
+    setToolspaceOpen((open) => !open);
+  };
   const linkClass = (href: string) => "atlas-dock-link" + (pathname === href ? " atlas-dock-active" : "");
 
   return (
-    <div data-dock-side={dockSide} className={"app-shell atlas-shell" + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dockDragging ? " atlas-dock-is-dragging" : "")}>
+    <div data-dock-side={dockSide} className={"app-shell atlas-shell" + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dockDragging ? " atlas-dock-is-dragging" : "") + (toolspaceOpen ? " atlas-tools-open" : "")}>
       <a className="skip-link" href="#main-content">Aller au contenu principal</a>
       <header className="atlas-topbar">
         <div className="atlas-topbar-start">
@@ -119,6 +161,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
             <Icon name={expanded ? (dockSide === "left" ? "chevron-left" : "chevron-right") : (dockSide === "left" ? "chevron-right" : "chevron-left")} />
           </button>
         </div>
+        <div className="atlas-dock-identity" aria-hidden="true"><span>A</span><i /></div>
         <nav className="atlas-dock-nav" aria-label="Sections principales">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} title={item.label} aria-label={item.label}
@@ -128,6 +171,28 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
             </Link>
           ))}
         </nav>
+        <div className="atlas-dock-separator" />
+        <div className="atlas-dock-tools-section">
+          <span className="atlas-dock-section-name">OUTILS RAPIDES</span>
+          <button type="button" className={"atlas-dock-tool-toggle" + (toolspaceOpen ? " is-open" : "")}
+            onClick={toggleToolspace}
+            aria-label={toolspaceOpen ? "Fermer l'espace d'outils" : "Ouvrir l'espace d'outils"}
+            aria-expanded={toolspaceOpen} aria-controls="atlas-dock-toolspace"
+            title="Espace d'outils et agents">
+            <Icon name="spark" />
+            <span className="atlas-dock-label">Outils & agents</span>
+            <span className="atlas-dock-tool-toggle-plus" aria-hidden="true">{toolspaceOpen ? "−" : "+"}</span>
+          </button>
+          <nav className="atlas-dock-nav atlas-dock-pins" aria-label="Outils épinglés">
+            {pinnedTools.map((tool) => (
+              <Link key={tool.id} href={tool.href} onClick={closeMenu} title={tool.name} aria-label={"Outil rapide : " + tool.name}
+                className={"atlas-dock-link atlas-dock-pin-link" + (pathname === tool.href ? " atlas-dock-active" : "")}>
+                <Icon name={tool.icon} />
+                <span className="atlas-dock-label">{tool.name}</span>
+              </Link>
+            ))}
+          </nav>
+        </div>
         <div className="atlas-dock-separator" />
         <nav className="atlas-dock-nav atlas-dock-utilities" aria-label="Outils transversaux">
           {utilityItems.map((item) => (
@@ -145,6 +210,15 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           </button>
         </div>
       </aside>
+      {toolspaceOpen && !dockDragging && (
+        <DockToolspace
+          onClose={() => setToolspaceOpen(false)}
+          onNavigate={closeMenu}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+        />
+      )}
+      {toolspaceOpen && <button type="button" className="atlas-toolspace-mobile-scrim" onClick={() => setToolspaceOpen(false)} aria-label="Fermer l'espace d'outils" />}
       {dockDragging && <div className="atlas-dock-dropguides" aria-hidden="true">
         <span className="atlas-dock-dropguide atlas-dock-dropguide-left">Gauche</span>
         <span className="atlas-dock-dropguide atlas-dock-dropguide-right">Droite</span>
@@ -158,9 +232,9 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
             <Icon name={item.icon} /><span>{item.label}</span>
           </Link>
         ))}
-        <button className={"mobile-nav-item" + (menuOpen ? " mobile-nav-active" : "")} type="button"
-          aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
-          <Icon name={menuOpen ? "close" : "menu"} /><span>Menu</span>
+        <button className={"mobile-nav-item" + (toolspaceOpen ? " mobile-nav-active" : "")} type="button"
+          aria-expanded={toolspaceOpen} aria-controls="atlas-dock-toolspace" onClick={toggleToolspace}>
+          <Icon name="spark" /><span>Outils</span>
         </button>
       </nav>
     </div>

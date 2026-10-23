@@ -1,8 +1,9 @@
 import type { SVGProps } from "react";
 
-type IconName = "grip" | "chevron-left" | "chevron-right" | "rotate-ccw" | "grid" | "layers" | "activity" | "settings" | "search" | "bot" | "apps" | "inbox" | "link" | "spark" | "arrow-up-right" | "arrow-right" | "menu" | "close";
+type IconName = "pin" | "grip" | "chevron-left" | "chevron-right" | "rotate-ccw" | "grid" | "layers" | "activity" | "settings" | "search" | "bot" | "apps" | "inbox" | "link" | "spark" | "arrow-up-right" | "arrow-right" | "menu" | "close";
 
 const paths: Record<IconName, React.ReactNode> = {
+  pin: <><path d="m16 3 5 5-3 1-3 5-2 2-4-4 2-2 5-3 0-4Z"/><path d="m9 15-6 6"/></>,
   grip: <><circle cx="8" cy="5" r="1"/><circle cx="16" cy="5" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="19" r="1"/><circle cx="16" cy="19" r="1"/></>,
   "chevron-left": <path d="m14 6-6 6 6 6"/>,
   "chevron-right": <path d="m10 6 6 6-6 6"/>,
