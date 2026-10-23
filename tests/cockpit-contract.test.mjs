@@ -36,7 +36,8 @@ test("new sections and transversal pages are honest empty states", () => {
     assert.match(page, /<EmptyPanel/);
   }
   assert.match(workspaces, /listWorkspaces\(\)/);
-  assert.match(workspaces, /workspace\.name/);
+  assert.match(workspaces, /<WorkspacesDashboard/);
+  assert.match(await read("../src/components/workspaces-dashboard.tsx"), /workspace\.name/);
   assert.match(missions, /Aucune mission/);
   assert.match(inbox, /Votre Inbox est vide/);
   assert.match(related, /Aucun lien n’est déduit ou inventé/);
