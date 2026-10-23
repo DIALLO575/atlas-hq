@@ -107,15 +107,15 @@ test("a tenant claim is single-use, cannot be stolen, and is not authorized unti
   assert.equal(ledger.record(callbackFor(state, { installationId: "99" })).reason, "state-replayed");
   assert.deepEqual(ledger.listAuthorizedRepositories(tenantA), []);
 
-  const stolen = stateFor(tenantB, { nonce: Buffer.alloc(16, 9) });
-  assert.equal(ledger.record(callbackFor(stolen, { installationId: "81" })).reason, "installation-bound-to-other-tenant");
-  assert.equal(ledger.record(callbackFor(stolen, { installationId: "81" })).reason, "state-replayed");
-
   const missed = ledger.confirmOwnership({ tenantId: tenantA, installationId: 81, visibleInstallationIds: [99] });
   assert.equal(missed.reason, "installation-not-associated-with-user");
   assert.equal(missed.status, "pending-ownership-check");
-  assert.equal(ledger.confirmOwnership({ tenantId: tenantB, installationId: 81, visibleInstallationIds: [81] }).reason, "installation-not-attached");
   assert.equal(ledger.confirmOwnership({ tenantId: tenantA, installationId: 81, visibleInstallationIds: [81] }).status, "active");
+
+  const stolen = stateFor(tenantB, { nonce: Buffer.alloc(16, 9) });
+  assert.equal(ledger.record(callbackFor(stolen, { installationId: "81" })).reason, "installation-bound-to-other-tenant");
+  assert.equal(ledger.record(callbackFor(stolen, { installationId: "81" })).reason, "state-replayed");
+  assert.equal(ledger.confirmOwnership({ tenantId: tenantB, installationId: 81, visibleInstallationIds: [81] }).reason, "installation-not-attached");
 
   const incomplete = [{ body: selectedPage([repository(19)], 2), linkHeader: '<https://api.github.com/installation/repositories?page=2>; rel="next"' }];
   assert.equal(ledger.replaceAuthorizedRepositories(tenantA, 81, incomplete).reason, "repository-page-incomplete");
@@ -128,6 +128,38 @@ test("a tenant claim is single-use, cannot be stolen, and is not authorized unti
     { id: 19, name: "atlas-hq", fullName: "DIALLO575/atlas-hq", isPrivate: false, owner: { id: 7, login: "DIALLO575" } },
   ]);
   assert.deepEqual(ledger.listAuthorizedRepositories(tenantB), []);
+});
+
+test("a pending ownership check does not lock the installation or burn the other tenant nonce", () => {
+  const ledger = createInstallationLedger();
+  const attacker = "tenant-attacker";
+  const victim = "tenant-victim";
+  const attackerRecord = ledger.record(callbackFor(stateFor(attacker, { nonce: Buffer.alloc(16, 11) }), { installationId: "81" }));
+  assert.equal(attackerRecord.ok, true);
+  assert.equal(attackerRecord.status, "pending-ownership-check");
+  assert.equal(attackerRecord.installationId, 81);
+  assert.deepEqual(ledger.listAuthorizedRepositories(attacker), []);
+
+  const victimCallback = callbackFor(stateFor(victim, { nonce: Buffer.alloc(16, 12) }), { installationId: "81" });
+  const victimRecord = ledger.record(victimCallback);
+  assert.notEqual(victimRecord.reason, "installation-bound-to-other-tenant");
+  assert.equal(victimRecord.ok, true);
+  assert.notEqual(ledger.record(victimCallback).reason, "state-replayed");
+
+  const attached = ledger.confirmOwnership({ tenantId: victim, installationId: 81, visibleInstallationIds: [81] });
+  assert.deepEqual(attached, { ok: true, status: "active", tenantId: victim, installationId: 81 });
+  assert.equal(ledger.record(victimCallback).reason, "state-replayed");
+
+  const activeTheft = ledger.record(callbackFor(stateFor(attacker, { nonce: Buffer.alloc(16, 13) }), { installationId: "81" }));
+  assert.equal(activeTheft.reason, "installation-bound-to-other-tenant");
+  assert.equal(ledger.confirmOwnership({ tenantId: attacker, installationId: 81, visibleInstallationIds: [81] }).reason, "installation-not-attached");
+
+  const ready = ledger.replaceAuthorizedRepositories(victim, 81, [{ body: selectedPage([repository(19)]), linkHeader: null }]);
+  assert.equal(ready.status, "repositories-ready");
+  assert.equal(ledger.record(callbackFor(stateFor(attacker, { nonce: Buffer.alloc(16, 14) }), { installationId: "81" })).reason, "installation-bound-to-other-tenant");
+  assert.equal(ledger.confirmOwnership({ tenantId: attacker, installationId: 81, visibleInstallationIds: [81] }).reason, "installation-not-attached");
+  assert.equal(ledger.listAuthorizedRepositories(attacker).length, 0);
+  assert.equal(ledger.listAuthorizedRepositories(victim).length, 1);
 });
 
 test("an update returns to pending and a request never binds an installation id", () => {

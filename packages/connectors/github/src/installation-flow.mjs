@@ -313,7 +313,24 @@ function copyRepository(repository) {
 export function createInstallationLedger() {
   const installations = new Map();
   const usedNonces = new Set();
+  const deferredNonces = new Map();
   const requests = [];
+
+  function deferNonce(installationId, nonce) {
+    let pending = deferredNonces.get(installationId);
+    if (!pending) {
+      pending = new Set();
+      deferredNonces.set(installationId, pending);
+    }
+    pending.add(nonce);
+  }
+
+  function burnDeferredNonces(installationId) {
+    const pending = deferredNonces.get(installationId);
+    if (!pending) return;
+    for (const nonce of pending) usedNonces.add(nonce);
+    deferredNonces.delete(installationId);
+  }
 
   function record(callback) {
     if (!callback || callback.ok !== true) return { ok: false, reason: "invalid-callback" };
@@ -327,8 +344,13 @@ export function createInstallationLedger() {
     if (!Number.isSafeInteger(callback.installationId) || callback.installationId <= 0) return { ok: false, reason: "bad-installation-id" };
     const current = installations.get(callback.installationId);
     if (current && current.tenantId !== callback.tenantId) {
-      usedNonces.add(callback.nonce);
-      return { ok: false, reason: "installation-bound-to-other-tenant" };
+      if (current.status !== "pending-ownership-check") {
+        usedNonces.add(callback.nonce);
+        return { ok: false, reason: "installation-bound-to-other-tenant" };
+      }
+      // Unproven claims are movable. Do not lock the id, and do not burn this nonce until proof.
+      deferNonce(callback.installationId, callback.nonce);
+      return { ok: true, status: "pending-ownership-check", tenantId: callback.tenantId, installationId: callback.installationId, requestId: null };
     }
     usedNonces.add(callback.nonce);
     const next = {
@@ -353,9 +375,14 @@ export function createInstallationLedger() {
       visible.add(id);
     }
     const current = installations.get(installationId);
-    if (!current || current.tenantId !== tenantId) return { ok: false, reason: "installation-not-attached" };
-    if (current.status !== "pending-ownership-check") return { ok: false, reason: "ownership-not-pending", status: current.status };
+    if (!current) return { ok: false, reason: "installation-not-attached" };
+    if (current.status !== "pending-ownership-check") {
+      if (current.tenantId !== tenantId) return { ok: false, reason: "installation-not-attached" };
+      return { ok: false, reason: "ownership-not-pending", status: current.status };
+    }
     if (!visible.has(installationId)) return { ok: false, reason: "installation-not-associated-with-user", status: current.status };
+    burnDeferredNonces(installationId);
+    current.tenantId = tenantId;
     current.status = "active";
     return { ok: true, status: current.status, tenantId, installationId };
   }
