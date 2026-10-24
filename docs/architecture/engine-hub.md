@@ -56,7 +56,7 @@ ATTENTION : le runtime Atlas heberge sur Vercel doit pouvoir joindre MAUSBOT.
 exposee sur HTTPS avec appairage correct est necessaire. Ne jamais exposer un
 serveur MAUSBOT sans authentification ni attribuer l'acces Full automatiquement.
 
-## Supabase Engines — deux migrations déjà appliquées (24/10/2026)
+## Supabase Engines — trois migrations déjà appliquées (24/10/2026)
 
 - 20261024161305_atlas_engine_foundation_preconnection : 9 tables RLS
   (2 tables publiques de métadonnées : instances et runs ; 7 tables privées :
@@ -64,6 +64,8 @@ serveur MAUSBOT sans authentification ni attribuer l'acces Full automatiquement.
   reçus d'événements et audit).
 - 20261024163943_atlas_engine_outbox_envelope_v1 : colonnes NOT NULL key_id,
   version pour identifier chaque clé utilisée par l'outbox chiffrée.
+- 20261024182928_atlas_engine_approval_intent_v1 : empreinte payload SHA-256
+  sur le run et empreinte d'intention sur la demande, toutes deux immuables.
 
 Après contrôle : 0 moteur MAUSBOT, 0 run, 0 approbation et 0 message
 outbox en base. Une primitive AES-256-GCM testée localement existe mais

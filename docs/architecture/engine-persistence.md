@@ -94,3 +94,30 @@ Follow-up verification: column not-null flags are true, outbox row count
 remains zero, and neither anon nor authenticated can select from private
 outbox. The versioned SQL is exercised after foundation migration in CI.
 No MAUSBOT connection, credential, dispatch or queue insertion occurred.
+
+
+## SHA-150 — human approvals preconnection
+
+The server-only request/decide/inspect contract is in
+\`packages/engine-core/src/approval-workflow.mjs\` and documented at
+\`docs/architecture/engine-approvals.md\`. It is intentionally not
+exposed to HTTP or Supabase. The existing SQL lacks the immutable
+run payload digest and approval intent hash; real authentication,
+transactions, migration and Inbox integration remain to be delivered.
+
+
+## SHA-150: additional immutable intent binding (24 Oct 2026)
+
+Migration \`20261024182928_atlas_engine_approval_intent_v1\` has
+been applied to ATLAS Supabase and versioned in GitHub under
+\`supabase/migrations/20261024182928_atlas_engine_approval_intent_v1.sql\`.
+It creates mandatory immutable \`payload_sha256\` on engine runs and
+\`intent_digest\` on approvals, with matching SHA-256 algorithm
+(in PostgreSQL and Node) and triggers rejecting any change of
+mission/instance/primitive/payload and any approval intent replacement.
+
+Verified after apply: 0 instances, 0 runs, 0 approvals, two new triggers,
+both digest fields NOT NULL, no read grant to public/anonymous/authenticated
+for private approvals. This is a **data-integrity prerequisite**,
+not an operational approval workflow. True actor-session checking,
+private SQL transaction adapter, review UI and SHA-151 worker remain.
