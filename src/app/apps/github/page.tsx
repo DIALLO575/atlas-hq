@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function GitHubPage({
   searchParams,
 }: {
-  searchParams: Promise<{ workspaceId?: string }>;
+  searchParams: Promise<{ workspaceId?: string; github?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createSupabaseServerClient();
@@ -38,6 +38,11 @@ export default async function GitHubPage({
         <nav className="atlas-gh-crumbs" aria-label="Fil d’Ariane">
           <Link href="/apps">Mes Apps</Link><span aria-hidden="true">/</span><strong>GitHub</strong>
         </nav>
+        {params.github === "connected" ? (
+          <div role="status" className="atlas-gh-notice">GitHub autorisé. Les dépôts du workspace seront chargés ci-dessous.</div>
+        ) : params.github ? (
+          <div role="alert" className="atlas-gh-notice">Connexion GitHub non terminée : vérifiez l’installation et les autorisations.</div>
+        ) : null}
         {error ? (
           <div className="atlas-gh-notice" role="alert">Impossible de charger vos espaces. <Link href="/apps/github">Réessayer</Link></div>
         ) : (

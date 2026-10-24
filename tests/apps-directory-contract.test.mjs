@@ -31,8 +31,9 @@ test("Mes Apps is a proper working discovery interface, not fictitious integrati
     read("../src/app/apps-redesign.css"),
   ]);
   assert.match(page, /<AppsDirectory/);
-  assert.match(page, /<GitHubWorkspacePicker/);
-  assert.match(directory, /githubSlot/);
+  assert.match(page, /<AppsDirectory githubConfigured/);
+  assert.doesNotMatch(page, /<GitHubWorkspacePicker|force-dynamic|supabase\.auth\.getUser/);
+  assert.doesNotMatch(directory, /githubSlot|hasVerifiedGitHub/);
   assert.match(directory, /app.slug === "github"/);
   assert.match(page, /Vos applications, au même endroit/);
   assert.match(page, /href="#apps-catalog"/);
@@ -45,7 +46,7 @@ test("Mes Apps is a proper working discovery interface, not fictitious integrati
   assert.match(directory, /localStorage\.setItem\(FAVORITES_KEY/);
   assert.match(directory, /Voir toutes les applications/);
   assert.match(directory, /setSelected/);
-  assert.match(directory, /GitHub peut être connecté selon votre espace/);
+  assert.match(directory, /Retrouvez les connexions réelles dans leur espace de pilotage/);
   assert.match(directory, /Connexion à venir/);
   assert.doesNotMatch(directory, /Actions rapides|Besoin de vous|atlas-apps-sidebar|atlas-apps-attention/);
   assert.match(directory, /atlas-apps-inline-detail/);

@@ -50,7 +50,8 @@ test("missions and inbox are real workflow pages; transversal demos remain hones
 
 test("premium Mes Apps preserves its directory and offers the real GitHub connector", () => {
   assert.match(apps, /<AppsDirectory/);
-  assert.match(apps, /<GitHubWorkspacePicker/);
+  assert.match(apps, /<AppsDirectory githubConfigured/);
+  assert.doesNotMatch(apps, /<GitHubWorkspacePicker|from\("workspace_members"\)|auth\.getUser\(\)/);
   assert.match(agents, /Aucun agent connecté/);
   assert.match(agents, /Aucune conversation ni activité d’agent n’est simulée/);
   assert.match(demoData, /export const demoApps/);

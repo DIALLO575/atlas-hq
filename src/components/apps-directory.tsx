@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { BrandLogo } from "@/components/brand-logo";
 import { appCategories, atlasApps, recommendedApps, type CatalogApp } from "@/lib/app-catalog";
@@ -14,11 +15,7 @@ function normalized(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
 }
 
-export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifiedGitHub = false }: {
-  githubSlot?: ReactNode;
-  githubConfigured?: boolean;
-  hasVerifiedGitHub?: boolean;
-}) {
+export function AppsDirectory({ githubConfigured = false }: { githubConfigured?: boolean }) {
   const [filter, setFilter] = useState<Filter>("Toutes");
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -137,9 +134,9 @@ export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifie
                       <p className="atlas-app-tile-description">{app.description}</p>
                       <div className="atlas-app-tile-meta"><span>{app.category}</span>{app.recommended && <span className="atlas-app-recommend-dot" title="Recommandée">✦</span>}</div>
                       <div className="atlas-app-tile-footer">
-                        <span className="atlas-app-connection-state"><i />{app.slug === "github" ? hasVerifiedGitHub ? "GitHub vérifié" : githubConfigured ? "Connexion possible" : "À configurer" : "À venir"}</span>
+                        <span className="atlas-app-connection-state"><i />{app.slug === "github" ? githubConfigured ? "Control Center" : "À configurer" : "À venir"}</span>
                         {app.slug === "github" ?
-                          <a className="atlas-app-details" href="/apps/github" aria-label="Ouvrir GitHub Control Center">Piloter <Icon name="arrow-up-right" /></a> :
+                          <Link className="atlas-app-details" href="/apps/github" prefetch={true} aria-label="Ouvrir GitHub Control Center">Piloter <Icon name="arrow-up-right" /></Link> :
                           <button className="atlas-app-details" type="button" onClick={() => setSelected(selected?.slug === app.slug ? null : app)}
                             aria-label={"Voir les détails de " + app.name} aria-expanded={selected?.slug === app.slug}>
                             Détails <Icon name="arrow-up-right" />
@@ -186,8 +183,7 @@ export function AppsDirectory({ githubSlot, githubConfigured = false, hasVerifie
 
 
       </div>
-      {githubSlot}
-      <p className="atlas-apps-footer-note">Le catalogue est ouvert à tous. GitHub peut être connecté selon votre espace ; les autres intégrations arrivent progressivement.</p>
+      <p className="atlas-apps-footer-note">Le catalogue est ouvert à tous. Retrouvez les connexions réelles dans leur espace de pilotage.</p>
     </>
   );
 }
