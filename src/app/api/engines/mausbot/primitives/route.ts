@@ -4,6 +4,7 @@ import { resolveMausbotConfig, MausbotAdapterError } from "../../../../../../pac
 import { executeMausbotPrimitive } from "../../../../../../packages/engines/mausbot/src/primitives.mjs";
 import { MAUSBOT_PRIMITIVES, MAUSBOT_FUTURE_SURFACES, validateMausbotPrimitive, PrimitiveInputError } from "../../../../../../packages/engine-core/src/primitives.mjs";
 import { MAUSBOT_NATIVE_CAPABILITIES, nativeCoverageSummary } from "../../../../../../packages/engine-core/src/native-capabilities.mjs";
+import { mausbotReleasePermission, mausbotReleaseState } from "../../../../../../packages/engine-core/src/release-gates.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
     primitives: MAUSBOT_PRIMITIVES,
     native: MAUSBOT_NATIVE_CAPABILITIES,
     nativeCoverage: nativeCoverageSummary(),
+    release: mausbotReleaseState(process.env),
     futureSurfaces: MAUSBOT_FUTURE_SURFACES,
     note: "source-mapped; not yet validated against a live MAUSBOT host",
   });
@@ -48,6 +50,8 @@ export async function POST(request: NextRequest) {
   }
   const access = await requireEngineWorkspace(input.workspaceId, normalized.def.mode !== "read");
   if (!access.ok) return access.response;
+  const gate = mausbotReleasePermission(process.env, normalized.def.mode);
+  if (!gate.allowed) return engineFailure(gate.code, gate.status);
   try {
     const config = resolveMausbotConfig(process.env, input.workspaceId);
     if (!config) return engineFailure("MAUSBOT_NOT_CONFIGURED", 503);

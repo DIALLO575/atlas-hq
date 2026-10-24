@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { ENGINE_CATALOG } from "../../../../packages/engine-core/src/catalog.mjs";
 import { resolveMausbotConfig } from "../../../../packages/engines/mausbot/src/adapter.mjs";
+import { mausbotReleaseState } from "../../../../packages/engine-core/src/release-gates.mjs";
 import { engineFailure, engineSuccess, requireEngineWorkspace } from "@/lib/engines/access";
 
 export const runtime = "nodejs";
@@ -13,9 +14,10 @@ export async function GET(request: NextRequest) {
   let configured = false;
   try { configured = Boolean(resolveMausbotConfig(process.env, workspaceId)); }
   catch { return engineFailure("ENGINE_CONFIGURATION_INVALID", 503); }
+  const release = mausbotReleaseState(process.env);
   return engineSuccess({
     engines: ENGINE_CATALOG.map((engine) => ({
-      ...engine, status: engine.id === "mausbot" ? (configured ? "configured" : "not-configured") : "planned",
+      ...engine, status: engine.id === "mausbot" ? (configured ? (release.readsEnabled ? "configured" : "preconnection") : "not-configured") : "planned",
     })),
   });
 }

@@ -6,7 +6,7 @@ import type { Workspace, WorkspaceResult } from "@/lib/workspaces/contract";
 
 type Engine = {
   id: string; name: string; description: string; phase: string;
-  status: "planned" | "configured" | "not-configured";
+  status: "planned" | "configured" | "preconnection" | "not-configured";
   transports: string[]; capabilities: string[];
 };
 type Agent = { id: string; name: string; emoji: string | null };
@@ -179,6 +179,7 @@ export function EnginesHub() {
               <span className="atlas-engine-status" data-state={engine.id === "mausbot" && engineOnline ? "online" : engine.status}>
                 {engine.id === "mausbot" && engineOnline ? "En ligne"
                   : engine.status === "configured" ? "Configuré · à vérifier"
+                  : engine.status === "preconnection" ? "Préconnexion · verrouillée"
                   : engine.status === "planned" ? "Prévu" : "Non connecté"}
               </span>
             </div>
@@ -212,10 +213,10 @@ export function EnginesHub() {
         </section>
       )}
 
-      {activeEngine?.status === "not-configured" && (
+      {(activeEngine?.status === "not-configured" || activeEngine?.status === "preconnection") && (
         <section className="atlas-engine-panel">
-          <h2>Raccorder MAUSBOT</h2>
-          <p>Configurer les variables serveur ATLAS_MAUSBOT_URL, ATLAS_MAUSBOT_TOKEN et ATLAS_MAUSBOT_WORKSPACE_ID pour un workspace isolé. Aucun secret n’est saisi dans le navigateur.</p>
+          <h2>Préconnexion MAUSBOT — accès réel verrouillé</h2>
+          <p>Les contrats sont disponibles hors connexion. Même avec un serveur configuré, les requêtes MAUSBOT ne sont pas lancées tant que les garde-fous serveur et la revue du jalon M0 ne sont pas validés. Aucun secret n’est saisi dans le navigateur.</p>
         </section>
       )}
 

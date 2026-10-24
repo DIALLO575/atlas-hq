@@ -3,6 +3,7 @@ import { engineFailure, engineSuccess, requireEngineWorkspace } from "@/lib/engi
 import {
   MausbotAdapterError, resolveMausbotConfig, mausbotDispatch,
 } from "../../../../../../packages/engines/mausbot/src/adapter.mjs";
+import { mausbotReleasePermission } from "../../../../../../packages/engine-core/src/release-gates.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,8 @@ export async function POST(request: NextRequest) {
   const body = input as Record<string, unknown>;
   const access = await requireEngineWorkspace(body.workspaceId, true);
   if (!access.ok) return access.response;
+  const gate = mausbotReleasePermission(process.env, "execute");
+  if (!gate.allowed) return engineFailure(gate.code, gate.status);
   try {
     const config = resolveMausbotConfig(process.env, body.workspaceId);
     if (!config) return engineFailure("MAUSBOT_NOT_CONFIGURED", 503);

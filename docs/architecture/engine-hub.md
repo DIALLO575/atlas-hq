@@ -99,3 +99,16 @@ par tenant, pas seulement une colonne workspace_id.
 
 Ne pas confondre GitHub commit, Vercel preview et Vercel production :
 suivre AGENTS.md et docs/operations/worker-handoff-2026-10-24.md.
+
+## Blocage technique préconnexion par défaut
+
+`packages/engine-core/src/release-gates.mjs` impose une sécurité supplémentaire :
+URL+token configurés ne suffisent pas. `ATLAS_MAUSBOT_RELEASE_STAGE` vaut
+`offline` par défaut (si absent, mal orthographié ou explicitement offline).
+Les requêtes live (health, agents, job) exigent `read-only` ou `enabled`.
+Toute opération de mutation exige à la fois `enabled` et
+`ATLAS_MAUSBOT_MUTATIONS_ACK=I_ACKNOWLEDGE_ENGINE_ACTIONS`.
+L'interface garde les capacités offline visibles avec statut `preconnection`.
+Ces flags **ne constituent pas une autorisation suffisante pour la production** :
+les gates humains, registre multi-instance et audit durable doivent être
+réellement développés avant le changement d'environnement.
