@@ -17,10 +17,10 @@ Vercel/Netlify ni activation MAUSBOT.
 | Interface Espace Moteurs | Catalogue et écran de préconnexion | Aucun moteur relié |
 | API instances | GET métadonnées, POST réservé owner/admin, création uniquement offline | Disponibilité Web dépend du déploiement |
 | Chiffrement | AES-256-GCM/HKDF-SHA256, clés versionnées, contexte tenant/instance, rotation mock-testée | Pas de vrai KMS ni de pilote d'accès private |
-| Persistance | Cinq migrations réelles dans Supabase ATLAS, neuf tables Engines avec RLS | Aucune exécution réelle ni secret opérationnel |
+| Persistance | Six migrations réelles dans Supabase ATLAS, neuf tables Engines avec RLS | Aucune exécution réelle ni secret opérationnel |
 | Mutations moteur | Blocage HTTP 423 même avec anciens drapeaux env | Déverrouillage interdit avant vérification et approbations durables |
 
-### Les cinq migrations Supabase déjà appliquées
+### Les six migrations Supabase déjà appliquées
 
 - 20261024161305_atlas_engine_foundation_preconnection : 9 tables
   dont 2 dans public (instances, runs) et 7 dans private.
@@ -33,6 +33,9 @@ Vercel/Netlify ni activation MAUSBOT.
   consultative avec session active, rôle workspace actuel et anti-self-review.
 - 20261024193537_atlas_engine_approval_inbox_definer_hardening :
   la RPC publique devient SECURITY INVOKER, sa logique privilégiée privée.
+- 20261024200020_atlas_engine_approval_decision_atomic_v1 :
+  décision unique sous session et rôle actifs, même empreinte,
+  transaction et audit atomiques, aucun dispatch.
 
 Les SQL versionnés figurent dans supabase/migrations/.
 Ne PAS les rejouer : versions présentes dans l'historique Supabase.
@@ -145,3 +148,27 @@ privilégiée accessible.
 **Non livré** : test E2E avec une vraie session reviewer,
 l'interface de décision et la transaction d'approbation auditée,
 KMS, worker et connexion MAUSBOT. Code sur GitHub ≠ site déployé.
+
+## Décision humaine atomique — SHA-150
+
+PR #40 : https://github.com/DIALLO575/atlas-hq/pull/40 .
+La page `/engines/approvals` propose maintenant des boutons
+Approuver / Refuser. Le POST `/api/engines/approvals` n'accepte que
+le workspace, le run, l'empreinte exacte et la décision demandée.
+Sa RPC SQL privée vérifie la session et le rôle owner/admin actuels,
+l'exclusion de l'auteur, les empreintes, l'expiration et les états,
+verrouille les lignes et persiste la décision avec audit atomique.
+Une décision n'émet aucun événement outbox et ne débloque pas
+l'exécution du moteur : `canDispatch:false` partout.
+
+Le SQL versionné correspond à la migration déjà appliquée
+`20261024200020_atlas_engine_approval_decision_atomic_v1`.
+Tests CI sur PostgreSQL jetable : approbation/refus, replay,
+erreurs d'audit avec rollback, session expirée, rôle révoqué,
+autres workspaces et absence de dispatch.
+
+**Encore non prouvé** : parcours E2E avec de vrais comptes
+Supabase Auth demandeur + reviewer, session révoquée réellement
+et navigateur déployé. Aucun moteur, run ou approval réel n'existe
+encore dans le projet connecté. Le KMS SHA-149 et le worker
+SHA-151 restent bloquants ; SHA-150 doit rester In Progress.
