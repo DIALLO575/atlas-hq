@@ -31,16 +31,19 @@ test("cockpit navigation exposes six primary destinations and transversal access
   assert.match(shell, /Aller au contenu principal/);
 });
 
-test("new sections and transversal pages are honest empty states", () => {
-  for (const page of [missions, inbox, related, chief, settings]) {
+test("missions and inbox are real workflow pages; transversal demos remain honest", () => {
+  for (const page of [related, chief, settings]) {
     assert.match(page, /<DemoNotice\/>/);
     assert.match(page, /<EmptyPanel/);
   }
   assert.match(workspaces, /listWorkspaces\(\)/);
   assert.match(workspaces, /<WorkspacesDashboard/);
   assert.match(workspacesDashboard, /workspace\.name/);
-  assert.match(missions, /Aucune mission/);
-  assert.match(inbox, /Votre Inbox est vide/);
+  assert.match(missions, /readAtlasWorkflow\(params\.workspaceId\)/);
+  assert.match(inbox, /readAtlasWorkflow\(params\.workspaceId\)/);
+  assert.match(missions, /createAtlasMission/);
+  assert.match(inbox, /decideAtlasMissionReview/);
+  assert.doesNotMatch(missions + inbox, /<DemoNotice\/>|<EmptyPanel/);
   assert.match(related, /Aucun lien n’est déduit ou inventé/);
   assert.match(chief, /ne sont pas envoyées depuis cette interface/);
 });
