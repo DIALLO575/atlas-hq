@@ -65,3 +65,17 @@ sandbox validation has been performed.
 7. Review security advisors regularly, implement auth session proof, and test the service code in staging before allowing any engine execution.
 
 **Do not mark SHA-132 Done or open the MAUSBOT transport based solely on the applied migration.** This is the durable SQL foundation, not the worker.
+
+
+## Registry API (M0.7 after migration)
+
+`GET /api/engines/instances?workspaceId=...` lists at most 50 safe
+instance metadata rows for a member of that workspace. This is a database
+read, **not** a MAUSBOT status or health check.
+
+`POST /api/engines/instances` accepts precisely workspaceId, engineKey,
+label and transport. An authenticated owner/admin can register an **offline**
+instance only, with created_by taken from the verified auth session. Origin
+and JSON checks, the core engine plan validation and database RLS run before
+insert. No URL, token, secret key, arbitrary options or status is accepted.
+This API neither enables a runtime nor creates a mission or a worker.
