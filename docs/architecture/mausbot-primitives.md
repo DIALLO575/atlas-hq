@@ -97,7 +97,7 @@ raccordement privé → extension progressive vers Hermes.
 
 Ces contrats ne constituent PAS une connexion MCP, SSE ou CLI opérationnelle.
 
-## Audit extensif source → 119 primitives natives (ATLAS M0)
+## Audit extensif source → 128 capacités natives (ATLAS M0)
 
 Source gelée : `milind-soni/OpenMausBot@0a78caa91a64c1ab1adfa972ab4e540e89b66c6d`.
 
@@ -107,9 +107,10 @@ entrées natives** réparties entre : agents/profils, mémoire, skills, MCP bots
 connecteurs et live. Chaque entrée garde la méthode/route ou la preuve
 d'exemple, le niveau de permission, la provenance et le statut.
 
-**Ce sont 119 contrats SOURCE-MAPPÉS, pas 119 opérations exécutables !**
-`callable=false`, `hostTested=false`, `implementation=contract-only`
-et `secretPolicy=deny-raw-results` pour toutes les entrées.
+**Ce sont 128 capacités SOURCE-MAPPÉES, pas 128 opérations exécutables !**
+`callable=false`, `hostTested=false` et `secretPolicy=deny-raw-results`
+pour toutes les entrées. L'état `implementation` distingue `contract-only`,
+`adapter-mock-tested` et `validated-plan` ; aucun de ces états n'autorise un appel live.
 La surface MCP initiale de 20 opérations est suivie séparément et a des
 mappings HTTP mock-testés ; les primitives natives ne sont jamais transmises
 par le POST d'ATLAS. Les fonctions d'approbation auto, credential, shell,
