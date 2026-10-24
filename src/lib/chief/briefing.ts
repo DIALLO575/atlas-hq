@@ -13,11 +13,12 @@ export type ChiefReply = {
 const plain = (text: string) => text.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 export function classifyChiefPrompt(raw: string): ChiefIntent {
   const text = plain(raw);
-  if (/\b(github|depot|repo|pull request|pulls|pr|code|commit)\b/.test(text)) return "github";
-  if (/\b(inbox|decision|valider|validation|approbation|approuver|refuser|attente)\b/.test(text)) return "decisions";
-  if (/\b(graphi|activite|evolution|statist|tendance|repartition)\b/.test(text)) return "activity";
-  if (/\b(mission|priorite|tache|projet|objectif)\b/.test(text)) return "missions";
-  if (/\b(bilan|point|brief|resume|synthese|aujourd|semaine|tableau|ensemble)\b/.test(text)) return "briefing";
+  if (/\b(github|depots?|repos?|pull requests?|pulls?|prs?|codes?|commits?)\b/.test(text)) return "github";
+  if (/\b(inbox|decisions?|valider|validations?|approbations?|approuver|refuser|attentes?)\b/.test(text)) return "decisions";
+  if (/\b(graphiques?|activites?|evolutions?|statistiques?|tendances?|repartitions?)\b/.test(text)) return "activity";
+  if (/\b(fais le point|point sur|briefings?|bilans?|resumes?|syntheses?|tableau de bord)\b/.test(text)) return "briefing";
+  if (/\b(missions?|priorites?|taches?|projets?|objectifs?)\b/.test(text)) return "missions";
+  if (/\b(aujourd.hui|semaines?|ensemble)\b/.test(text)) return "briefing";
   return "help";
 }
 export function buildChiefReply(question: string, workspaceName: string, missions: AtlasMission[],
