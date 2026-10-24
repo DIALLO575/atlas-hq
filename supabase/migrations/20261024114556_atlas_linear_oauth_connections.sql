@@ -1,5 +1,5 @@
--- Per-actor Linear OAuth credentials. Ciphertext only; migration is review-only
--- in this PR and must not be applied to the official Supabase project.
+-- Per-actor Linear OAuth credentials. Ciphertext only. Official history records
+-- version 20261024114556; do not replay this migration against that project.
 create table if not exists public.atlas_linear_connections (
   workspace_id uuid not null,
   user_id uuid not null,

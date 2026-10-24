@@ -1,5 +1,5 @@
--- Durable one-time Linear OAuth state ledger. Committed for review only; do not
--- apply to the official Supabase project from this PR.
+-- Durable one-time Linear OAuth state ledger. Official history records version
+-- 20261024114533; do not replay this migration against that project.
 create table if not exists public.atlas_linear_oauth_states (
   state_hash text primary key check (length(state_hash) = 64),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,

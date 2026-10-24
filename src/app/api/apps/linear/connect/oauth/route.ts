@@ -27,8 +27,8 @@ function toNextResponse(result: Awaited<ReturnType<typeof callbackLinearOAuthRou
 }
 
 /**
- * Disabled by default. Enabling requires explicit server configuration, encryption keys,
- * and the unapplied server-only connection migration.
+ * Disabled by default. Enabling requires explicit server configuration and encryption keys.
+ * The server-only connection migration is recorded in the official project history.
  */
 export async function GET(request: NextRequest) {
   const settings = linearConnectSettings();
