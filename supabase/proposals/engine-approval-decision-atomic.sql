@@ -27,10 +27,11 @@ begin
  sid := sid_text::uuid;
  -- Fresh, trusted session and *current* role. No JWT user_metadata role.
  if not exists(select 1 from auth.sessions s where s.user_id=actor and s.id=sid
-      and (s.not_after is null or s.not_after > clock_timestamp()))
+      and (s.not_after is null or s.not_after > clock_timestamp())
+      for share)
  or not exists(select 1 from public.workspace_members m where
       m.workspace_id=p_workspace_id and m.user_id=actor
-      and m.role in('owner','admin')) then
+      and m.role in('owner','admin') for share) then
   raise exception 'ENGINE_APPROVAL_NOT_AVAILABLE' using errcode='42501';
  end if;
  -- Row locks serialize parallel reviewers, including concurrent workers.

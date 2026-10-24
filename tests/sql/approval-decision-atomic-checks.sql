@@ -39,18 +39,72 @@ begin
   raise exception 'INCORRECT_DIGEST_ACCEPTED';
  exception when insufficient_privilege then null;end;
 end $$;
+-- Every action uses a pinned DB fingerprint. A revoked role/JWT/self actor
+-- cannot decide even by calling the SQL RPC outside the Next.js route.
+select set_config('test.engine_fingerprint_a',
+ (select intent_digest from private.atlas_engine_approvals
+  where run_id='aaaaaaa3-0000-4000-8000-000000000003'),false);
+select set_config('test.engine_fingerprint_b',
+ (select intent_digest from private.atlas_engine_approvals
+  where run_id='bbbbbbb3-0000-4000-8000-000000000003'),false);
+set role authenticated;
+-- Requester is an owner, but is not allowed to decide their own run.
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+select set_config('request.jwt.claims','{"session_id":"aaaabbbb-0000-4000-8000-000000000001"}',false);
+do $begin
+ begin
+  perform public.atlas_engine_decide_approval(
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'aaaaaaa3-0000-4000-8000-000000000003',
+   current_setting('test.engine_fingerprint_a'),'approved');
+  raise exception 'SELF_APPROVAL_ACCEPTED';
+ exception when insufficient_privilege then null;end;
+end $;
+-- Cross-tenant request is denied, even with a valid session in A.
+do $begin
+ begin
+  perform public.atlas_engine_decide_approval(
+   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+   'bbbbbbb3-0000-4000-8000-000000000003',
+   current_setting('test.engine_fingerprint_b'),'approved');
+  raise exception 'FOREIGN_WORKSPACE_APPROVED';
+ exception when insufficient_privilege then null;end;
+end $;
+-- A reviewer with expired session cannot approve any run.
+select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
+select set_config('request.jwt.claims','{"session_id":"aaaabbbb-0000-4000-8000-000000000004"}',false);
+do $begin
+ begin
+  perform public.atlas_engine_decide_approval(
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'aaaaaaa3-0000-4000-8000-000000000003',
+   current_setting('test.engine_fingerprint_a'),'approved');
+  raise exception 'EXPIRED_SESSION_APPROVED';
+ exception when insufficient_privilege then null;end;
+end $;
+select set_config('request.jwt.claims','{"session_id":"not-a-uuid"}',false);
+do $begin
+ begin
+  perform public.atlas_engine_decide_approval(
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'aaaaaaa3-0000-4000-8000-000000000003',
+   current_setting('test.engine_fingerprint_a'),'approved');
+  raise exception 'MALFORMED_SESSION_APPROVED';
+ exception when insufficient_privilege then null;end;
+end $;
+reset role;
 -- Real reviewer, pinned digest from verified Inbox, approve once.
 do $$
-declare fingerprint text;result_decision text;
+declare fingerprint text;result_decision text;dispatch_flag boolean;
 begin
  select intent_digest into fingerprint
   from public.atlas_engine_pending_approvals('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
   where run_id='aaaaaaa3-0000-4000-8000-000000000003';
  if fingerprint is null then raise exception 'INBOX_FINGERPRINT_MISSING';end if;
- select decision into result_decision from public.atlas_engine_decide_approval(
+ select decision,can_dispatch into result_decision,dispatch_flag from public.atlas_engine_decide_approval(
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'aaaaaaa3-0000-4000-8000-000000000003',fingerprint,'approved');
- if result_decision<>'approved' then raise exception 'APPROVAL_DECISION_FAILED';end if;
+ if result_decision<>'approved' or dispatch_flag is distinct from false then raise exception 'APPROVAL_DECISION_FAILED_OR_DISPATCHED';end if;
  begin
   perform public.atlas_engine_decide_approval(
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -77,6 +131,26 @@ begin
     (select n from pg_temp.approval_decision_outbox_baseline) then
    raise exception 'DECISION_DISPATCHED_WITHOUT_WORKER';end if;
 end $$;
+-- Revoking the reviewer role prevents even a correct pending B decision.
+update public.workspace_members set role='member'
+ where workspace_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+ and user_id='33333333-3333-4333-8333-333333333333';
+set role authenticated;
+select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
+select set_config('request.jwt.claims','{"session_id":"cccc0000-0000-4000-8000-000000000003"}',false);
+do $begin
+ begin
+  perform public.atlas_engine_decide_approval(
+   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+   'bbbbbbb3-0000-4000-8000-000000000003',
+   current_setting('test.engine_fingerprint_b'),'rejected');
+  raise exception 'REVOKED_ROLE_APPROVED';
+ exception when insufficient_privilege then null;end;
+end $;
+reset role;
+update public.workspace_members set role='admin'
+ where workspace_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+ and user_id='33333333-3333-4333-8333-333333333333';
 -- Use second tenant to test audit failure causes COMPLETE rollback.
 create function pg_temp.fail_approval_audit() returns trigger language plpgsql as $$
 begin
@@ -116,14 +190,14 @@ set role authenticated;
 select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
 select set_config('request.jwt.claims','{"session_id":"cccc0000-0000-4000-8000-000000000003"}',false);
 do $$
-declare fingerprint text;result_decision text;
+declare fingerprint text;result_decision text;dispatch_flag boolean;
 begin
  select intent_digest into fingerprint from public.atlas_engine_pending_approvals(
   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') limit 1;
- select decision into result_decision from public.atlas_engine_decide_approval(
+ select decision,can_dispatch into result_decision,dispatch_flag from public.atlas_engine_decide_approval(
   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   'bbbbbbb3-0000-4000-8000-000000000003',fingerprint,'rejected');
- if result_decision<>'rejected' then raise exception 'REJECTION_FAILED';end if;
+ if result_decision<>'rejected' or dispatch_flag is distinct from false then raise exception 'REJECTION_FAILED_OR_DISPATCHED';end if;
 end $$;
 reset role;
 do $$ begin
