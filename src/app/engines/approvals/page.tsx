@@ -5,7 +5,7 @@ import { ApprovalInbox } from "@/components/approval-inbox";
 export default function EngineApprovalsPage() {
   return <AppShell><main className="main-content" id="main-content">
     <PageHeading eyebrow="MOTEURS IA" title="Demandes à valider"
-      description="Consultation sécurisée des approbations en attente. Aucune action de validation n'est disponible." />
+      description="Demandes à valider par un administrateur indépendant. Les décisions sont auditées, sans déclencher MAUSBOT." />
     <ApprovalInbox />
   </main></AppShell>;
 }
