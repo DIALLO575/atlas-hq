@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NotionResourcesClient } from "@/components/notion-resources-client";
 import { AppShell } from "@/components/app-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notionConnectSettings, notionTokenVault } from "@/lib/notion/connect";
@@ -63,7 +64,13 @@ export default async function NotionPage({
       <section aria-label="Connexions enregistrées">
         <h2>Connexions personnelles</h2>
         <ul>{(connections ?? []).map(c =>
-          <li key={c.id}>{c.account_label} — {c.status}</li>)}</ul>
+          <li key={c.id}>
+            <strong>{c.account_label}</strong> — {c.status === "connected"
+              ? "Identifiants enregistrés, accès fournisseur à vérifier"
+              : "Déconnectée"}
+            {c.status === "connected" && typeof c.workspace_id === "string" &&
+              <NotionResourcesClient workspaceId={c.workspace_id} connectionId={c.id}/>}
+          </li>)}</ul>
       </section>}
     <section aria-label="Connecter Notion">
       <h2>Espaces de travail ATLAS</h2>
@@ -78,7 +85,7 @@ export default async function NotionPage({
             </form>
           </li>)}</ul>}
     </section>
-    <p>Lecture et écriture de contenu, agents MCP et synchronisation seront activés
-      seulement après validation des permissions et des tests fournisseur.</p>
+    <p>Les pages partagées peuvent être consultées en lecture seule après une connexion vérifiée.
+      Les écritures, agents MCP et synchronisation restent désactivés.</p>
   </main></AppShell>;
 }

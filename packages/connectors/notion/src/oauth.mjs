@@ -97,3 +97,40 @@ export async function exchangeNotionAuthorizationCode({
       value.workspace_name.slice(0, 160) : null,
   };
 }
+
+/**
+ * Revoke a provider credential only after ATLAS's version-checked local
+ * tombstone was committed. Provider failure must not re-enable local access.
+ */
+export async function revokeNotionOAuthToken({
+  clientId, clientSecret, token, request = fetch, timeoutMs = 10000,
+}) {
+  if (!UUID.test(clientId ?? "") || !nonempty(clientSecret, 512) ||
+      !nonempty(token, 16384) || typeof request !== "function" ||
+      !Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 30000) {
+    throw new NotionOAuthError("OAUTH_CONFIGURATION_INVALID");
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await request(ORIGIN + "/v1/oauth/revoke", {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(clientId + ":" + clientSecret).toString("base64"),
+        "Content-Type": "application/json",
+        "Notion-Version": "2026-03-11",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ token }),
+      signal: controller.signal,
+      cache: "no-store",
+      redirect: "error",
+    });
+  } catch {
+    throw new NotionOAuthError("PROVIDER_UNAVAILABLE");
+  } finally { clearTimeout(timer); }
+  // No redirects and no copying of provider errors or returned token data.
+  if (!response || !response.ok) throw new NotionOAuthError("PROVIDER_REVOCATION_UNCONFIRMED");
+  return true;
+}

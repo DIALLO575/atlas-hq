@@ -46,3 +46,13 @@ Official docs:
 - Notion API permissions still require each resource to be shared. Authorization is not proof of access to every Notion page.
 - The UI must report non-configured state honestly. No Notion secrets or provider live OAuth proof exist yet; no production migration or deployment was performed.
 - Required server-only env: ATLAS_PUBLIC_ORIGIN, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NOTION_OAUTH_CLIENT_ID, NOTION_OAUTH_CLIENT_SECRET, NOTION_OAUTH_REDIRECT_URI, NOTION_OAUTH_STATE_KEY (>=32 bytes), NOTION_OAUTH_TOKEN_KEY_ID, NOTION_OAUTH_TOKEN_KEYS (JSON keyring), NOTION_OAUTH_CALLBACK_ENABLED.
+
+## Server-side read & disconnect slice (SHA-122 / SHA-123, no live credentials)
+- GET /api/apps/notion/read searches titles or lists first-level page blocks, with bounded pagination and whitelisted response fields. It does NOT claim workspace-wide full-text search.
+- Every read checks an authenticated Supabase user against the exact ATLAS workspace's live admin membership, the user's own server-only Notion credential row, the matching provider registry row, and a non-revoked provider grant. The token stays server-only.
+- The Notion Control Center displays a verified read outcome only after a provider request succeeds. Persisted connected status alone is not proof of live access.
+- POST /api/apps/notion/connect/disconnect has an exact-origin check and conditional version-matched, service-role-only RPC. It disables ATLAS access atomically before calling the official Notion /v1/oauth/revoke endpoint.
+- An external revoke failure reports providerRevocation: pending without restoring the local connection. This requires operational follow-up; this slice does not implement a durable revoke retry queue. Keep token ciphertext as a server-only tombstone, never expose to the browser.
+- The public API cannot read pages outside those actually shared with the Notion connection. 403/404 remain actual provider constraints.
+- Refresh-token lifecycle requires a separate serialization-safe implementation. Do not implement naive concurrent refresh attempts; Notion rotates refresh tokens.
+- No migrations have been applied to ATLAS official Supabase. These files are source artifacts until disposable DB tests and explicit production approval.

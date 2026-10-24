@@ -86,6 +86,8 @@ jobs:
           -f tests/sql/notion-foundation-migration.sql
           -f supabase/migrations/20261024140500_atlas_notion_atomic_store.sql
           -f tests/sql/notion-store-rpc.sql
+          -f supabase/migrations/20261024141000_atlas_notion_revoke_connection.sql
+          -f tests/sql/notion-revoke-rpc.sql
 
   validate:
     runs-on: ubuntu-latest

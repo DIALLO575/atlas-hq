@@ -8,3 +8,7 @@ export function exchangeNotionAuthorizationCode(args: {
   publicOrigin: string; request?: typeof fetch;
 }): Promise<{ accessToken: string; refreshToken: string | null;
   notionWorkspaceId: string; notionBotId: string; workspaceName: string | null }>;
+export function revokeNotionOAuthToken(args: {
+  clientId: string; clientSecret: string; token: string;
+  request?: typeof fetch; timeoutMs?: number;
+}): Promise<true>;
