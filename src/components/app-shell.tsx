@@ -13,6 +13,7 @@ const navItems = [
   { label: "Workspaces", icon: "layers" as const, href: "/workspaces" },
   { label: "Missions", icon: "activity" as const, href: "/missions" },
   { label: "Agents & Équipes", icon: "bot" as const, href: "/agents" },
+  { label: "Moteurs IA", icon: "layers" as const, href: "/engines" },
   { label: "Mes Apps", icon: "apps" as const, href: "/apps" },
   { label: "Inbox", icon: "inbox" as const, href: "/inbox" },
 ];
