@@ -94,9 +94,12 @@ export async function verifyPersonalInstallation({
     item?.account?.login?.toLowerCase() === person.login.toLowerCase() &&
     item?.target_type === "User");
   if (!installation) throw new GitHubAuthorizationError("GITHUB_INSTALLATION_NOT_OWNED");
-  if (installation.suspended_at || installation.repository_selection !== "selected" ||
-      !["read", "write"].includes(installation.permissions?.pull_requests)) {
-    throw new GitHubAuthorizationError("GITHUB_INSTALLATION_PERMISSIONS");
+  if (installation.suspended_at) throw new GitHubAuthorizationError("GITHUB_INSTALLATION_SUSPENDED");
+  if (installation.repository_selection !== "selected") {
+    throw new GitHubAuthorizationError("GITHUB_REPOSITORY_SELECTION_REQUIRED");
+  }
+  if (!["read", "write"].includes(installation.permissions?.pull_requests)) {
+    throw new GitHubAuthorizationError("GITHUB_PULL_REQUESTS_PERMISSION_REQUIRED");
   }
   const repositoryPath = `/user/installations/${installationId}/repositories`;
   const repositories = await collection(request, userToken, repositoryPath, "repositories", MAX_REPOS);

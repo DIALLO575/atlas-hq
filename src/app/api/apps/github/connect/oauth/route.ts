@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  exchangeGitHubAppCode, verifyPersonalInstallation,
+  exchangeGitHubAppCode, verifyPersonalInstallation, GitHubAuthorizationError,
 } from "../../../../../../../packages/connectors/github/src/user-installation-verification.mjs";
+import { githubOAuthFailureOutcome } from "../../../../../../../packages/connectors/github/src/oauth-diagnostics.mjs";
 import {
   adminGitHubClient, connectorRedirect, consumeConnectAttempt, githubConnectCookieName,
   githubConnectSettings, persistVerifiedPersonalInstallation, readConnectState,
@@ -41,15 +42,18 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   if (!code || request.nextUrl.searchParams.has("error")) return finish(settings, "oauth-denied");
 
+  let stage: "exchange" | "verification" | "persistence" = "exchange";
   try {
     const redirectUri = `${settings.publicOrigin}/api/apps/github/connect/oauth`;
     const userToken = await exchangeGitHubAppCode({
       code, clientId: settings.clientId, clientSecret: settings.clientSecret,
       redirectUri,
     });
+    stage = "verification";
     const verified = await verifyPersonalInstallation({
       userToken, appId: settings.appId, installationId: consumed.installationId,
     });
+    stage = "persistence";
     await persistVerifiedPersonalInstallation(admin, {
       workspaceId: actor.workspaceId,
       installationId: verified.installationId,
@@ -58,8 +62,10 @@ export async function GET(request: NextRequest) {
     // Do not store the temporary GitHub user token. The REST client subsequently
     // mints a separate, repository-restricted GitHub App installation token.
     return finish(settings, "connected");
-  } catch {
-    // No provider errors or tokens are reflected to the browser.
-    return finish(settings, "verification-failed");
+  } catch (error) {
+    const safeReason = error instanceof GitHubAuthorizationError ? error.code : "ATLAS_INTERNAL_ERROR";
+    // Deliberately do NOT log exceptions, tokens, codes, installation IDs or user details.
+    console.warn("ATLAS_GITHUB_OAUTH_FAILURE", { stage, reason: safeReason });
+    return finish(settings, githubOAuthFailureOutcome(stage, safeReason));
   }
 }
