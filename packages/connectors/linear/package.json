@@ -1,0 +1,11 @@
+{
+  "name": "@atlas-hq/connector-linear",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./oauth": "./src/oauth.mjs",
+    "./oauth-state": "./src/oauth-state.mjs",
+    "./workspace-access": "./src/workspace-access.mjs",
+    "./graphql-client": "./src/graphql-client.mjs"
+  }
+}
