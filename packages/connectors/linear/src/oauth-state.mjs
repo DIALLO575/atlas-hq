@@ -23,8 +23,6 @@ export async function createLinearOAuthState({ workspaceId, userId, key, store, 
   }
   const payload = Buffer.from(JSON.stringify({
     version: 1,
-    workspaceId,
-    userId,
     nonce: randomBytes(32).toString("base64url"),
     expiresAt: Math.floor(now / 1000) + TTL_SECONDS,
   })).toString("base64url");
@@ -39,10 +37,10 @@ export async function createLinearOAuthState({ workspaceId, userId, key, store, 
   return state;
 }
 
-/** Verify cookie, signature, actor and workspace, then atomically consume the state hash. */
-export async function consumeLinearOAuthState({ state, cookieState, workspaceId, userId, key, store, now = Date.now() }) {
-  if (!validContext({ workspaceId, userId, key }) || typeof state !== "string" ||
-      state !== cookieState || !store || typeof store.consumePendingState !== "function") return null;
+/** Verify the opaque signed nonce; callers must still resolve and verify its actor/workspace. */
+export function readLinearOAuthState({ state, cookieState, key, now = Date.now() }) {
+  if (typeof key !== "string" || Buffer.byteLength(key) < 32 || typeof state !== "string" ||
+      state !== cookieState) return null;
   const parts = state.split(".");
   if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
   const expected = Buffer.from(stateSignature(parts[0], key));
@@ -54,9 +52,16 @@ export async function consumeLinearOAuthState({ state, cookieState, workspaceId,
   } catch {
     return null;
   }
-  if (!proof || proof.version !== 1 || proof.workspaceId !== workspaceId || proof.userId !== userId ||
-      typeof proof.nonce !== "string" || !Number.isSafeInteger(proof.expiresAt) ||
-      proof.expiresAt <= Math.floor(now / 1000)) return null;
+  if (!proof || proof.version !== 1 || typeof proof.nonce !== "string" ||
+      !Number.isSafeInteger(proof.expiresAt) || proof.expiresAt <= Math.floor(now / 1000)) return null;
+  return { stateHash: stateHash(state) };
+}
+
+/** Verify cookie and signature, then atomically consume for the verified actor/workspace. */
+export async function consumeLinearOAuthState({ state, cookieState, workspaceId, userId, key, store, now = Date.now() }) {
+  if (!validContext({ workspaceId, userId, key }) || !store || typeof store.consumePendingState !== "function") return null;
+  const proof = readLinearOAuthState({ state, cookieState, key, now });
+  if (!proof) return null;
   try {
     const consumed = await store.consumePendingState({
       stateHash: stateHash(state),

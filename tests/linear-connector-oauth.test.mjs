@@ -10,7 +10,7 @@ import {
 import { linearGraphql, LinearApiError } from "../packages/connectors/linear/src/graphql-client.mjs";
 import { authorizeLinearWorkspaceAccess, canManageLinearConnection } from "../packages/connectors/linear/src/workspace-access.mjs";
 import { linearCapabilityScopes, linearMvpContract } from "../packages/connectors/linear/src/contract.ts";
-import { consumeLinearOAuthState, createLinearOAuthState } from "../packages/connectors/linear/src/oauth-state.mjs";
+import { consumeLinearOAuthState, createLinearOAuthState, readLinearOAuthState } from "../packages/connectors/linear/src/oauth-state.mjs";
 
 const redirectUri = "https://atlas.example.test/api/apps/linear/connect/oauth";
 const state = "A".repeat(43);
@@ -50,6 +50,9 @@ test("OAuth state is actor/workspace-bound, expiring, cookie-bound, and consumed
   const state = await createLinearOAuthState({ workspaceId: "atlas-a", userId: "user-a", key: stateKey, store, now });
   assert.equal(typeof pending.stateHash, "string");
   assert.equal(state.includes("user-a"), false);
+  assert.equal(typeof readLinearOAuthState({ state, cookieState: state, key: stateKey, now }).stateHash, "string");
+  assert.equal(readLinearOAuthState({ state, cookieState: "other", key: stateKey, now }), null);
+  assert.equal(readLinearOAuthState({ state, cookieState: state, key: "x".repeat(32), now }), null);
   assert.deepEqual(await consumeLinearOAuthState({ state, cookieState: state, workspaceId: "atlas-a", userId: "user-a", key: stateKey, store, now }), { workspaceId: "atlas-a", userId: "user-a" });
   assert.equal(await consumeLinearOAuthState({ state, cookieState: state, workspaceId: "atlas-a", userId: "user-a", key: stateKey, store, now }), null);
   assert.equal(await consumeLinearOAuthState({ state, cookieState: state, workspaceId: "atlas-b", userId: "user-a", key: stateKey, store, now }), null);
