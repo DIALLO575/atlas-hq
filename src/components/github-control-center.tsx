@@ -1,51 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { Icon } from "@/components/icon";
 
-type Space = { id: string; name: string; role: "owner" | "admin" | "member" };
+type Workspace = { id: string; name: string; role: "owner" | "admin" | "member" };
 type Installation = {
   installationId: number; status: string; repositorySelection: string | null;
-  ownershipVerifiedAt: string | null; repositoriesVerifiedAt: string | null;
-  isLive: boolean;
+  ownershipVerifiedAt: string | null; repositoriesVerifiedAt: string | null; isLive: boolean;
 };
 type Repository = { id: number; fullName: string; htmlUrl: string; private: boolean; defaultBranch: string | null };
-type Pull = { number: number; title: string; htmlUrl: string; state: string; draft: boolean; headSha: string | null; updatedAt: string | null };
+type Pull = { number: number; title: string; htmlUrl: string; state: string; draft: boolean; updatedAt: string | null; headSha: string | null };
 type FileChange = { path: string; status: string; additions: number; deletions: number; patch: string | null };
 type PullDetail = {
-  title: string; body: string | null; state: string; draft: boolean;
-  updatedAt: string | null; htmlUrl: string;
-  resource: { headSha: string };
+  title: string; body: string | null; state: string; draft: boolean; merged: boolean;
+  updatedAt: string | null; htmlUrl: string; resource: { headSha: string };
   files: FileChange[]; filesTruncated: boolean;
 };
-type Pane = "overview" | "repositories" | "pulls" | "agents" | "automations" | "settings";
-type LoadState = "connections" | "repositories" | "pulls" | "detail" | null;
-type Failure = { stage: "connections" | "repositories" | "pulls" | "detail"; message: string } | null;
+type Section = "overview" | "repositories" | "pulls" | "settings";
+type Loading = "connections" | "repositories" | "pulls" | "detail" | null;
 
-const tabs: { id: Pane; label: string; icon: "grid" | "layers" | "activity" | "bot" | "spark" | "settings" }[] = [
-  { id: "overview", label: "Vue générale", icon: "grid" },
-  { id: "repositories", label: "Dépôts", icon: "layers" },
-  { id: "pulls", label: "Pull Requests", icon: "activity" },
-  { id: "agents", label: "Agents IA", icon: "bot" },
-  { id: "automations", label: "Automatisations", icon: "spark" },
-  { id: "settings", label: "Connexion", icon: "settings" },
-];
-
-const errors: Record<string, string> = {
-  AUTH_REQUIRED: "Votre session ATLAS ou le jeton GitHub a expiré. Reconnectez-vous à ATLAS, puis actualisez.",
-  AUTH_UNAVAILABLE: "Authentification momentanément indisponible.",
-  WORKSPACE_FORBIDDEN: "Vous n’avez pas accès à ce workspace.",
-  WORKSPACE_UNAVAILABLE: "Droits du workspace indisponibles.",
-  GITHUB_NOT_AUTHORIZED: "Cette installation ou ce dépôt n’est pas autorisé dans ce workspace.",
+const labels: Record<string, string> = {
+  AUTH_REQUIRED: "Votre session Atlas a expiré. Reconnectez-vous.",
+  AUTH_UNAVAILABLE: "Authentification indisponible.",
+  WORKSPACE_FORBIDDEN: "Accès refusé à ce workspace.",
+  WORKSPACE_UNAVAILABLE: "Impossible de vérifier vos droits.",
+  GITHUB_NOT_AUTHORIZED: "Installation ou dépôt non autorisé pour ce workspace.",
   GITHUB_NOT_CONFIGURED: "La GitHub App doit être configurée côté serveur.",
-  GITHUB_UNAVAILABLE: "GitHub est momentanément indisponible.",
-  CONNECTIONS_UNAVAILABLE: "Les connexions ne peuvent pas être chargées.",
-  PERMISSION_DENIED: "Accès GitHub refusé pour cette ressource.",
-  RATE_LIMITED: "GitHub limite actuellement les lectures. Réessayez plus tard.",
-  NOT_FOUND_OR_HIDDEN: "Cette ressource est introuvable ou privée.",
-  NOT_CONFIGURED: "Impossible de signer le jeton GitHub App : vérifiez GITHUB_APP_ID et GITHUB_APP_PRIVATE_KEY sur Vercel Production. La clé doit appartenir à ATLAS HQ Connect.",
+  NOT_CONFIGURED: "Impossible de signer un jeton GitHub App : vérifiez GITHUB_APP_ID et GITHUB_APP_PRIVATE_KEY sur Vercel Production.",
+  GITHUB_UNAVAILABLE: "Impossible de contacter GitHub pour le moment.",
+  CONNECTIONS_UNAVAILABLE: "Impossible de vérifier les connexions enregistrées.",
+  PERMISSION_DENIED: "GitHub refuse l’accès à cette ressource.",
+  NOT_FOUND_OR_HIDDEN: "Dépôt ou PR introuvable ou inaccessible.",
+  RATE_LIMITED: "Limite de lecture GitHub atteinte. Réessayez plus tard.",
   INVALID_RESPONSE: "GitHub a renvoyé une réponse inattendue. Vérifiez la connexion et les journaux du serveur.",
   GITHUB_REJECTED: "GitHub a refusé la demande d’accès de l’App. Vérifiez ses permissions Pull Requests et que sa clé privée correspond à l’App installée.",
   PROVIDER_UNAVAILABLE: "Le serveur n’a pas réussi à joindre l’API GitHub. Réessayez et vérifiez les journaux Vercel.",
@@ -53,317 +41,359 @@ const errors: Record<string, string> = {
   INCOMPLETE: "La liste des dépôts autorisés fournie par GitHub est incomplète. Réessayez ou réduisez la sélection.",
 };
 
-async function githubRead<T>(params: Record<string, string>): Promise<T> {
-  const query = new URLSearchParams(params);
-  const response = await fetch("/api/apps/github?" + query.toString(), {
-    method: "GET", cache: "no-store", credentials: "same-origin",
+async function readGitHub<T>(params: Record<string, string>, signal: AbortSignal): Promise<T> {
+  const response = await fetch("/api/apps/github?" + new URLSearchParams(params), {
+    method: "GET", credentials: "same-origin", cache: "no-store", signal,
   });
   if (!response.ok) {
     let code = "";
-    try { const result = await response.json(); code = String(result?.error ?? ""); } catch {}
-    throw new Error(errors[code] ?? "La lecture des données GitHub a échoué.");
+    try { code = String((await response.json())?.error || ""); } catch {}
+    throw new Error(labels[code] || "Lecture GitHub indisponible.");
   }
   return response.json() as Promise<T>;
 }
 
-function formatDate(value: string | null) {
-  if (!value) return "Date inconnue";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Date inconnue" :
-    new Intl.DateTimeFormat("fr", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+function readableDate(raw: string | null) {
+  if (!raw) return "Date indisponible";
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? "Date indisponible" :
+    new Intl.DateTimeFormat("fr", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
 }
-function normalize(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+const lower = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+function verified(installation: Installation) {
+  return installation.status === "repositories-ready" &&
+    ["selected", "all"].includes(installation.repositorySelection ?? "") &&
+    Boolean(installation.ownershipVerifiedAt && installation.repositoriesVerifiedAt);
 }
+const sections: { id: Section; title: string; icon: "grid" | "layers" | "activity" | "settings" }[] = [
+  { id: "overview", title: "Vue générale", icon: "grid" },
+  { id: "repositories", title: "Dépôts", icon: "layers" },
+  { id: "pulls", title: "Pull Requests", icon: "activity" },
+  { id: "settings", title: "Connexion", icon: "settings" },
+];
 
 export function GitHubControlCenter({ workspaces, initialWorkspaceId, configured }: {
-  workspaces: Space[]; initialWorkspaceId: string; configured: boolean;
+  workspaces: Workspace[]; initialWorkspaceId: string; configured: boolean;
 }) {
   const [workspaceId, setWorkspaceId] = useState(initialWorkspaceId);
-  const workspace = workspaces.find((item) => item.id === workspaceId);
-  return (
-    <>
-      <header className="atlas-gh-hero">
-        <div className="atlas-gh-identity">
-          <span className="atlas-gh-mark"><BrandLogo slug="github" size={45} /></span>
-          <div><p className="atlas-overline">INTÉGRATION · GITHUB</p><h1>GitHub Control Center</h1>
-            <p>Dépôts et Pull Requests de vos workspaces, au même endroit.</p></div>
+  const selected = workspaces.find((item) => item.id === workspaceId);
+  return <>
+    <header className="atlas-gh-hero">
+      <div className="atlas-gh-identity">
+        <span className="atlas-gh-mark"><BrandLogo slug="github" size={42} /></span>
+        <div>
+          <p className="atlas-overline">MES APPS / GITHUB</p>
+          <h1>GitHub Control Center <span aria-hidden="true">✦</span></h1>
+          <p>Vos dépôts, vos PR et leurs modifications. Données réelles, accès contrôlé.</p>
         </div>
-        {workspaces.length > 0 && (
-          <label className="atlas-gh-workspace-pick">Workspace
-            <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
-              {workspaces.map((space) => <option value={space.id} key={space.id}>{space.name}</option>)}
-            </select>
-          </label>
-        )}
-      </header>
-      {workspace ? (
-        <WorkspaceGitHub key={workspace.id} workspace={workspace} configured={configured} />
-      ) : (
-        <section className="atlas-gh-empty"><Icon name="layers" /><h2>Créez un workspace</h2>
-          <p>Les connexions GitHub sont isolées par workspace. Créez-en un pour commencer.</p>
-          <Link href="/workspaces">Gérer mes workspaces <Icon name="arrow-right" /></Link>
-        </section>
-      )}
-    </>
-  );
+      </div>
+      {workspaces.length > 0 && <label className="atlas-gh-workspace-pick">Workspace
+        <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
+          {workspaces.map((space) => <option value={space.id} key={space.id}>{space.name}</option>)}
+        </select>
+      </label>}
+    </header>
+    {selected
+      ? <WorkspaceGitHub key={selected.id} workspace={selected} configured={configured} />
+      : <section className="atlas-gh-empty"><Icon name="layers"/><h2>Aucun workspace</h2>
+        <p>Créez un espace pour rattacher une connexion GitHub et ses dépôts autorisés.</p>
+        <Link href="/workspaces">Ouvrir Workspaces <Icon name="arrow-right"/></Link>
+      </section>}
+  </>;
 }
 
-function WorkspaceGitHub({ workspace, configured }: { workspace: Space; configured: boolean }) {
+function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; configured: boolean }) {
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [installationId, setInstallationId] = useState<number | null>(null);
   const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [repoTruncated, setRepoTruncated] = useState(false);
+  const [repositoriesTruncated, setRepositoriesTruncated] = useState(false);
   const [repositoryId, setRepositoryId] = useState<number | null>(null);
   const [pulls, setPulls] = useState<Pull[]>([]);
   const [pullsTruncated, setPullsTruncated] = useState(false);
   const [detail, setDetail] = useState<PullDetail | null>(null);
   const [detailNumber, setDetailNumber] = useState<number | null>(null);
-  const [tab, setTab] = useState<Pane>("overview");
-  const [query, setQuery] = useState("");
-  const [visibility, setVisibility] = useState<"all" | "private" | "public">("all");
-  const [loadState, setLoadState] = useState<LoadState>("connections");
-  const [failure, setFailure] = useState<Failure>(null);
-  const selectedRepository = repositories.find((repo) => repo.id === repositoryId);
+  const [expandedFile, setExpandedFile] = useState<string | null>(null);
+  const [visibleFileCount, setVisibleFileCount] = useState(35);
+  const [section, setSection] = useState<Section>("overview");
+  const [search, setSearch] = useState("");
+  const [visibility, setVisibility] = useState<"all" | "public" | "private">("all");
+  const [loading, setLoading] = useState<Loading>("connections");
+  const [problem, setProblem] = useState<string | null>(null);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
   const canInstall = workspace.role === "owner" || workspace.role === "admin";
-  const readyInstallations = installations.filter((item) =>
-    item.status === "repositories-ready" && ["selected", "all"].includes(item.repositorySelection ?? "") &&
-    item.ownershipVerifiedAt && item.repositoriesVerifiedAt);
-  const busy = loadState !== null;
-  const prefix = useMemo(() => ({ workspaceId: workspace.id }), [workspace.id]);
+  const ready = installations.filter(verified);
+  const selectedRepo = repositories.find((repo) => repo.id === repositoryId);
+  const hasLiveRepositories = lastSynced !== null;
 
-  const loadPulls = useCallback(async (selectedInstall: number, selectedRepo: number) => {
-    setRepositoryId(selectedRepo);
-    setPulls([]); setDetail(null); setDetailNumber(null); setFailure(null); setLoadState("pulls");
-    try {
-      const data = await githubRead<{ pullRequests: Pull[]; truncated: boolean }>({
-        ...prefix, view: "pulls", installationId: String(selectedInstall), repositoryId: String(selectedRepo),
-      });
-      setPulls(data.pullRequests);
-      setPullsTruncated(data.truncated);
-    } catch (error) {
-      setFailure({ stage: "pulls", message: error instanceof Error ? error.message : "Lecture impossible." });
-    } finally { setLoadState(null); }
-  }, [prefix]);
+  const newRequest = useCallback(() => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    return controller;
+  }, []);
+  const failIfActive = useCallback((error: unknown, controller: AbortController) => {
+    if (!controller.signal.aborted) setProblem(error instanceof Error ? error.message : "Lecture indisponible.");
+  }, []);
 
-  const loadRepositories = useCallback(async (selectedInstall: number) => {
-    setInstallationId(selectedInstall);
-    setRepositories([]); setPulls([]); setDetail(null); setRepositoryId(null);
-    setRepoTruncated(false); setFailure(null); setLoadState("repositories");
+  const openRepository = useCallback(async (newInstallation: number, newRepository: number) => {
+    const controller = newRequest();
+    setRepositoryId(newRepository);
+    setPulls([]); setPullsTruncated(false); setDetail(null); setDetailNumber(null); setExpandedFile(null); setVisibleFileCount(35);
+    setProblem(null); setLoading("pulls");
     try {
-      const data = await githubRead<{ repositories: Repository[]; truncated: boolean }>({
-        ...prefix, view: "repositories", installationId: String(selectedInstall),
-      });
-      setRepositories(data.repositories);
-      setRepoTruncated(data.truncated);
-      setLoadState(null);
-      if (data.repositories.length > 0) await loadPulls(selectedInstall, data.repositories[0].id);
-    } catch (error) {
-      setFailure({ stage: "repositories", message: error instanceof Error ? error.message : "Lecture impossible." });
-      setLoadState(null);
-    }
-  }, [prefix, loadPulls]);
+      const result = await readGitHub<{ pullRequests: Pull[]; truncated: boolean }>({
+        workspaceId: workspace.id, view: "pulls",
+        installationId: String(newInstallation), repositoryId: String(newRepository),
+      }, controller.signal);
+      if (controller.signal.aborted) return;
+      setPulls(result.pullRequests); setPullsTruncated(result.truncated);
+    } catch (error) { failIfActive(error, controller); }
+    finally { if (!controller.signal.aborted) setLoading(null); }
+  }, [newRequest, workspace.id, failIfActive]);
+
+  const openInstallation = useCallback(async (newInstallation: number) => {
+    const controller = newRequest();
+    setInstallationId(newInstallation); setRepositories([]); setRepositoryId(null);
+    setPulls([]); setDetail(null); setDetailNumber(null); setRepositoriesTruncated(false);
+    setPullsTruncated(false); setLastSynced(null); setProblem(null); setLoading("repositories");
+    try {
+      const result = await readGitHub<{ repositories: Repository[]; truncated: boolean }>({
+        workspaceId: workspace.id, view: "repositories", installationId: String(newInstallation),
+      }, controller.signal);
+      if (controller.signal.aborted) return;
+      setRepositories(result.repositories); setRepositoriesTruncated(result.truncated);
+      setLastSynced(new Date().toISOString());
+      if (result.repositories.length) {
+        await openRepository(newInstallation, result.repositories[0].id);
+      } else {
+        setLoading(null);
+      }
+    } catch (error) { failIfActive(error, controller); }
+    finally { if (!controller.signal.aborted && !requestRef.current?.signal.aborted) setLoading(null); }
+  }, [newRequest, openRepository, workspace.id, failIfActive]);
+
+  const refreshConnections = useCallback(async () => {
+    const controller = newRequest();
+    setLoading("connections"); setProblem(null); setInstallations([]);
+    setInstallationId(null); setRepositories([]); setRepositoryId(null); setPulls([]);
+    setDetail(null); setDetailNumber(null); setLastSynced(null);
+    try {
+      const result = await readGitHub<{ installations: Installation[] }>({
+        workspaceId: workspace.id, view: "connections",
+      }, controller.signal);
+      if (controller.signal.aborted) return;
+      setInstallations(result.installations);
+      const firstReady = result.installations.find(verified);
+      if (firstReady) await openInstallation(firstReady.installationId);
+      else setLoading(null);
+    } catch (error) { failIfActive(error, controller); }
+    finally { if (!controller.signal.aborted && !requestRef.current?.signal.aborted) setLoading(null); }
+  }, [workspace.id, newRequest, openInstallation, failIfActive]);
 
   useEffect(() => {
-    let active = true;
-    void githubRead<{ installations: Installation[] }>({ ...prefix, view: "connections" })
-      .then((data) => {
-        if (!active) return;
-        setInstallations(data.installations);
-        setLoadState(null);
-        const ready = data.installations.find((item) =>
-          item.status === "repositories-ready" && ["selected", "all"].includes(item.repositorySelection ?? "") &&
-          item.ownershipVerifiedAt && item.repositoriesVerifiedAt);
-        if (ready) void loadRepositories(ready.installationId);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setLoadState(null);
-        setFailure({ stage: "connections", message: error instanceof Error ? error.message : "Connexions indisponibles." });
-      });
-    return () => { active = false; };
-  }, [prefix, loadRepositories]);
+    // Also abort outstanding requests when switching workspace/unmounting.
+    const frame = window.requestAnimationFrame(() => { void refreshConnections(); });
+    return () => { window.cancelAnimationFrame(frame); requestRef.current?.abort(); };
+  }, [refreshConnections]);
 
   async function openPull(number: number) {
     if (installationId === null || repositoryId === null) return;
-    setDetailNumber(number); setDetail(null); setFailure(null); setLoadState("detail");
+    const controller = newRequest();
+    setDetailNumber(number); setDetail(null); setExpandedFile(null); setVisibleFileCount(35); setProblem(null); setLoading("detail");
     try {
-      const data = await githubRead<PullDetail>({
-        ...prefix, view: "pull", installationId: String(installationId),
+      const result = await readGitHub<PullDetail>({
+        workspaceId: workspace.id, view: "pull", installationId: String(installationId),
         repositoryId: String(repositoryId), pullNumber: String(number),
-      });
-      setDetail(data);
-    } catch (error) {
-      setFailure({ stage: "detail", message: error instanceof Error ? error.message : "Détails indisponibles." });
-    } finally { setLoadState(null); }
+      }, controller.signal);
+      if (controller.signal.aborted) return;
+      setDetail(result);
+    } catch (error) { failIfActive(error, controller); }
+    finally { if (!controller.signal.aborted) setLoading(null); }
   }
 
-  function chooseTab(next: Pane) { setTab(next); setQuery(""); }
-  const filteredRepos = repositories.filter((repo) =>
+  const matchingRepos = useMemo(() => repositories.filter((repo) =>
     (visibility === "all" || (visibility === "private" ? repo.private : !repo.private)) &&
-    normalize(repo.fullName).includes(normalize(query)));
-  const filteredPulls = pulls.filter((pull) =>
-    normalize(pull.title + " #" + pull.number).includes(normalize(query)));
+    lower(repo.fullName).includes(lower(search.trim()))), [repositories, search, visibility]);
+  const matchingPulls = useMemo(() => pulls.filter((pr) =>
+    lower(pr.title + " #" + pr.number).includes(lower(search.trim()))), [pulls, search]);
   const summary = [
-    { label: "Dépôts autorisés", value: repoTruncated ? repositories.length + "+" : String(repositories.length), icon: "layers" as const, hint: "Installation choisie" },
-    { label: "PR ouvertes", value: repositoryId === null ? "—" : pullsTruncated ? pulls.length + "+" : String(pulls.length), icon: "activity" as const, hint: "Dépôt sélectionné" },
-    { label: "Installations vérifiées", value: String(readyInstallations.length), icon: "link" as const, hint: "Dans ce workspace" },
+    { label: "Dépôts autorisés", number: hasLiveRepositories ? String(repositories.length) + (repositoriesTruncated ? "+" : "") : "—", desc: "Installation sélectionnée", icon: "layers" as const },
+    { label: "PR ouvertes", number: repositoryId !== null && loading !== "pulls" && !problem ? String(pulls.length) + (pullsTruncated ? "+" : "") : "—", desc: "Dépôt sélectionné", icon: "activity" as const },
+    { label: "Installations vérifiées", number: loading === "connections" ? "—" : String(ready.length), desc: "Votre workspace", icon: "link" as const },
   ];
+  const status = problem ? "error" : hasLiveRepositories ? "live" : ready.length ? "verified" : "empty";
+  const displayPulls = section === "overview" || section === "pulls";
 
-  return (
-    <>
-      <div className="atlas-gh-connection-strip">
-        <div className="atlas-gh-connection-label">
-          <span className={"atlas-gh-state-dot" + (readyInstallations.length ? " is-ready" : "")}/>
-          <strong>{loadState === "connections" ? "Vérification en cours" : readyInstallations.length ? "Installation vérifiée" : "GitHub non connecté"}</strong>
-          <span>{workspace.name} · Lecture seule</span>
+  return <>
+    <div className="atlas-gh-connection-strip">
+      <div className="atlas-gh-connection-label">
+        <span className={"atlas-gh-state-dot" + (status === "live" ? " is-ready" : "")}/>
+        <strong>{loading === "connections" ? "Vérification…" : status === "error" ? "Connexion à vérifier" :
+          status === "live" ? "GitHub accessible" : status === "verified" ? "Installation enregistrée" : "Non connecté"}</strong>
+        <span>{lastSynced ? "Données récupérées le " + readableDate(lastSynced) : "Aucun accès GitHub live confirmé"} · {workspace.name}</span>
+      </div>
+      <div className="atlas-gh-install-controls">
+        {ready.length > 1 && <label>Installation
+          <select disabled={loading !== null} value={installationId ?? ""}
+            onChange={(event) => void openInstallation(Number(event.target.value))}>
+            {ready.map((item) => <option key={item.installationId} value={item.installationId}>#{item.installationId}</option>)}
+          </select>
+        </label>}
+        <button className="atlas-gh-refresh" type="button" disabled={loading !== null}
+          onClick={() => void refreshConnections()}><Icon name="rotate-ccw"/> Synchroniser</button>
+        <button className="atlas-gh-minor-action" type="button" onClick={() => setSection("settings")}>
+          <Icon name="settings"/> Connexion
+        </button>
+      </div>
+    </div>
+
+    {ready.length === 0 && loading === null && !problem && <section className="atlas-gh-setup">
+      <span className="atlas-gh-setup-emblem"><BrandLogo slug="github" size={32}/></span>
+      <div><h2>Reliez votre premier dépôt GitHub</h2>
+        <p>L’installation GitHub est autorisée par un administrateur du workspace. Sélectionnez seulement les dépôts nécessaires.</p></div>
+      {configured && canInstall ? <form method="post" action="/api/apps/github/connect/start">
+        <input type="hidden" name="workspaceId" value={workspace.id}/>
+        <button type="submit"><Icon name="link"/> Connecter GitHub <Icon name="arrow-up-right"/></button>
+      </form> : <button type="button" onClick={() => setSection("settings")}>
+        {configured ? "Voir les autorisations" : "Configuration requise"} <Icon name="arrow-right"/></button>}
+    </section>}
+
+    <section className="atlas-gh-stats" aria-label="Indicateurs calculés à partir de GitHub">
+      {summary.map((item) => <article key={item.label} className="atlas-gh-stat">
+        <span className="atlas-gh-stat-icon"><Icon name={item.icon}/></span>
+        <div><strong>{item.number}</strong><span>{item.label}</span><small>{item.desc}</small></div>
+      </article>)}
+    </section>
+
+    <nav className="atlas-gh-tabs" aria-label="Sections du Control Center">
+      {sections.map((item) => <button key={item.id} type="button" aria-current={section === item.id ? "page" : undefined}
+        className={section === item.id ? "is-active" : ""}
+        onClick={() => { setSection(item.id); setSearch(""); }}>
+        <Icon name={item.icon}/>{item.title}
+      </button>)}
+    </nav>
+
+    {loading && <p className="atlas-gh-loading" role="status"><Icon name="rotate-ccw"/> Lecture des données GitHub…</p>}
+    {problem && <div className="atlas-gh-notice" role="alert">{problem}
+      <button type="button" onClick={() => void refreshConnections()}>Réessayer</button>
+    </div>}
+    {!configured && <p className="atlas-gh-notice">Configuration de la GitHub App manquante côté serveur. Les données ne peuvent pas être chargées.</p>}
+
+    {section !== "settings" && <div className="atlas-gh-content atlas-gh-content-v2">
+      <section className="atlas-gh-primary">
+        <div className="atlas-gh-section-heading">
+          <div><h2>{section === "repositories" ? "Dépôts autorisés" : "Pull Requests ouvertes"}</h2>
+            <p>{section === "repositories" ? "Accès accordés à cette installation" : selectedRepo?.fullName ?? "Sélectionnez un dépôt"}</p></div>
+          {selectedRepo && displayPulls && <a href={selectedRepo.htmlUrl} target="_blank" rel="noopener noreferrer">
+            GitHub <Icon name="arrow-up-right"/></a>}
         </div>
-        <div className="atlas-gh-install-controls">
-          {readyInstallations.length > 1 && <label>Installation
-            <select disabled={busy} value={installationId ?? ""}
-              onChange={(event) => void loadRepositories(Number(event.target.value))}>
-              {readyInstallations.map((item) => <option key={item.installationId} value={item.installationId}>#{item.installationId}</option>)}
+        <div className="atlas-gh-repo-toolbar">
+          {repositories.length > 0 && displayPulls && <label className="atlas-gh-select-label">Dépôt
+            <select disabled={loading !== null} value={repositoryId ?? ""}
+              onChange={(event) => { if (installationId !== null) void openRepository(installationId, Number(event.target.value)); }}>
+              {repositories.map((repo) => <option key={repo.id} value={repo.id}>{repo.fullName}</option>)}
             </select>
           </label>}
-          <button type="button" className="atlas-gh-refresh" disabled={busy || installationId === null} onClick={() => {
-            if (installationId !== null) void loadRepositories(installationId);
-          }}><Icon name="rotate-ccw" /> Actualiser</button>
-          <button type="button" onClick={() => chooseTab("settings")} className="atlas-gh-minor-action">
-            <Icon name="settings" /> Connexion
-          </button>
+          <label className="atlas-gh-search"><Icon name="search"/><span className="sr-only">Rechercher</span>
+            <input value={search} type="search" onChange={(event) => setSearch(event.target.value)}
+              placeholder={displayPulls ? "Rechercher une PR…" : "Rechercher un dépôt…"}/></label>
+          {section === "repositories" && <select className="atlas-gh-visibility"
+            value={visibility} aria-label="Filtrer la visibilité"
+            onChange={(event) => setVisibility(event.target.value as typeof visibility)}>
+            <option value="all">Tous</option><option value="private">Privés</option><option value="public">Publics</option>
+          </select>}
         </div>
-      </div>
-
-      <section className="atlas-gh-stats" aria-label="Indicateurs GitHub réels">
-        {summary.map((item) => <article key={item.label} className="atlas-gh-stat">
-          <span className="atlas-gh-stat-icon"><Icon name={item.icon}/></span>
-          <div><strong>{busy && item.label !== "Installations vérifiées" ? "…" : item.value}</strong><span>{item.label}</span><small>{item.hint}</small></div>
-        </article>)}
+        <div className="atlas-gh-list">
+          {section === "repositories" ? <>
+            {matchingRepos.map((repo) => <button className={"atlas-gh-list-row" + (repositoryId === repo.id ? " is-selected" : "")}
+              type="button" key={repo.id} disabled={loading !== null}
+              onClick={() => { if (installationId !== null) { setSection("pulls"); setSearch(""); void openRepository(installationId, repo.id); } }}>
+              <span className="atlas-gh-row-icon"><BrandLogo slug="github" size={22}/></span>
+              <span className="atlas-gh-row-copy"><strong>{repo.fullName}</strong>
+                <small>{repo.private ? "Privé" : "Public"} · {repo.defaultBranch ?? "Branche inconnue"}</small></span>
+              <span className="atlas-gh-ghost-link">Voir les PR <Icon name="arrow-right"/></span>
+            </button>)}
+            {repositoriesTruncated && <p className="atlas-gh-truncated">Liste partielle : limite GitHub atteinte.</p>}
+            {!loading && matchingRepos.length === 0 && <div className="atlas-gh-no-data">
+              {hasLiveRepositories ? "Aucun dépôt pour ce filtre." : "Connectez GitHub pour découvrir vos dépôts."}</div>}
+          </> : <>
+            {matchingPulls.map((pr) => <button key={pr.number} type="button"
+              className={"atlas-gh-list-row" + (detailNumber === pr.number ? " is-selected" : "")}
+              disabled={loading !== null} onClick={() => void openPull(pr.number)}>
+              <span className="atlas-gh-row-icon"><Icon name="activity"/></span>
+              <span className="atlas-gh-row-copy"><strong>#{pr.number} · {pr.title}</strong>
+                <small>{readableDate(pr.updatedAt)} · {selectedRepo?.fullName}</small></span>
+              <span className={"atlas-gh-pill" + (pr.draft ? " is-muted" : "")}>{pr.draft ? "Brouillon" : "Ouverte"}</span>
+              <Icon name="chevron-right"/>
+            </button>)}
+            {pullsTruncated && <p className="atlas-gh-truncated">Au moins {pulls.length} PR ouvertes · lecture limitée.</p>}
+            {!loading && matchingPulls.length === 0 && <div className="atlas-gh-no-data">
+              {repositoryId === null ? "Sélectionnez un dépôt autorisé." : "Aucune PR ouverte pour ce dépôt ou cette recherche."}</div>}
+          </>}
+        </div>
       </section>
-
-      <div className="atlas-gh-tabs" role="tablist" aria-label="Rubriques GitHub">
-        {tabs.map((item) => <button role="tab" key={item.id} type="button" aria-selected={tab === item.id}
-          className={tab === item.id ? "is-active" : ""} onClick={() => chooseTab(item.id)}>
-          <Icon name={item.icon}/>{item.label}
-        </button>)}
-      </div>
-
-      {loadState && <p className="atlas-gh-loading" role="status"><Icon name="rotate-ccw" /> Chargement des données GitHub…</p>}
-      {failure && <div className="atlas-gh-notice" role="alert">{failure.message}
-        {failure.stage === "repositories" && installationId !== null && <button onClick={() => void loadRepositories(installationId)}>Réessayer</button>}
-        {failure.stage === "pulls" && installationId !== null && repositoryId !== null && <button onClick={() => void loadPulls(installationId, repositoryId)}>Réessayer</button>}
-        {failure.stage === "connections" && <Link href="/apps/github">Réessayer</Link>}
-      </div>}
-      {!configured && <div className="atlas-gh-notice">La GitHub App doit être configurée sur le serveur pour activer la connexion.</div>}
-
-      {(tab === "overview" || tab === "repositories" || tab === "pulls") && (
-        <div className="atlas-gh-content">
-          <section className="atlas-gh-primary">
-            <div className="atlas-gh-section-heading"><div>
-              <h2>{tab === "repositories" ? "Dépôts autorisés" : tab === "pulls" ? "Pull Requests ouvertes" : "Activité des Pull Requests"}</h2>
-              <p>{tab === "repositories" ? "Uniquement les dépôts accordés à Atlas." : "Lecture GitHub en direct · Dépôt sélectionné"}</p>
+      <aside className="atlas-gh-secondary">
+        <section className="atlas-gh-detail-panel">
+          <div className="atlas-gh-section-heading"><h2>Inspecteur de PR</h2><span className="atlas-gh-readonly">Lecture seule</span></div>
+          {detail ? <>
+            <h3>#{detailNumber} · {detail.title}</h3>
+            <p className="atlas-gh-detail-body">{detail.body || "Aucune description."}</p>
+            <div className="atlas-gh-sha">Révision <code>{detail.resource.headSha.slice(0, 12)}</code></div>
+            <div className="atlas-gh-files-head"><strong>Fichiers modifiés</strong>
+              <span>{detail.files.length}{detail.filesTruncated ? "+" : ""} ·
+                <b className="atlas-gh-plus"> +{detail.files.reduce((sum, file) => sum + file.additions, 0)}</b>
+                <b className="atlas-gh-minus"> −{detail.files.reduce((sum, file) => sum + file.deletions, 0)}</b></span>
             </div>
-              {tab !== "repositories" && selectedRepository && <a href={selectedRepository.htmlUrl} target="_blank" rel="noopener noreferrer">
-                Ouvrir le dépôt <Icon name="arrow-up-right"/></a>}
-            </div>
-            {repositories.length > 0 && <div className="atlas-gh-repo-toolbar">
-              <label className="atlas-gh-select-label">Dépôt
-                <select value={repositoryId ?? ""} disabled={busy} onChange={(event) => {
-                  if (installationId !== null) void loadPulls(installationId, Number(event.target.value));
-                }}>
-                  {repositories.map((repo) => <option value={repo.id} key={repo.id}>{repo.fullName}</option>)}
-                </select>
-              </label>
-              <label className="atlas-gh-search"><Icon name="search"/><span className="sr-only">Rechercher</span>
-                <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
-                  placeholder={tab === "repositories" ? "Rechercher un dépôt…" : "Rechercher une PR…"}/>
-              </label>
-              {tab === "repositories" && <select className="atlas-gh-visibility" aria-label="Visibilité" value={visibility}
-                onChange={(event) => setVisibility(event.target.value as typeof visibility)}>
-                <option value="all">Tous</option><option value="private">Privés</option><option value="public">Publics</option>
-              </select>}
-            </div>}
-            {tab === "repositories" ? (
-              <div className="atlas-gh-list">
-                {filteredRepos.map((repo) => <button type="button" key={repo.id}
-                  onClick={() => {
-                    if (installationId !== null) { void loadPulls(installationId, repo.id); setTab("pulls"); setQuery(""); }
-                  }}
-                  className={"atlas-gh-list-row" + (repo.id === repositoryId ? " is-selected" : "")} disabled={busy}>
-                  <span className="atlas-gh-row-icon"><BrandLogo slug="github" size={23}/></span>
-                  <span className="atlas-gh-row-copy"><strong>{repo.fullName}</strong><small>{repo.private ? "Privé" : "Public"} · {repo.defaultBranch ?? "Branche non indiquée"}</small></span>
-                  <span className="atlas-gh-ghost-link">Voir les PR <Icon name="arrow-right"/></span>
-                </button>)}
-                {!busy && filteredRepos.length === 0 && <div className="atlas-gh-no-data">Aucun dépôt autorisé ne correspond à cette recherche.</div>}
-                {repoTruncated && <p className="atlas-gh-truncated">Liste partielle : limite de lecture GitHub atteinte.</p>}
-              </div>
-            ) : (
-              <div className="atlas-gh-list">
-                {filteredPulls.map((pull) => <button type="button" key={pull.number}
-                  className={"atlas-gh-list-row" + (detailNumber === pull.number ? " is-selected" : "")}
-                  onClick={() => void openPull(pull.number)} disabled={busy}>
-                  <span className="atlas-gh-row-icon"><Icon name="activity" /></span>
-                  <span className="atlas-gh-row-copy"><strong>#{pull.number} · {pull.title}</strong>
-                    <small>{selectedRepository?.fullName} · Mis à jour le {formatDate(pull.updatedAt)}</small></span>
-                  <span className={"atlas-gh-pill" + (pull.draft ? " is-muted" : "")}>{pull.draft ? "Brouillon" : "Ouverte"}</span>
-                  <Icon name="chevron-right"/>
-                </button>)}
-                {!busy && filteredPulls.length === 0 && <div className="atlas-gh-no-data">
-                  {repositoryId === null ? "Sélectionnez une installation et un dépôt." :
-                    "Aucune Pull Request ouverte ne correspond à ce dépôt ou à votre recherche."}
+            <div className="atlas-gh-files">
+              {detail.files.slice(0, visibleFileCount).map((file) => <div key={file.path} className="atlas-gh-diff-file">
+                <button type="button" className="atlas-gh-file" onClick={() => setExpandedFile(expandedFile === file.path ? null : file.path)}
+                  aria-expanded={expandedFile === file.path} aria-label={"Afficher les modifications de " + file.path}>
+                  <span className="atlas-gh-file-icon"><Icon name="layers"/></span>
+                  <span className="atlas-gh-file-name" title={file.path}>{file.path}</span>
+                  <small className="atlas-gh-plus">+{file.additions}</small>
+                  <small className="atlas-gh-minus">−{file.deletions}</small>
+                  <Icon name={expandedFile === file.path ? "chevron-left" : "chevron-right"}/>
+                </button>
+                {expandedFile === file.path && <div className="atlas-gh-diff">
+                  {file.patch ? <pre>{file.patch.split("\n").map((line, index) => <span key={index}
+                    className={line.startsWith("+") ? "is-add" : line.startsWith("-") ? "is-remove" : line.startsWith("@@") ? "is-hunk" : ""}>{line}{"\n"}</span>)}</pre> :
+                    <p>Aucun extrait de diff disponible (fichier binaire, volumineux ou non transmis par GitHub).</p>}
                 </div>}
-                {pullsTruncated && <p className="atlas-gh-truncated">Au moins {pulls.length} PR : liste limitée aux 100 premières.</p>}
-              </div>
-            )}
-          </section>
-          <aside className="atlas-gh-secondary">
-            <section className="atlas-gh-detail-panel">
-              <div className="atlas-gh-section-heading"><h2>Détails de PR</h2><span className="atlas-gh-readonly">Lecture seule</span></div>
-              {detail ? <>
-                <h3>#{detailNumber} · {detail.title}</h3>
-                <p className="atlas-gh-detail-body">{detail.body || "Aucune description fournie."}</p>
-                <div className="atlas-gh-sha">Révision <code>{detail.resource.headSha.slice(0, 12)}</code></div>
-                <div className="atlas-gh-files-head"><strong>Fichiers modifiés</strong><span>{detail.filesTruncated ? detail.files.length + "+" : detail.files.length}</span></div>
-                <div className="atlas-gh-files">{detail.files.map((file) =>
-                  <div key={file.path} className="atlas-gh-file"><span title={file.path}>{file.path}</span>
-                    <small>+{file.additions} / -{file.deletions}</small></div>)}</div>
-                {detail.filesTruncated && <p className="atlas-gh-truncated">Liste partielle.</p>}
-                <a className="atlas-gh-primary-action" href={detail.htmlUrl} target="_blank" rel="noopener noreferrer">
-                  Ouvrir la PR sur GitHub <Icon name="arrow-up-right"/></a>
-              </> : <div className="atlas-gh-detail-empty"><Icon name="activity" />
-                <p>Sélectionnez une PR pour consulter ses fichiers et sa révision réelle.</p></div>}
-            </section>
-          </aside>
-        </div>
-      )}
+              </div>)}
+            </div>
+            {detail.files.length > visibleFileCount && <button type="button" className="atlas-gh-show-more"
+              onClick={() => setVisibleFileCount((count) => count + 35)}>
+              Afficher 35 fichiers supplémentaires ({detail.files.length - visibleFileCount} restants)
+            </button>}
+            {detail.filesTruncated && <p className="atlas-gh-truncated">Liste de fichiers partielle.</p>}
+            <a className="atlas-gh-primary-action" href={detail.htmlUrl} target="_blank" rel="noopener noreferrer">
+              Voir la PR sur GitHub <Icon name="arrow-up-right"/></a>
+          </> : <div className="atlas-gh-detail-empty">
+            <Icon name="activity"/><p>Sélectionnez une Pull Request pour lire sa description, ses fichiers et ses vrais diffs.</p>
+          </div>}
+        </section>
+      </aside>
+    </div>}
 
-      {tab === "settings" && <section className="atlas-gh-panel atlas-gh-settings">
-        <div className="atlas-gh-section-heading"><div><h2>Connexion GitHub</h2><p>Workspace : {workspace.name}</p></div></div>
-        <div className="atlas-gh-install-list">
-          {installations.length ? installations.map((item) => <div key={item.installationId}>
-            <strong>Installation #{item.installationId}</strong><span>{item.status === "repositories-ready" ? "Vérifiée" : "En attente de vérification"}</span>
-          </div>) : <p>Aucune installation enregistrée dans ce workspace.</p>}
-        </div>
-        {canInstall && configured ? <form method="post" action="/api/apps/github/connect/start">
-          <input type="hidden" name="workspaceId" value={workspace.id}/>
-          <button className="atlas-gh-primary-action" type="submit"><Icon name="link"/> Installer ou reconnecter GitHub</button>
-          <p>Sur GitHub, vous pouvez choisir « All repositories » (actuels et futurs) ou « Only select repositories ». ATLAS vérifiera le propriétaire et limitera la connexion à la lecture des Pull Requests.</p>
-        </form> : <p className="atlas-gh-notice">{!configured
-          ? "La GitHub App ATLAS HQ n’est pas configurée."
-          : "Seuls les administrateurs et propriétaires peuvent autoriser une installation."}</p>}
-        <p className="atlas-gh-settings-foot">Les connexions et dépôts appartiennent au workspace. Aucun changement de permissions depuis cet écran.</p>
-      </section>}
-
-      {(tab === "agents" || tab === "automations") && <section className="atlas-gh-panel atlas-gh-future">
-        <span className="atlas-gh-future-icon"><Icon name={tab === "agents" ? "bot" : "spark"}/></span>
-        <h2>{tab === "agents" ? "Analyse par agents IA" : "Automatisations GitHub"}</h2>
-        <p>{tab === "agents"
-          ? "L’analyse de PR par un agent n’est pas encore raccordée. Les dépôts et fichiers sont consultables en lecture seule."
-          : "Les déclencheurs après push, les notifications et les validations automatiques nécessitent un service de webhooks et une autorisation explicite."}</p>
-        <span className="atlas-gh-coming">Fonctionnalité à venir · Aucune action déclenchée</span>
-      </section>}
-
-      <p className="atlas-gh-footnote">Données GitHub réelles uniquement après autorisation de la GitHub App. Aucune action sur le code, merge ou validation automatique.</p>
-    </>
-  );
+    {section === "settings" && <section className="atlas-gh-panel atlas-gh-settings">
+      <div className="atlas-gh-section-heading"><div><h2>Connexions & autorisations</h2>
+        <p>Chaque installation reste liée au workspace {workspace.name}.</p></div></div>
+      <div className="atlas-gh-permissions"><div><strong>Workspace</strong><span>{workspace.name}</span></div>
+        <div><strong>Votre rôle</strong><span>{workspace.role === "owner" ? "Propriétaire" : workspace.role === "admin" ? "Admin" : "Membre"}</span></div>
+        <div><strong>Accès</strong><span>Dépôts sélectionnés ou tous les dépôts autorisés par GitHub</span></div>
+      </div>
+      <div className="atlas-gh-install-list">{installations.length > 0 ? installations.map((item) =>
+        <div key={item.installationId}><strong>Installation #{item.installationId}</strong>
+          <span>{verified(item) ? (item.repositorySelection === "all" ? "Tous les dépôts autorisés" : "Dépôts sélectionnés vérifiés") : "Vérification incomplète"}</span></div>
+      ) : <p>Aucune installation enregistrée.</p>}</div>
+      {configured && canInstall ? <form method="post" action="/api/apps/github/connect/start">
+        <input type="hidden" name="workspaceId" value={workspace.id}/>
+        <button className="atlas-gh-primary-action" type="submit"><Icon name="link"/> Installer ou réautoriser GitHub</button>
+        <p>La sélection des dépôts et l’autorisation passent par GitHub.</p>
+      </form> : <p className="atlas-gh-notice">{!configured ? "La configuration serveur de la GitHub App est requise." :
+        "Seuls les propriétaires et admins peuvent installer la GitHub App."}</p>}
+    </section>}
+    <p className="atlas-gh-footnote">Données consultées à la demande via GitHub. Aucun merge, validation, déclencheur ou agent IA n’est exécuté.</p>
+  </>;
 }
