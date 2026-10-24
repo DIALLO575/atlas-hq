@@ -409,9 +409,15 @@
   }
 }
 @media (max-width: 440px) {
+  .linear-control-center,
+  .linear-control-center * {
+    box-sizing: border-box;
+  }
   .linear-control-center .atlas-gh-identity {
     align-items: flex-start;
     gap: 12px;
+    min-width: 0;
+    flex: 1 1 auto;
   }
   .linear-control-center .atlas-gh-mark {
     width: 46px;
@@ -427,10 +433,23 @@
   }
   .linear-control-center .atlas-gh-identity p:last-child {
     font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  .linear-control-center .atlas-gh-workspace-pick {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+  .linear-control-center .atlas-gh-workspace-pick select {
+    min-width: 0;
+    min-height: 46px;
   }
   .linear-control-center .atlas-gh-connection-label {
     align-items: flex-start;
     gap: 9px;
+    width: 100%;
+    overflow-wrap: anywhere;
   }
   .linear-control-center .atlas-gh-connection-label > span:last-child {
     width: auto;
@@ -443,6 +462,67 @@
   .linear-control-center .linear-panel > header {
     flex-direction: column;
     gap: 12px;
+    width: 100%;
+  }
+  .linear-control-center .atlas-gh-install-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .linear-control-center .atlas-gh-install-controls button,
+  .linear-control-center .linear-panel > header button,
+  .linear-control-center .linear-panel > button,
+  .linear-control-center .linear-connect-form .app-action {
+    width: 100%;
+    min-height: 46px;
+    white-space: normal;
+    text-align: center;
+  }
+  .linear-control-center .linear-connect-form .app-action {
+    position: static;
+    justify-content: center;
+  }
+  .linear-control-center .linear-connect-form p {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .linear-control-center .linear-list li {
+    padding: 13px 0;
+  }
+  .linear-control-center .linear-list strong,
+  .linear-control-center .linear-list span {
+    overflow-wrap: anywhere;
+  }
+}
+@media (max-width: 360px) {
+  .linear-control-center {
+    gap: 14px;
+  }
+  .linear-control-center .atlas-gh-hero {
+    gap: 12px;
+  }
+  .linear-control-center .atlas-gh-mark {
+    width: 42px;
+    height: 42px;
+  }
+  .linear-control-center .atlas-gh-mark .atlas-brand-image {
+    width: 31px;
+    height: 31px;
+  }
+  .linear-control-center .atlas-gh-identity {
+    gap: 10px;
+  }
+  .linear-control-center .atlas-gh-identity h1 {
+    font-size: 25px;
+  }
+  .linear-control-center .atlas-gh-identity p:last-child {
+    font-size: 11px;
+  }
+  .linear-control-center .atlas-gh-connection-strip {
+    padding: 12px;
+  }
+  .linear-control-center .linear-panel {
+    padding: 14px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
