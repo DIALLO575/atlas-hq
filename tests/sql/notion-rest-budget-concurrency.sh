@@ -6,7 +6,7 @@ conn="123e4567-e89b-12d3-a456-426614174030"
 ws="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 actor="11111111-1111-4111-8111-111111111111"
 nws="eeeeeeee-eeee-4eee-8eee-eeeeeeeeee30"
-sql="set role service_role; select public.atlas_notion_reserve_rest_read('$conn','$ws','$actor','$nws',1,3000);"
+sql="set role service_role; select (public.atlas_notion_reserve_rest_read('$conn','$ws','$actor','$nws',1,3000)->>'delay_ms')::integer;"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 psql -X -v ON_ERROR_STOP=1 -At -c "$sql" > "$tmp/first" &
