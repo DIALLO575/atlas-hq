@@ -90,8 +90,13 @@ jobs:
           -f tests/sql/notion-store-rpc.sql
           -f tests/sql/notion-revoke-rpc.sql
           -f tests/sql/notion-refresh-migration.sql
+          -f supabase/migrations/20261024161500_atlas_notion_rest_distributed_gate.sql
+          -f tests/sql/notion-rest-distributed-budget.sql
+          -f tests/sql/notion-rest-budget-concurrency-fixture.sql
       - name: Verify cross-process Notion refresh single-flight
         run: bash tests/sql/notion-refresh-concurrency.sh
+      - name: Verify two-process Notion REST admission
+        run: bash tests/sql/notion-rest-budget-concurrency.sh
 
   validate:
     runs-on: ubuntu-latest

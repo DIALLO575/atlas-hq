@@ -107,9 +107,11 @@ export function createNotionReadClient({
           try { await requestBudget.beforeRequest(controller.signal); }
           catch (error) {
             if (error instanceof NotionBudgetError) {
-              throw new NotionReadError(error.code === "REQUEST_ABORTED"
-                ? "REQUEST_TIMEOUT_OR_ABORTED" : "RATE_LIMITED",
-              error.code === "REQUEST_ABORTED" ? null : 429,
+              const aborted = error.code === "REQUEST_ABORTED";
+              const unavailable = error.code === "BUDGET_UNAVAILABLE";
+              throw new NotionReadError(aborted ? "REQUEST_TIMEOUT_OR_ABORTED"
+                : unavailable ? "PROVIDER_UNAVAILABLE" : "RATE_LIMITED",
+              aborted ? null : unavailable ? 503 : 429,
               error.retryAfterSeconds);
             }
             throw new NotionReadError("PROVIDER_UNAVAILABLE");
@@ -145,7 +147,13 @@ export function createNotionReadClient({
         const status = response.status;
         const seconds = retryAfter(response.headers);
         if ((status === 429 || status === 529) && requestBudget) {
-          requestBudget.observeRateLimit(seconds);
+          try {
+            await requestBudget.observeRateLimit(seconds);
+          } catch {
+            // Missing distributed cooldown must stop retrying, not make an
+            // optimistic second provider request on another server.
+            throw new NotionReadError("PROVIDER_UNAVAILABLE", 503);
+          }
         }
         const safeRetry = (status === 429 || status === 529 ||
           (method === "GET" && [500, 502, 503, 504].includes(status)));

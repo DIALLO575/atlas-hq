@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
       // replay a provider write or retry refresh on unknown outcome.
       const refreshed = await refreshNotionPersonalConnection(loaded);
       const client = createNotionReadClient({
-        token: refreshed.accessToken, requestBudget: loaded.requestBudget,
+        token: refreshed.accessToken,
+        requestBudget: loaded.budgetForVersion(refreshed.version),
       });
       return json(await execute(client));
     }

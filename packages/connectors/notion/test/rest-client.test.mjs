@@ -176,3 +176,36 @@ test("task status retrieval has fixed origin and bounded task ID", async () => {
     code:"INVALID_INPUT",
   });
 });
+
+test("missing distributed cooldown fails closed after 429; never retries",async()=>{
+  let requests=0;
+  const client=createNotionReadClient({
+    token:"secret",
+    requestBudget:{
+      async beforeRequest(){},
+      async observeRateLimit(){throw Error("sql unavailable: secret-bearing diagnostic");},
+    },
+    retryOptions:{wait:async()=>{throw Error("must not retry");}},
+    request:async()=>{requests++;return response({access_token:"NEVER"},429,
+      new Headers({"Retry-After":"1"}));},
+  });
+  await assert.rejects(client.getPage(ID),error=>
+    error.code==="PROVIDER_UNAVAILABLE" && error.status===503 &&
+    !error.message.includes("secret-bearing"));
+  assert.equal(requests,1);
+});
+test("distributed reservation failure blocks provider request without fallback",async()=>{
+  let requests=0;
+  const client=createNotionReadClient({
+    token:"secret",
+    requestBudget:{
+      async beforeRequest(){throw Object.assign(Error("sql not migrated"),{
+        code:"BUDGET_UNAVAILABLE",
+      });},
+      async observeRateLimit(){},
+    },
+    request:async()=>{requests++;return response({object:"page",id:ID});},
+  });
+  await assert.rejects(client.getPage(ID),error=>
+    error.code==="PROVIDER_UNAVAILABLE" && requests===0);
+});
