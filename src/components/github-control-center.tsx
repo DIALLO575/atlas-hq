@@ -208,6 +208,8 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
       }, controller.signal);
       if (controller.signal.aborted) return;
       setDetail(result);
+      // Open the first available patch in the dedicated code pane.
+      setExpandedFile(result.files.find((file) => file.patch)?.path ?? result.files[0]?.path ?? null);
     } catch (error) { failIfActive(error, controller); }
     finally { if (!controller.signal.aborted) setLoading(null); }
   }
@@ -345,27 +347,60 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
                 <b className="atlas-gh-plus"> +{detail.files.reduce((sum, file) => sum + file.additions, 0)}</b>
                 <b className="atlas-gh-minus"> −{detail.files.reduce((sum, file) => sum + file.deletions, 0)}</b></span>
             </div>
-            <div className="atlas-gh-files">
-              {detail.files.slice(0, visibleFileCount).map((file) => <div key={file.path} className="atlas-gh-diff-file">
-                <button type="button" className="atlas-gh-file" onClick={() => setExpandedFile(expandedFile === file.path ? null : file.path)}
-                  aria-expanded={expandedFile === file.path} aria-label={"Afficher les modifications de " + file.path}>
-                  <span className="atlas-gh-file-icon"><Icon name="layers"/></span>
-                  <span className="atlas-gh-file-name" title={file.path}>{file.path}</span>
-                  <small className="atlas-gh-plus">+{file.additions}</small>
-                  <small className="atlas-gh-minus">−{file.deletions}</small>
-                  <Icon name={expandedFile === file.path ? "chevron-left" : "chevron-right"}/>
-                </button>
-                {expandedFile === file.path && <div className="atlas-gh-diff">
-                  {file.patch ? <pre>{file.patch.split("\n").map((line, index) => <span key={index}
-                    className={line.startsWith("+") ? "is-add" : line.startsWith("-") ? "is-remove" : line.startsWith("@@") ? "is-hunk" : ""}>{line}{"\n"}</span>)}</pre> :
-                    <p>Aucun extrait de diff disponible (fichier binaire, volumineux ou non transmis par GitHub).</p>}
+            <div className="atlas-gh-code-explorer">
+              <div className="atlas-gh-file-browser">
+                <div className="atlas-gh-browser-heading">
+                  <strong>Explorateur de fichiers</strong>
+                  <span>{detail.files.length} fichier{detail.files.length > 1 ? "s" : ""}</span>
+                </div>
+                <div className="atlas-gh-files" role="group" aria-label="Fichiers modifiés">
+                  {detail.files.slice(0, visibleFileCount).map((file) => (
+                    <div key={file.path} className="atlas-gh-diff-file">
+                      <button type="button" className={"atlas-gh-file" + (expandedFile === file.path ? " is-active" : "")}
+                        onClick={() => setExpandedFile(expandedFile === file.path ? null : file.path)}
+                        aria-expanded={expandedFile === file.path}
+                        aria-label={"Afficher les modifications de " + file.path}
+                        title={file.path}>
+                        <span className="atlas-gh-file-icon"><Icon name="layers"/></span>
+                        <span className="atlas-gh-file-name">{file.path}</span>
+                        <small className="atlas-gh-plus">+{file.additions}</small>
+                        <small className="atlas-gh-minus">−{file.deletions}</small>
+                        <Icon name="chevron-right"/>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {detail.files.length > visibleFileCount && <button type="button" className="atlas-gh-show-more"
+                  onClick={() => setVisibleFileCount((count) => count + 35)}>
+                  Afficher 35 fichiers supplémentaires ({detail.files.length - visibleFileCount} restants)
+                </button>}
+              </div>
+              <div className="atlas-gh-code-pane" aria-label="Diff du fichier sélectionné">
+                {detail.files.filter((file) => file.path === expandedFile).map((file) => (
+                  <div key={file.path} className="atlas-gh-code-selection">
+                    <div className="atlas-gh-code-heading">
+                      <div><span className="atlas-gh-code-overline">MODIFICATIONS · LECTURE SEULE</span>
+                        <strong title={file.path}>{file.path}</strong>
+                      </div>
+                      <span className="atlas-gh-code-counts">
+                        <b className="atlas-gh-plus">+{file.additions}</b>
+                        <b className="atlas-gh-minus">−{file.deletions}</b>
+                      </span>
+                    </div>
+                    <div className="atlas-gh-diff">
+                      {file.patch ? <pre aria-label={"Diff de " + file.path}>{file.patch.split("\n").map((line, index) => <span key={index}
+                        className={line.startsWith("+") ? "is-add" : line.startsWith("-") ? "is-remove" : line.startsWith("@@") ? "is-hunk" : ""}>{line}{"\n"}</span>)}</pre> :
+                        <p>Aucun extrait de diff disponible (fichier binaire, volumineux ou non transmis par GitHub).</p>}
+                    </div>
+                  </div>
+                ))}
+                {!expandedFile && <div className="atlas-gh-code-empty">
+                  <Icon name="layers"/>
+                  <strong>Choisissez un fichier</strong>
+                  <p>Sélectionnez un fichier à gauche pour consulter ses modifications, ligne par ligne.</p>
                 </div>}
-              </div>)}
+              </div>
             </div>
-            {detail.files.length > visibleFileCount && <button type="button" className="atlas-gh-show-more"
-              onClick={() => setVisibleFileCount((count) => count + 35)}>
-              Afficher 35 fichiers supplémentaires ({detail.files.length - visibleFileCount} restants)
-            </button>}
             {detail.filesTruncated && <p className="atlas-gh-truncated">Liste de fichiers partielle.</p>}
             <a className="atlas-gh-primary-action" href={detail.htmlUrl} target="_blank" rel="noopener noreferrer">
               Voir la PR sur GitHub <Icon name="arrow-up-right"/></a>
