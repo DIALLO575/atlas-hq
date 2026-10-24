@@ -86,23 +86,28 @@ export async function GET(request: NextRequest) {
     .eq("installation_id", installationId).eq("workspace_id", workspaceId).maybeSingle();
   if (installationError) return fail("CONNECTIONS_UNAVAILABLE", 503);
   if (!installation || installation.status !== "repositories-ready" ||
-      installation.repository_selection !== "selected" ||
+      !["selected", "all"].includes(installation.repository_selection) ||
       !installation.ownership_verified_at || !installation.repositories_verified_at) {
     return fail("GITHUB_NOT_AUTHORIZED", 403);
   }
 
-  const { data: repositories, error: repositoryError } = await supabase
-    .from("atlas_github_authorized_repositories")
-    .select("repository_id").eq("installation_id", installationId)
-    .order("repository_id").limit(501);
-  if (repositoryError) return fail("CONNECTIONS_UNAVAILABLE", 503);
-  // IDs originate ONLY from read-only, workspace-isolated database records.
-  const repositoryIds = (repositories ?? []).map((row) => Number(row.repository_id));
-  if (repositoryIds.length === 0 || repositoryIds.length > 500 ||
-      repositoryIds.some((id) => !Number.isSafeInteger(id) || id < 1) ||
-      new Set(repositoryIds).size !== repositoryIds.length) {
-    return fail("GITHUB_NOT_AUTHORIZED", 403);
+  let repositoryIds: number[] = [];
+  if (installation.repository_selection === "selected") {
+    const { data: repositories, error: repositoryError } = await supabase
+      .from("atlas_github_authorized_repositories")
+      .select("repository_id").eq("installation_id", installationId)
+      .order("repository_id").limit(501);
+    if (repositoryError) return fail("CONNECTIONS_UNAVAILABLE", 503);
+    // Selected IDs originate ONLY from workspace-isolated server records.
+    repositoryIds = (repositories ?? []).map((row) => Number(row.repository_id));
+    if (repositoryIds.length === 0 || repositoryIds.length > 500 ||
+        repositoryIds.some((id) => !Number.isSafeInteger(id) || id < 1) ||
+        new Set(repositoryIds).size !== repositoryIds.length) {
+      return fail("GITHUB_NOT_AUTHORIZED", 403);
+    }
   }
+  // For 'all', no untrusted browser IDs or snapshot is used. GitHub's
+  // read-only installation token and live repository listing are authoritative.
 
   const appId = process.env.GITHUB_APP_ID;
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
