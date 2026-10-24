@@ -26,6 +26,12 @@ do $$ begin
  if has_table_privilege('authenticated','private.atlas_engine_approvals','UPDATE')
  then raise exception 'PRIVATE_APPROVAL_UPDATE_GRANT';end if;
 end $$;
+select set_config('test.engine_fingerprint_a',
+ (select intent_digest from private.atlas_engine_approvals
+  where run_id='aaaaaaa3-0000-4000-8000-000000000003'),false);
+select set_config('test.engine_fingerprint_b',
+ (select intent_digest from private.atlas_engine_approvals
+  where run_id='bbbbbbb3-0000-4000-8000-000000000003'),false);
 set role authenticated;
 select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
 select set_config('request.jwt.claims','{"session_id":"cccc0000-0000-4000-8000-000000000003"}',false);
@@ -41,12 +47,6 @@ begin
 end $$;
 -- Every action uses a pinned DB fingerprint. A revoked role/JWT/self actor
 -- cannot decide even by calling the SQL RPC outside the Next.js route.
-select set_config('test.engine_fingerprint_a',
- (select intent_digest from private.atlas_engine_approvals
-  where run_id='aaaaaaa3-0000-4000-8000-000000000003'),false);
-select set_config('test.engine_fingerprint_b',
- (select intent_digest from private.atlas_engine_approvals
-  where run_id='bbbbbbb3-0000-4000-8000-000000000003'),false);
 set role authenticated;
 -- Requester is an owner, but is not allowed to decide their own run.
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
