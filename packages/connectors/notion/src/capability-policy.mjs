@@ -86,7 +86,7 @@ export function evaluateNotionCapabilities({
   checkedAt = Date.now(),
 } = {}) {
   if (!Number.isSafeInteger(checkedAt) || checkedAt < 0) throw new Error("INVALID_CHECKED_AT");
-  const valid = validBinding(connectionBinding);
+  const valid = Boolean(validBinding(connectionBinding));
   const result = NOTION_CAPABILITY_MANIFEST.map(cap => {
     const configured = configuredSurfaces[cap.surface] === true;
     const bound = valid && connectionBinding.surface === cap.surface &&

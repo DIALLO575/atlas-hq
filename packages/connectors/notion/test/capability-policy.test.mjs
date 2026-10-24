@@ -108,7 +108,7 @@ test("failed probe degrades one operation; unknown entitlement stays unknown", (
   assert.equal(get(v, "rest.search.title").status, "degraded");
   assert.equal(get(v, "rest.pages.retrieve").status, "authorized");
   assert.equal(get(v, "admin.organization").status, "not_implemented");
-  assert.equal(get(v, "agents.sessions").planEligible, false);
+  assert.equal(get(v, "agents.sessions").planEligible, null);
 });
 
 test("cannot manufacture evidence for an unimplemented operation", () => {
