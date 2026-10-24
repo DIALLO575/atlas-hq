@@ -3,6 +3,7 @@ import { engineFailure, engineSuccess, requireEngineWorkspace } from "@/lib/engi
 import { resolveMausbotConfig, MausbotAdapterError } from "../../../../../../packages/engines/mausbot/src/adapter.mjs";
 import { executeMausbotPrimitive } from "../../../../../../packages/engines/mausbot/src/primitives.mjs";
 import { MAUSBOT_PRIMITIVES, MAUSBOT_FUTURE_SURFACES, validateMausbotPrimitive, PrimitiveInputError } from "../../../../../../packages/engine-core/src/primitives.mjs";
+import { MAUSBOT_NATIVE_CAPABILITIES, nativeCoverageSummary } from "../../../../../../packages/engine-core/src/native-capabilities.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,8 @@ export async function GET(request: NextRequest) {
   return engineSuccess({
     engine: "mausbot", source: "OpenMausBot scripts/mcp-server.ts",
     primitives: MAUSBOT_PRIMITIVES,
+    native: MAUSBOT_NATIVE_CAPABILITIES,
+    nativeCoverage: nativeCoverageSummary(),
     futureSurfaces: MAUSBOT_FUTURE_SURFACES,
     note: "source-mapped; not yet validated against a live MAUSBOT host",
   });

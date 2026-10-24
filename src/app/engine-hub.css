@@ -35,3 +35,9 @@
 .atlas-engine-warning { color:#a34c29; background:#fff6f1; border:1px solid #f3d8cc; border-radius:10px; padding:12px 15px; }
 @media(max-width:860px) { .atlas-engine-workarea { grid-template-columns:1fr; } }
 @media(max-width:620px) { .atlas-engine-grid { grid-template-columns:1fr; }.atlas-engine-card,.atlas-engine-panel,.atlas-engine-toolbar { padding:18px; } .atlas-engine-toolbar-actions { width:100%; justify-content:space-between; } }
+
+.atlas-engine-coverage-counts { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:22px 0 16px; }
+.atlas-engine-coverage-counts div {border:1px solid #efedf6;border-radius:13px;padding:15px;background:#faf9fd;display:grid;gap:6px}
+.atlas-engine-coverage-counts strong {font-size:26px;color:#6e51c9}
+.atlas-engine-coverage-counts span {font-size:11px;color:#75718b;line-height:1.4}
+@media(max-width:770px){.atlas-engine-coverage-counts{grid-template-columns:repeat(2,minmax(0,1fr))}}

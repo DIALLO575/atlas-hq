@@ -13,6 +13,7 @@ type Agent = { id: string; name: string; emoji: string | null };
 type Dispatch = { accepted: boolean; taskCreated?: boolean; threadId?: string; sendId?: string; error?: string };
 type Job = { status: string | null; state: string | null; phase: string | null; version: number | null };
 type WorkspaceState = WorkspaceResult | { status: "loading" };
+type PrimitiveCoverage = { mappedMcp: number; native: number; nativeFamilies: Record<string,number>; callableNative: number; testedLive: number };
 
 async function readResponse(url: string, init?: RequestInit) {
   const result = await fetch(url, { cache: "no-store", credentials: "same-origin", ...init });
@@ -23,6 +24,7 @@ async function readResponse(url: string, init?: RequestInit) {
 
 export function EnginesHub() {
   const [wsState, setWsState] = useState<WorkspaceState>({ status: "loading" });
+  const [primitiveCoverage, setPrimitiveCoverage] = useState<PrimitiveCoverage | null>(null);
   const [workspaceId, setWorkspaceId] = useState("");
   const [engines, setEngines] = useState<Engine[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -57,6 +59,7 @@ export function EnginesHub() {
       setLoading(true);
       setIssue(null);
       setEngines([]);
+      setPrimitiveCoverage(null);
       setAgents([]);
       setBotId("");
       setDispatch(null);
@@ -67,6 +70,18 @@ export function EnginesHub() {
         if (abort.signal.aborted) return;
         const entries = Array.isArray(catalog.engines) ? catalog.engines as Engine[] : [];
         setEngines(entries);
+        const preview = await readResponse("/api/engines/mausbot/primitives?workspaceId=" +
+          encodeURIComponent(workspaceId), { signal: abort.signal });
+        if (abort.signal.aborted) return;
+        const nativeCoverage = preview.nativeCoverage as Record<string, unknown> | undefined;
+        setPrimitiveCoverage({
+          mappedMcp: Array.isArray(preview.primitives) ? preview.primitives.length : 0,
+          native: typeof nativeCoverage?.total === "number" ? nativeCoverage.total : 0,
+          nativeFamilies: nativeCoverage?.byFamily && typeof nativeCoverage.byFamily === "object"
+            ? nativeCoverage.byFamily as Record<string, number> : {},
+          callableNative: typeof nativeCoverage?.callable === "number" ? nativeCoverage.callable : 0,
+          testedLive: typeof nativeCoverage?.testedLive === "number" ? nativeCoverage.testedLive : 0,
+        });
         if (entries.find((engine) => engine.id === "mausbot")?.status !== "configured") return;
         const base = "/api/engines/mausbot?workspaceId=" + encodeURIComponent(workspaceId);
         await readResponse(base + "&view=health", { signal: abort.signal });
@@ -175,6 +190,27 @@ export function EnginesHub() {
           </article>
         ))}
       </div>
+
+      {primitiveCoverage && (
+        <section className="atlas-engine-panel atlas-engine-capability-panel" aria-label="Inventaire hors connexion">
+          <div className="atlas-engine-section-heading">
+            <div><h2>Primitives MAUSBOT — inventaire préconnexion</h2>
+              <p>Capacités cartographiées depuis le code source, pas des fonctionnalités déjà validées sur votre instance.</p></div>
+            <strong>Sans moteur connecté</strong>
+          </div>
+          <div className="atlas-engine-coverage-counts">
+            <div><strong>{primitiveCoverage.mappedMcp}</strong><span>contrats MCP + mappings HTTP testés</span></div>
+            <div><strong>{primitiveCoverage.native}</strong><span>capacités HTTP natives cartographiées</span></div>
+            <div><strong>{primitiveCoverage.callableNative}</strong><span>primitives natives ouvertes par défaut</span></div>
+            <div><strong>{primitiveCoverage.testedLive}</strong><span>primitives natives testées sur moteur réel</span></div>
+          </div>
+          <div className="atlas-engine-chips">
+            {Object.entries(primitiveCoverage.nativeFamilies).map(([family, count]) =>
+              <span key={family}>{family} · {count}</span>)}
+          </div>
+          <p>Les fonctions sensibles et les appels natifs restent bloqués. Il faudra valider les contrats, les permissions, la traçabilité et les tests avant de raccorder MAUSBOT.</p>
+        </section>
+      )}
 
       {activeEngine?.status === "not-configured" && (
         <section className="atlas-engine-panel">

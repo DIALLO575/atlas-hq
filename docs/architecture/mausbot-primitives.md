@@ -96,3 +96,40 @@ raccordement privé → extension progressive vers Hermes.
   relié à une validation humaine persistée côté ATLAS.
 
 Ces contrats ne constituent PAS une connexion MCP, SSE ou CLI opérationnelle.
+
+## Audit extensif source → 119 primitives natives (ATLAS M0)
+
+Source gelée : `milind-soni/OpenMausBot@0a78caa91a64c1ab1adfa972ab4e540e89b66c6d`.
+
+Le catalogue `packages/engine-core/src/native-capabilities.mjs` comporte **119
+entrées natives** réparties entre : agents/profils, mémoire, skills, MCP bots,
+équipes, channels, fichiers, webhooks, routines, observabilité, ordinateurs,
+connecteurs et live. Chaque entrée garde la méthode/route ou la preuve
+d'exemple, le niveau de permission, la provenance et le statut.
+
+**Ce sont 119 contrats SOURCE-MAPPÉS, pas 119 opérations exécutables !**
+`callable=false`, `hostTested=false`, `implementation=contract-only`
+et `secretPolicy=deny-raw-results` pour toutes les entrées.
+La surface MCP initiale de 20 opérations est suivie séparément et a des
+mappings HTTP mock-testés ; les primitives natives ne sont jamais transmises
+par le POST d'ATLAS. Les fonctions d'approbation auto, credential, shell,
+ordinateur, endpoints internes tournent en mode `restricted` ou `human`.
+
+Contrat complémentaire `planNativePrimitive` : interpolations de paramètres
+d'ID strictement allowlistées, aucun appel réseau ni corps arbitraire.
+Une entrée provenant d'un script de vérification ou de l'UI est identifiée
+comme telle, moins forte qu'une preuve server-route.
+
+### Source de vérité et gates de Linear
+
+Projet [ATLAS HQ V0](https://linear.app/shadoron/project/atlas-hq-v0-fonctionnelle-a3866a7ccc6b).
+Parent [SHA-104](https://linear.app/shadoron/issue/SHA-104) ;
+jalon M0 « Toutes les primitives avant connexion » ;
+SHA-126…SHA-133 couvrent le catalogue complet et ses contraintes.
+[SHA-105](https://linear.app/shadoron/issue/SHA-105) reste Backlog jusqu'aux
+preuves contractuelles et permissions de M0.
+
+Ce catalogue ne doit pas être considéré comme une garantie de complétude
+historique ou une surface publique stable. Les versions futures de MAUSBOT
+pourraient déplacer, ajouter ou supprimer des routes ; un diff source
+automatisé et la comparaison de la version live seront obligatoires.
