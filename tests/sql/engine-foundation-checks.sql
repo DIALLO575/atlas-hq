@@ -217,6 +217,8 @@ begin
   'aaaaaaa1-0000-4000-8000-000000000001',
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'agents.list',repeat('a',64)) into expected;
+ if expected<>'8eab5c2c4c1a8987368a9f9e0093d6248da56453445c63f8eb07aa67d0da8860' then
+    raise exception 'ENGINE_JAVASCRIPT_POSTGRES_DIGEST_MISMATCH';end if;
  if (select intent_digest from private.atlas_engine_approvals
    where run_id='aaaaaaa1-0000-4000-8000-000000000001')<>expected then
    raise exception 'ENGINE_INTENT_DIGEST_MISSING';end if;

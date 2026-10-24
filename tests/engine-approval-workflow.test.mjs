@@ -70,6 +70,7 @@ test("Requester establishes a pending decision strictly bound to immutable run s
  assert.match(r.intentDigest,/^[a-f0-9]{64}$/);
  assert.equal(r.expiresAt,"2026-10-24T18:15:00.000Z");
  assert.equal(r.intentDigest,engineApprovalIntentDigest(state.run));
+ assert.equal(r.intentDigest,"8eab5c2c4c1a8987368a9f9e0093d6248da56453445c63f8eb07aa67d0da8860");
  assert.deepEqual(state.audits.map(x=>x.event_key),["engine.approval.requested"]);
  assert.equal(JSON.stringify(state.approval).includes("rawPrompt"),false);
  await assert.rejects(api.request(request("requester")),e=>e.code==="APPROVAL_ALREADY_EXISTS");
