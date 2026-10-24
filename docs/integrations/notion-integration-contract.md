@@ -1,3 +1,5 @@
+> **Release update (2026-10-24):** All four migrations have now been applied on the official ATLAS Supabase project with the user's authorization. Earlier entries in this document describe pre-release states; the authoritative release record is [the Notion Supabase/Main release note](../operations/notion-supabase-main-release-2026-10-24.md). Notion OAuth live testing is still outstanding.
+
 # ATLAS × Notion — implementation contract (SHA-111 / SHA-121)
 
 Status (2026-10-24): **read-only adapter and OAuth protocol primitives, NOT a connected product**.
@@ -37,14 +39,14 @@ Official docs:
 - https://developers.notion.com/reference/post-search
 
 ## Tenant-safe OAuth implementation (SHA-120 / SHA-122; draft)
-- Migration 20261024140000_atlas_notion_connection_foundation.sql revokes browser writes to trusted registry/index/cursors, adds workspace membership bindings, and creates server-only OAuth-state + encrypted credential tables.
-- Migration 20261024140500_atlas_notion_atomic_store.sql provides one service-role-only transactional RPC to persist the registry row and ciphertext after authorization. DO NOT apply official Supabase migrations without a separate production approval.
+- Migration 20261024140402_atlas_notion_connection_foundation.sql revokes browser writes to trusted registry/index/cursors, adds workspace membership bindings, and creates server-only OAuth-state + encrypted credential tables.
+- Migration 20261024140414_atlas_notion_atomic_store.sql provides one service-role-only transactional RPC to persist the registry row and ciphertext after authorization. DO NOT apply official Supabase migrations without a separate production approval.
 - AES-256-GCM AAD binds workspace ATLAS, actor, Notion workspace/bot and token kind. Envelopes carry versioned key IDs; refresh token may be null per current Notion API schema. Durable refresh/revocation is still to do.
 - OAuth state is signed random 15-minute value, SameSite=Lax HttpOnly cookie, SHA-256 hash-only DB record and one conditional UPDATE to prevent replay. Callback rechecks current session and admin membership.
 - Routes /api/apps/notion/connect/start and /api/apps/notion/oauth/callback, and /apps/notion, are gated by NOTION_OAUTH_CALLBACK_ENABLED=true, valid server settings and encrypted keyring.
 - Start verifies Origin and actor membership. Callback exchanges code server-side, verifies bot identity and calls the server-only RPC. No frontend exposure of access or refresh tokens.
 - Notion API permissions still require each resource to be shared. Authorization is not proof of access to every Notion page.
-- The UI must report non-configured state honestly. No Notion secrets or provider live OAuth proof exist yet; no production migration or deployment was performed.
+- The UI must report non-configured state honestly. No live OAuth Notion proof exists. The four migrations were applied to the official database on 2026-10-24; deployment of the application is independently tracked.
 - Required server-only env: ATLAS_PUBLIC_ORIGIN, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NOTION_OAUTH_CLIENT_ID, NOTION_OAUTH_CLIENT_SECRET, NOTION_OAUTH_REDIRECT_URI, NOTION_OAUTH_STATE_KEY (>=32 bytes), NOTION_OAUTH_TOKEN_KEY_ID, NOTION_OAUTH_TOKEN_KEYS (JSON keyring), NOTION_OAUTH_CALLBACK_ENABLED.
 
 ## Server-side read & disconnect slice (SHA-122 / SHA-123, no live credentials)
@@ -55,13 +57,13 @@ Official docs:
 - An external revoke failure reports providerRevocation: pending without restoring the local connection. This requires operational follow-up; this slice does not implement a durable revoke retry queue. Keep token ciphertext as a server-only tombstone, never expose to the browser.
 - The public API cannot read pages outside those actually shared with the Notion connection. 403/404 remain actual provider constraints.
 - Refresh-token lifecycle requires a separate serialization-safe implementation. Do not implement naive concurrent refresh attempts; Notion rotates refresh tokens.
-- No migrations have been applied to ATLAS official Supabase. These files are source artifacts until disposable DB tests and explicit production approval.
+- The four versioned migrations were applied to ATLAS official Supabase on 2026-10-24 with explicit authorization. See docs/operations/notion-supabase-main-release-2026-10-24.md. No live OAuth Notion proof.
 
 ## Rotating OAuth token lifecycle (SHA-122, commit pending CI)
 - Notion REST OAuth refresh uses JSON POST with HTTP Basic at the **fixed** official /v1/oauth/token endpoint, grant_type=refresh_token. Both returned tokens must be checked and rotated atomically. Verify Notion bot/workspace identities match the previously bound connection; never trust client-supplied IDs.
-- Database migration 20261024141500_atlas_notion_refresh_gate.sql adds an unexpiring claim (refresh_attempt_id/refresh_started_at), exact-version transactional completion, attempt id audit, and a fail-closed tombstone. All RPCs are service_role only, not browser executable.
+- Database migration 20261024140422_atlas_notion_refresh_gate.sql adds an unexpiring claim (refresh_attempt_id/refresh_started_at), exact-version transactional completion, attempt id audit, and a fail-closed tombstone. All RPCs are service_role only, not browser executable.
 - Normal reads use the stored bearer; one Notion 401 may trigger **one** protected refresh and a single retry of the read-only request. Calls with an active refresh claim return an in-progress status; no arbitrary polling or unlock on timeout.
 - If the provider outcome or DB completion is unknown, or Notion reports invalid authorization, fail_refresh tombstones the exact attempted credential and marks the registry disconnected; the user must reconnect. NEVER retry a rotated refresh token automatically.
 - Local disconnect and reauthorization are prevented from modifying an active rotation. Cross-session PostgreSQL CI competes for one refresh claim and verifies a single winner.
-- Treat each additional git push as potentially triggering a Vercel preview. This work is in a draft PR, and never changes deployed Supabase without explicit approval.
+- Treat each additional git push as potentially triggering a Vercel preview. The initial migration application had explicit approval on 2026-10-24; future production migrations still need review and authorization.
 - Notion documentation: https://developers.notion.com/reference/refresh-a-token ; https://developers.notion.com/guides/get-started/authorization

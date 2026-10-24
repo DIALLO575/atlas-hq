@@ -1,3 +1,4 @@
+-- Applied to ATLAS official Supabase on 2026-10-24, version 20261024140418.
 -- SHA-122/123: a local disconnect is atomic and wins before any provider revocation.
 -- Version-checked, user/workspace-scoped, callable only by service_role.
 create or replace function public.atlas_notion_revoke_connection(

@@ -65,3 +65,8 @@ Cet instantané remplace la mention historique des « 0 installation GitHub » d
 
 ## 6. Discipline de contribution
 Éviter les commits correctifs poussés en chaîne : Vercel peut créer automatiquement une preview pour chaque push. Un lot testé, un push cohérent, une preview maximum; stopper sur erreur 402. Les instructions de \`AGENTS.md\` prévalent pour les agents de développement.
+
+
+## 7. Addendum Notion (24/10/2026)
+
+Le socle Notion a été appliqué à Supabase officiel (4 migrations : `20261024140402`, `20261024140414`, `20261024140418`, `20261024140422`). Les contrôles RLS et privilèges sont vérifiés. Pour les preuves, la configuration et les étapes de mise en service, consulter [la note Notion](notion-supabase-main-release-2026-10-24.md). Les statuts GitHub, Vercel, Supabase et Notion OAuth restent distincts ; ne pas présenter les routes de code comme une connexion fournisseur déjà prouvée.

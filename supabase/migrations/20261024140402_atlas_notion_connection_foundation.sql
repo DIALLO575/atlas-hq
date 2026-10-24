@@ -1,6 +1,6 @@
 -- SHA-120/SHA-122: ATLAS generic connector hardening + Notion REST OAuth schema.
--- VERSIONED SOURCE ONLY. DO NOT APPLY DIRECTLY TO THE OFFICIAL PROJECT
--- before isolated PostgreSQL tests, review and an explicit production approval.
+-- Applied to ATLAS official Supabase on 2026-10-24 under version 20261024140402.
+-- Do not replay manually; use version history and a forward migration for changes.
 --
 -- The existing generic connector registry is owned by the ATLAS session, but
 -- client-editable provider grants, status and secret_ref are not authority.

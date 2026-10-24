@@ -1,4 +1,4 @@
--- SHA-122: source migration only; do not apply to official Supabase without review.
+-- SHA-122: Applied to ATLAS official Supabase on 2026-10-24 under version 20261024140422.
 -- Durable one-winner token refresh. An ambiguous provider response may have
 -- rotated its refresh token: never auto-expire/take over a pending claim.
 alter table public.atlas_notion_connections

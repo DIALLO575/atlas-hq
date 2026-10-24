@@ -1,5 +1,5 @@
 -- SHA-122: atomically persist verified Notion OAuth response and its encrypted
--- credential envelope. Service-role only. TEST IN DISPOSABLE DATABASE FIRST.
+-- credential envelope. Service-role only. Applied to ATLAS official Supabase on 2026-10-24: version 20261024140414.
 create unique index atlas_notion_active_actor_workspace_uidx
   on public.atlas_notion_connections(workspace_id, user_id, notion_workspace_id)
   where revoked_at is null;
