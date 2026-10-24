@@ -13,6 +13,7 @@ export function mintReadOnlyInstallationToken(input: {
   privateKey: string;
   installationId: number;
   repositoryIds: number[];
+  repositorySelection?: "selected" | "all";
   request?: GitHubFetch;
   now?: () => number;
 }): Promise<{ token: string; expiresAt: string }>;
@@ -34,7 +35,7 @@ export type GitHubPullDetail = {
   filesTruncated: boolean; htmlUrl: string;
 };
 export function createGitHubReadClient(input: {
-  token: string; installationId: number; repositoryIds: number[]; request?: GitHubFetch;
+  token: string; installationId: number; repositoryIds: number[]; repositorySelection?: "selected" | "all"; request?: GitHubFetch;
 }): {
   listRepositories(): Promise<{ repositories: GitHubRepository[]; truncated: boolean }>;
   listPullRequests(repositoryId: number): Promise<{ repository: GitHubRepository; pullRequests: GitHubPullSummary[]; truncated: boolean }>;
