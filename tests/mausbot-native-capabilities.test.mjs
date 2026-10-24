@@ -88,8 +88,8 @@ test("MCP and OAuth offline adapters preserve the preconnection release boundary
   for(const id of plans) assert.equal(nativePrimitive(id)?.implementation,"validated-plan",id);
   const total = nativeCoverageSummary();
   assert.equal(total.total,128);
-  assert.equal(total.mockTestedReads,17);
-  assert.equal(total.validatedMutationPlans,29);
+  assert.equal(total.mockTestedReads,21);
+  assert.equal(total.validatedMutationPlans,37);
   assert.equal(total.callable,0);
   assert.equal(total.testedLive,0);
 });
