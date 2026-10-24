@@ -1,11 +1,12 @@
-# ATLAS Engine persistence — SHA-132 preconnection security proposal
+# ATLAS Engine persistence — SHA-132: migrations applied, runtime blocked
 
 **Status: migration applied to the connected ATLAS Supabase project on 2026-10-24.**
 The versioned SQL is `supabase/migrations/20261024161305_atlas_engine_foundation_preconnection.sql` and is recorded in the Supabase
 migration history under `20261024161305` (via the connected Supabase migration API).
 After applying, read-only verification confirmed 9 new tables, RLS on all,
-3 guard triggers, 0 engine instances and 0 runs. Production transport remains
-**disconnected**; runtime permissions, vault encryption and worker are not implemented.
+3 guard triggers, 0 engine instances and 0 runs. Production transport remains **disconnected**. An AES-256-GCM offline crypto
+module exists, but KMS, privileged database driver, real actor approvals
+and a durable worker are not yet implemented.
 
 ## Schema boundaries
 
@@ -53,8 +54,8 @@ sandbox validation has been performed.
 1. Test real authenticated-user RLS policies against an isolated full Supabase environment, including revocation.
 2. Implement actor-session-verified human approval workflow with CSRF,
    resource-specific scopes and audit receipts, and prevent self-approval.
-3. Build a trusted credential encrypt/decrypt vault, key rotation and
-   service-role API that never exposes ciphertext to web clients.
+3. Wire the offline-tested AES-GCM vault into a trusted KMS and privileged
+   database driver, with reviewed rotation/revocation and no browser keys.
 4. Implement transactional outbox claim/retry/heartbeat/lease fencing and
    deduplicated cursor progress under worker identity; perform concurrent tests.
 5. Bind runs to ATLAS missions, workspaces and live engine instances in

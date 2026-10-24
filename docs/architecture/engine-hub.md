@@ -56,36 +56,32 @@ ATTENTION : le runtime Atlas heberge sur Vercel doit pouvoir joindre MAUSBOT.
 exposee sur HTTPS avec appairage correct est necessaire. Ne jamais exposer un
 serveur MAUSBOT sans authentification ni attribuer l'acces Full automatiquement.
 
-## Evolution schema Supabase (proposition, PAS de migration dans ce lot)
+## Supabase Engines — deux migrations déjà appliquées (24/10/2026)
 
-Ne pas creer des tables sans modele tenant et secrets valide. Proposer en
-PR de migration distincte :
+- 20261024161305_atlas_engine_foundation_preconnection : 9 tables RLS
+  (2 tables publiques de métadonnées : instances et runs ; 7 tables privées :
+  bindings d'agents, clés chiffrées, approbations, outbox, curseurs SSE,
+  reçus d'événements et audit).
+- 20261024163943_atlas_engine_outbox_envelope_v1 : colonnes NOT NULL key_id,
+  version pour identifier chaque clé utilisée par l'outbox chiffrée.
 
-1. atlas_engine_instances : id, workspace_id, provider, display_name,
-   status, credential_ref opaque, runtime_ref, created_by, timestamps.
-2. atlas_engine_capabilities : instance_id, capability, transport, policy,
-   enabled/verified_at, version; la matrice est calculee du runtime.
-3. atlas_engine_agents : instance_id, external_agent_id, display_name,
-   snapshot et last_seen_at (cache non autoritaire).
-4. atlas_engine_runs : mission_id, instance_id, external_thread_id,
-   send_id, status, started_at, finished_at, last_event_cursor.
-5. atlas_engine_events : instance_id, external_event_id unique, kind,
-   run_id, occurred_at, payload expurge; reprise SSE et deduplication.
-6. atlas_engine_actions : actor_user_id, workspace_id, engine_instance_id,
-   capability, approval_id, idempotency_key, outcome, timestamps.
+Après contrôle : 0 moteur MAUSBOT, 0 run, 0 approbation et 0 message
+outbox en base. Une primitive AES-256-GCM testée localement existe mais
+n'est pas reliée à un KMS ou au pilote privé de la base. Les lectures
+natives sont mock-testées ; toutes les écritures et exécutions MAUSBOT
+sont bloquées (HTTP 423). L'API /api/engines/instances n'autorise que
+l'inscription offline par owner/admin.
 
-Cles et tokens : vault chiffre serveur / systeme de secrets dedie, jamais
-dans les lignes visibles par le navigateur. Chaque table de schema public
-doit activer RLS et politiques workspace, et les actes cross-tenant doivent
-echouer. Les installations multi-workspaces exigent un **vrai runtime isole**
-par tenant, pas seulement une colonne workspace_id.
+Il faut distinguer 1) SQL appliqué, 2) code sur main, 3) site Web
+déployé, 4) runtime MAUSBOT réellement connecté. Ce sont quatre états
+différents. Voir docs/operations/atlas-engine-m0-main-release-2026-10-24.md.
 
 ## Etapes suivantes
 
 - P0 : executer npm test, npm run typecheck, npm run lint, npm run build,
   et confirmer les permissions de session sur installation MAUSBOT reelle.
-- P1 : migration schema + modeles d'instances tenant, coffre des secrets,
-  outbox/idempotence durable et piste d'audit; tests cross-workspace.
+- P1 : SQL du socle appliqué ; poursuivre coffre KMS réel, DB privée,
+  approbations humaines, worker outbox + fencing, essais RLS Auth et reprises.
 - P1 : relier Agents & Equipes a atlas_engine_agents, Missions aux runs
   et Inbox aux demandes d'approbation, avec reconciliation du job tree.
 - P2 : SSE Last-Event-ID, files de traitement, retries bornes, webhooks,
