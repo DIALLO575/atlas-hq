@@ -1,0 +1,16 @@
+title = "ATLAS narrowly scoped gitleaks false-positive exclusions"
+
+# Keep all standard secret detectors. This exclusion applies only to a
+# documented French planning sentence, not any tokens, keys or environments.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "Architecture prose: coffre des secrets, outbox/idempotence durable"
+  condition = "AND"
+  regexTarget = "line"
+  paths = ['''^docs/architecture/engine-hub\.md$''']
+  regexes = ['''outbox/idempotence durable et piste d.audit''']
