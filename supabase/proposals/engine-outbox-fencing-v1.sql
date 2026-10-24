@@ -171,4 +171,40 @@ revoke all on function private.atlas_engine_worker_finish(
 grant execute on function private.atlas_engine_worker_finish(
  uuid,uuid,text,uuid,bigint,boolean,text) to service_role;
 
+-- A crash on attempt 5 must not strand a permanently expired leased row.
+-- A bounded worker-only sweeper transitions exhausted leases to dead-letter,
+-- including when an instance is subsequently disabled; no payload is read.
+create function private.atlas_engine_worker_reap_exhausted(
+ p_workspace_id uuid,p_limit integer default 25)
+returns integer
+language plpgsql volatile security invoker set search_path='' as $
+declare v record; v_count integer:=0;
+begin
+ if p_workspace_id is null or p_limit not between 1 and 100 then
+   raise exception 'ENGINE_WORKER_INPUT_INVALID' using errcode='22023';
+ end if;
+ for v in
+  select o.id,o.instance_id,o.run_id
+  from private.atlas_engine_outbox o
+  where o.workspace_id=p_workspace_id and o.state='leased'
+     and o.attempt_count>=5 and o.lease_until<=clock_timestamp()
+  order by o.created_at,o.id
+  for update skip locked limit p_limit
+ loop
+  update private.atlas_engine_outbox set state='dead-letter',
+    lease_token=null,lease_owner=null,lease_until=null,
+    last_error_code='MAX_ATTEMPTS'
+  where id=v.id and workspace_id=p_workspace_id;
+  insert into private.atlas_engine_audit_events(
+    workspace_id,instance_id,run_id,event_key)
+  values(p_workspace_id,v.instance_id,v.run_id,'engine.outbox.dead-letter');
+  v_count:=v_count+1;
+ end loop;
+ return v_count;
+end $;
+revoke all on function private.atlas_engine_worker_reap_exhausted(uuid,integer)
+ from public,anon,authenticated;
+grant execute on function private.atlas_engine_worker_reap_exhausted(uuid,integer)
+ to service_role;
+
 -- This migration does not install pg_cron, an HTTP worker or a MAUSBOT connection.

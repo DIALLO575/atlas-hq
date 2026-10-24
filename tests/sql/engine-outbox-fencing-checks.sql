@@ -140,6 +140,45 @@ begin
  if has_table_privilege('authenticated','private.atlas_engine_outbox','SELECT') then
   raise exception 'ENCRYPTED_PAYLOAD_READABLE_BY_BROWSER';end if;
 end $$;
+-- Crash after FINAL allowed attempt: a bounded reaper must dead-letter.
+insert into private.atlas_engine_outbox
+(id,workspace_id,instance_id,run_id,idempotency_key,key_id,version,
+ payload_nonce,payload_ciphertext,payload_tag,attempt_count)
+values('ddddddd5-0000-4000-8000-000000000005',
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ 'aaaaaaaa-0000-4000-8000-000000000001',
+ 'aaaaaaa1-0000-4000-8000-000000000001',
+ 'cccccccc-0000-4000-8000-000000000005','test-key-1',1,
+ decode(repeat('0a',12),'hex'),decode('aabbcc','hex'),
+ decode(repeat('1a',16),'hex'),4);
+set role service_role;
+do $
+declare claim_row record;
+begin
+ select * into claim_row from private.atlas_engine_worker_claim(
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','last-attempt',45);
+ if claim_row.outbox_id<>'ddddddd5-0000-4000-8000-000000000005' then
+   raise exception 'LAST_ATTEMPT_NOT_CLAIMED';end if;
+end $;
+reset role;
+update private.atlas_engine_outbox set lease_until=clock_timestamp()-interval '1 second'
+ where id='ddddddd5-0000-4000-8000-000000000005';
+set role service_role;
+do $
+begin
+ if private.atlas_engine_worker_reap_exhausted(
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',25)<>1 then
+  raise exception 'EXHAUSTED_LEASE_NOT_REAPED';end if;
+ if private.atlas_engine_worker_reap_exhausted(
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',25)<>0 then
+  raise exception 'REAPER_NOT_IDEMPOTENT';end if;
+ if exists(select 1 from private.atlas_engine_outbox
+  where id='ddddddd5-0000-4000-8000-000000000005'
+    and (state<>'dead-letter' or lease_token is not null)) then
+  raise exception 'EXHAUSTED_LEASE_NOT_DEAD_LETTER';end if;
+end $;
+reset role;
+
 -- No MAUSBOT connection or network occurred; restore the fake engine offline.
 update public.atlas_engine_instances set connection_state='offline'
  where id='aaaaaaaa-0000-4000-8000-000000000001';
