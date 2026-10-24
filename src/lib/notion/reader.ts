@@ -1,5 +1,7 @@
 import "server-only";
 import { createNotionReadClient } from "../../../packages/connectors/notion/src/rest-client.mjs";
+import { notionRestBudgetForPersonalConnection }
+  from "../../../packages/connectors/notion/src/reliability.mjs";
 import { rotateNotionCredentials } from "../../../packages/connectors/notion/src/refresh-flow.mjs";
 import { assertPersonalNotionConnection } from "../../../packages/connectors/notion/src/resource-view.mjs";
 import { adminNotionClient, notionConnectSettings, notionTokenVault,
@@ -44,9 +46,15 @@ export async function loadNotionPersonalConnection({
     notionWorkspaceId: connection.notion_workspace_id,
     notionBotId: connection.notion_bot_id,
   });
+  const requestBudget = notionRestBudgetForPersonalConnection({
+    workspaceId: connection.notion_workspace_id,
+    connectionId: connection.connection_id,
+  });
   return {
-    actor, settings, admin, vault, record: connection, tokens,
-    client: createNotionReadClient({ token: tokens.accessToken }),
+    actor, settings, admin, vault, record: connection, tokens, requestBudget,
+    client: createNotionReadClient({
+      token: tokens.accessToken, requestBudget,
+    }),
   };
 }
 
