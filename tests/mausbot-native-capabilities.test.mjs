@@ -53,3 +53,27 @@ test("Offline adapter classifications match exactly eleven native reads and elev
   }
  }
 });
+
+test("Team + channel work is registered as offline-only implementation progress", () => {
+  const readIds = ["teams.library.catalog", "teams.organization.catalog"];
+  const plannedIds = ["teams.export", "teams.organization.install", "channels.mark-read",
+    "channels.queue.cancel", "channels.queue.steer", "channels.members.compact", "channels.tasks.delete"];
+  for (const id of readIds) {
+    const found = nativePrimitive(id);
+    assert.equal(found?.implementation, "adapter-mock-tested");
+    assert.equal(found?.callable, false);
+    assert.equal(found?.hostTested, false);
+  }
+  for (const id of plannedIds) {
+    const found = nativePrimitive(id);
+    assert.equal(found?.implementation, "validated-plan");
+    assert.equal(found?.callable, false);
+    assert.equal(found?.hostTested, false);
+  }
+  const summary = nativeCoverageSummary();
+  assert.equal(summary.mockTestedReads, 13);
+  assert.equal(summary.validatedMutationPlans, 18);
+  assert.equal(summary.total, 128);
+  assert.equal(summary.callable, 0);
+  assert.equal(summary.testedLive, 0);
+});

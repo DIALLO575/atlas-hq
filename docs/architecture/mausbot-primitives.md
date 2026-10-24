@@ -156,3 +156,35 @@ Sur **128 capacités natives répertoriées** :
 - 11 plans de mutations validés offline, non exécutables;
 - 106 autres contrats cartographiés, à approfondir.
 Toutes les 128 capacités restent `callable=false` et `hostTested=false`.
+
+## Lot M0.3 — Équipes, canaux et CLI : 2 lectures + 7 plans offline
+
+Source officielle vérifiée :
+`server/routes/teams.ts`, `server/routes/channels.ts`,
+`server/routes/bulk-delete.ts`, `server/team-library.ts`,
+`server/org-library.ts`, `docs/headless-cli.md`.
+
+`packages/engines/mausbot/src/team-channel-contracts.mjs` ajoute :
+- lectures structurées de `/api/team-library/catalog` et
+  `/api/org-library`, avec projections de métadonnées sans manifests,
+  textes privés, identifiants secrets ou payloads de package ;
+- 7 plans de mutations : `teams.export` (manifest seul, ni package ni
+  backup avec transcripts), `teams.organization.install`,
+  `channels.mark-read`, `channels.queue.cancel`,
+  `channels.queue.steer`, `channels.members.compact`,
+  `channels.tasks.delete` (1-500 threadIds distincts) ;
+- inspection CLI `team apply --dry-run` ou `--check` uniquement,
+  en passant une liste d'arguments sans shell et des chemins
+  pré-provisionnés dans un worker externe.
+  
+Les 7 plans refusent les clés étrangères, fausses autorisations, path
+traversal, commandes destructives implicites et répétitions automatiques.
+Ils ne sont **pas exécutables** : la vérification de propriété des canaux,
+du nombre de tâches à conserver, des opérations de file d'attente et des
+approbations doit se refaire côté moteur au moment de l'exécution.
+
+Bilan **128 capacités natives cataloguées** :
+**13 lectures avec adaptateur simulé**, **18 plans de mutations offline**,
+**97 entrées encore cartographiées sans adaptateur**, **0 connectée**.
+Toujours **20 primitives MCP** à part. L'ajout d'une famille ne constitue
+pas une garantie d'exhaustivité de l'API MAUSBOT.
