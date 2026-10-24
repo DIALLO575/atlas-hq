@@ -43,8 +43,8 @@ test("Native source-mapped team memory and skill editing use actual HTTP verbs",
 
 test("Offline adapters and mutation plans stay strictly non-callable across source families",()=>{
  const sum=nativeCoverageSummary();
- assert.equal(sum.mockTestedReads,13);
- assert.equal(sum.validatedMutationPlans,19);
+ assert.equal(sum.mockTestedReads,17);
+ assert.equal(sum.validatedMutationPlans,29);
  assert.equal(sum.callable,0);
  assert.equal(sum.testedLive,0);
  for(const p of MAUSBOT_NATIVE_CAPABILITIES){
@@ -71,9 +71,25 @@ test("Team + channel work is registered as offline-only implementation progress"
     assert.equal(found?.hostTested, false);
   }
   const summary = nativeCoverageSummary();
-  assert.equal(summary.mockTestedReads, 13);
-  assert.equal(summary.validatedMutationPlans, 19);
+  assert.equal(summary.mockTestedReads, 17);
+  assert.equal(summary.validatedMutationPlans, 29);
   assert.equal(summary.total, 128);
   assert.equal(summary.callable, 0);
   assert.equal(summary.testedLive, 0);
+});
+
+test("MCP and OAuth offline adapters preserve the preconnection release boundary", () => {
+  const reads = ["mcp.bot-servers.list","mcp.team.connections","connectors.catalog","connectors.connected"];
+  const plans = ["mcp.bot-servers.test","mcp.bot-servers.toggle","mcp.bot-servers.sign-in",
+    "mcp.bot-servers.sign-out","mcp.bot-servers.sign-in.cancel","mcp.team.connection-scopes",
+    "mcp.team.sign-in","mcp.team.disconnect","connectors.user.apps.connect",
+    "connectors.user.apps.disconnect"];
+  for(const id of reads) assert.equal(nativePrimitive(id)?.implementation, "adapter-mock-tested",id);
+  for(const id of plans) assert.equal(nativePrimitive(id)?.implementation,"validated-plan",id);
+  const total = nativeCoverageSummary();
+  assert.equal(total.total,128);
+  assert.equal(total.mockTestedReads,17);
+  assert.equal(total.validatedMutationPlans,29);
+  assert.equal(total.callable,0);
+  assert.equal(total.testedLive,0);
 });

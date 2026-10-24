@@ -202,3 +202,43 @@ la vérification finale et l'autorisation humaine sont à faire dans le worker.
 Bilan courant : **13 lectures natives mock-testées**, **19 plans natifs de
 mutations validés offline**, **96 contrats natifs encore sans adaptateur**,
 0 live, total stable **128**. Aucune connexion réelle.
+
+## M0.4 — MCP entrants, connecteurs et OAuth : 4 lectures + 10 plans offline
+
+Références source : server/routes/mcp-servers.ts, server/routes/team-connections.ts,
+server/team-connections.ts, server/mcp-registry.ts, docs/custom-mcp-servers.md,
+docs/composio.md. Les deux catalogues connecteurs sont aussi documentés
+dans les tests et la surface Companion ; aucune stabilité versionnée garantie.
+
+Le fichier packages/engines/mausbot/src/mcp-connectors.mjs distingue
+**3 couches MCP distinctes** :
+- external-control : openmausbot mcp (stdio pour clients externes) ;
+- agent-tools : serveurs MCP distants ou stdio, configurés comme outils des agents ;
+- internal-bridge : protocole par-tour du moteur, **interdit comme API publique**.
+
+Les **4 lectures de métadonnées** (testées avec fetch simulé) :
+- mcp.bot-servers.list : noms, type, enabled, état d'authentification. Exclut
+  adresses, commandes, arguments, noms d'environnement, en-têtes, OAuth clientId ;
+- mcp.team.connections : noms des outils connectés et compteurs. Exclut
+  email, host, IDs/alias de comptes et secrets ;
+- connectors.catalog : uniquement slug et label des outils ;
+- connectors.connected : états et nombre de comptes sans leurs identifiants.
+
+Les **10 plans de mutation sans réseau**, jamais appelables :
+MCP test, activation, début/fin d'authentification, annulation de flow,
+scopes connexion team/person, sign-in/disconnect MCP par personne,
+connect/disconnect Apps par personne. Ils refusent systématiquement les
+URLs arbitraires, clés brutes, callback URLs, champs d'approbation navigateur
+et configuration d'un serveur programmable. L'authentification doit être
+réalisée par une **session humaine** avec OAuth/PKCE de MAUSBOT, et jamais
+par une requête d'agent ou un token de service générique. Tests mock couvrent
+le refus de ces appels.
+
+À chaque éventuelle activation future : liaison workspace + utilisateur
+réel, sessions révoquées, autorisation admin/person, registre des serveurs
+approuvés, protocole OAuth, protections SSRF pour URL distantes, scope par
+compte, journal d'audit durable, vérifications d'ownership côté moteur.
+
+**Bilan à présent : 128 native cataloguées, 17 lectures avec adaptateur
+mock-testé, 29 plans de mutations validés offline, 82 source-only.
+20 primitives MCP externes testées en simulation, 0 connexion MAUSBOT réelle.**
