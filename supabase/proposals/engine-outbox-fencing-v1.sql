@@ -177,7 +177,7 @@ grant execute on function private.atlas_engine_worker_finish(
 create function private.atlas_engine_worker_reap_exhausted(
  p_workspace_id uuid,p_limit integer default 25)
 returns integer
-language plpgsql volatile security invoker set search_path='' as $
+language plpgsql volatile security invoker set search_path='' as $$
 declare v record; v_count integer:=0;
 begin
  if p_workspace_id is null or p_limit not between 1 and 100 then
@@ -201,7 +201,7 @@ begin
   v_count:=v_count+1;
  end loop;
  return v_count;
-end $;
+end $$;
 revoke all on function private.atlas_engine_worker_reap_exhausted(uuid,integer)
  from public,anon,authenticated;
 grant execute on function private.atlas_engine_worker_reap_exhausted(uuid,integer)
