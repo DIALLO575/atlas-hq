@@ -5,7 +5,7 @@
 This slice builds on PR #35. The following migrations are **NOT applied** to official ATLAS Supabase and no poller runs by default:
 
 - `20261024163000_atlas_notion_async_jobs.sql`: queue for **Notion async_task status GET only**.
-- `20261024163500_atlas_notion_rest_circuit_breaker.sql`: shared per-workspace transient-response circuit.
+- `20261024163500_atlas_notion_rest_circuit_breaker.sql` and `20261024170500_atlas_notion_rest_half_open.sql`: shared workspace/connection transient-response circuit with a single half-open probe.
 - `20261024165000_atlas_notion_async_retention.sql`: bounded cleanup of terminal async metadata.
 
 **No write queue, no replay of create/update page calls, no access token or page content in the queue.** The persisted queue stores only task IDs, ATLAS/Notion actor and connection scope, credential version, attempts, lease token/time, sanitized error category and timestamps. Provider task result is deliberately discarded.
@@ -21,14 +21,16 @@ This slice builds on PR #35. The following migrations are **NOT applied** to off
 
 ## Shared circuit breaker
 
-- The distributed budget reports successful or transient REST provider outcomes through a service-role-only SQL RPC.
-- Three consecutive 5xx/529 failures open a conservative 30-second **workspace** cooldown automatically honored by the existing admission RPC. Success resets failures.
-- This is a timed-open breaker, **not** a fully adaptive half-open one-probe breaker. No automatic notifications yet.
+- The distributed budget reports successful or transient REST provider outcomes through a service-role-only SQL RPC, after checking the exact active credential version.
+- Three consecutive 5xx/529 failures open a conservative 30-second circuit at both the Notion workspace and ATLAS connection scopes. Admission holds locks in workspace-then-connection order.
+- Once open time expires, a single durable five-minute probe lease is acquired across both scopes. Its random lease ID is returned only to the admitted request and must match both durable scopes when reporting the outcome. Missing, stale or foreign leases fail closed. Concurrent reservations defer; success closes both scopes, while a transient probe failure reopens them for another 30 seconds. An abandoned probe becomes claimable after its bounded lease expires.
+- Aggregate counters track reservations, deferrals, throttles, circuit opens and provider successes. They contain no request identifiers, page data, tokens or audit payloads. This is bounded operational evidence, not an alerting or export pipeline.
+- The poller/scheduler and feature flags remain OFF. No automatic notifications yet.
 
 ## Validation / release gates
 
-- Disposable PG17 CI: migration grants, RLS, wrong actor/version, duplicates, lease fencing, retry/dead-letter, refresh and revoke purge, circuit failures, two independent PostgreSQL sessions claiming different jobs.
+- Disposable PG17 CI: migration grants, RLS, wrong actor/version, duplicates, lease fencing, retry/dead-letter, refresh and revoke purge, circuit failures, single half-open probe and recovery, two independent PostgreSQL sessions claiming different jobs.
 - Node: task status mapping, no provider content persisted, cooldown and circuit failure handling, no retries if the distributed store is down.
-- The two migrations are **source-only**. No Supabase Production migration, Vercel rollout, OAuth live test or `main` merge. SHA-134 remains the required sandbox proof; SHA-109 coordinates the durable job infrastructure.
+- These migrations are **source-only**. No Supabase Production migration, Vercel rollout, OAuth live test or `main` merge. SHA-134 remains the required sandbox proof; SHA-109 coordinates the durable job infrastructure.
 
 Official docs: https://developers.notion.com/reference/retrieve-async-task ; https://developers.notion.com/reference/request-limits

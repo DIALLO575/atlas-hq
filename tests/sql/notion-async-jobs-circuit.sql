@@ -13,7 +13,7 @@ begin
     'public.atlas_notion_enqueue_async_task(uuid,uuid,uuid,uuid,integer,text)',
     'public.atlas_notion_claim_async_task(integer)',
     'public.atlas_notion_finish_async_task(uuid,uuid,text,integer,text)',
-    'public.atlas_notion_report_rest_outcome(uuid,uuid,uuid,uuid,integer,text)',
+    'public.atlas_notion_report_rest_outcome(uuid,uuid,uuid,uuid,integer,text,uuid)',
     'public.atlas_notion_purge_terminal_async_jobs(integer,integer)'
   ] loop
     if has_function_privilege('anon',f,'EXECUTE') or
@@ -31,7 +31,7 @@ declare
   other uuid:='22222222-2222-4222-8222-222222222222';
   nw uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeee41';
   bot uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddd41';
-  id1 uuid; id2 uuid; lease record; replay record; d integer;
+  id1 uuid; id2 uuid; probe uuid; lease record; replay record; d integer; reservation jsonb;
 begin
   if public.atlas_notion_store_connection(cid,ws,actor,nw,bot,'async fixture',
     'testkey','MDAwMDAwMDAwMDAw','Y2lwaGVydGV4dA','AAAAAAAAAAAAAAAAAAAAAA',
@@ -84,26 +84,79 @@ begin
   if d<>1 then raise exception 'Expired terminal purge count invalid: %',d; end if;
   if exists(select 1 from public.atlas_notion_async_jobs where id=id1)
     then raise exception 'Expired terminal job still present'; end if;
-  if not public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'success')
+  if not public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'success',null)
     then raise exception 'Success not recorded'; end if;
-  if public.atlas_notion_report_rest_outcome(cid,ws,other,nw,1,'transient')
+  if public.atlas_notion_report_rest_outcome(cid,ws,other,nw,1,'transient',null)
     then raise exception 'Cross-actor breaker report succeeded'; end if;
   for d in 1..3 loop
-    if not public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'transient')
+    if not public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'transient',null)
       then raise exception 'Breaker transient rejected'; end if;
   end loop;
   if not exists(select 1 from public.atlas_notion_rest_budgets
     where scope_type='workspace' and scope_id=nw and circuit_open_count=1
       and cooldown_until>clock_timestamp())
     then raise exception 'Circuit did not open after 3 transients'; end if;
-  if public.atlas_notion_reserve_rest_read(cid,ws,actor,nw,1,3000) >= 0
+  reservation:=public.atlas_notion_reserve_rest_read(cid,ws,actor,nw,1,3000);
+  if (reservation->>'delay_ms')::integer >= 0
     then raise exception 'Open circuit allowed immediate request'; end if;
-  if not public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'success')
+  update public.atlas_notion_rest_budgets set
+    circuit_open_until=clock_timestamp()-interval '1 second',
+    cooldown_until=clock_timestamp()-interval '1 second',
+    next_slot_at=clock_timestamp()+interval '2 seconds'
+    where (scope_type='workspace' and scope_id=nw) or
+      (scope_type='connection' and scope_id=cid);
+  reservation:=public.atlas_notion_reserve_rest_read(cid,ws,actor,nw,1,0);
+  if (reservation->>'delay_ms')::integer>=0 or
+    (reservation->>'probe_lease_id') is not null then
+    raise exception 'Bounded wait did not defer half-open reservation';
+  end if;
+  if exists(select 1 from public.atlas_notion_rest_budgets
+    where ((scope_type='workspace' and scope_id=nw) or
+      (scope_type='connection' and scope_id=cid))
+      and (circuit_state='half_open' or half_open_probe_id is not null)) then
+    raise exception 'Deferred reservation left orphan half-open probe';
+  end if;
+  update public.atlas_notion_rest_budgets set next_slot_at=clock_timestamp()-interval '1 second'
+    where (scope_type='workspace' and scope_id=nw) or
+      (scope_type='connection' and scope_id=cid);
+  reservation:=public.atlas_notion_reserve_rest_read(cid,ws,actor,nw,1,3000);
+  probe:=(reservation->>'probe_lease_id')::uuid;
+  if (reservation->>'delay_ms')::integer<0 or probe is null
+    then raise exception 'Expired circuit did not admit half-open probe'; end if;
+  reservation:=public.atlas_notion_reserve_rest_read(cid,ws,actor,nw,1,3000);
+  if (reservation->>'delay_ms')::integer>=0
+    then raise exception 'Half-open circuit admitted more than one probe'; end if;
+  if not exists(select 1 from public.atlas_notion_rest_budgets
+    where scope_type='workspace' and scope_id=nw and circuit_state='half_open'
+      and half_open_probe_until>clock_timestamp())
+    then raise exception 'Half-open probe lease not recorded'; end if;
+  if public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'success',null)
+    or public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'success',
+      '99999999-9999-4999-8999-999999999999')
+    then raise exception 'Unfenced half-open outcome accepted'; end if;
+  if not public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'success',probe)
     then raise exception 'Recovery report rejected'; end if;
   if not exists(select 1 from public.atlas_notion_rest_budgets
     where scope_type='workspace' and scope_id=nw
-      and consecutive_failures=0 and provider_success_count=2)
+      and consecutive_failures=0 and provider_success_count=2
+      and circuit_state='closed' and half_open_probe_until='-infinity'::timestamptz)
     then raise exception 'Circuit recovery metric invalid'; end if;
+  update public.atlas_notion_rest_budgets set
+    consecutive_failures=3,circuit_state='open',
+    circuit_open_until=clock_timestamp()-interval '1 second',
+    cooldown_until=clock_timestamp()-interval '1 second'
+    where (scope_type='workspace' and scope_id=nw) or
+      (scope_type='connection' and scope_id=cid);
+  reservation:=public.atlas_notion_reserve_rest_read(cid,ws,actor,nw,1,3000);
+  probe:=(reservation->>'probe_lease_id')::uuid;
+  if (reservation->>'delay_ms')::integer<0 or probe is null
+    then raise exception 'Second half-open probe was not admitted'; end if;
+  if not public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'transient',probe)
+    then raise exception 'Transient probe outcome rejected'; end if;
+  if not exists(select 1 from public.atlas_notion_rest_budgets
+    where scope_type='workspace' and scope_id=nw and circuit_state='open'
+      and circuit_open_count=2 and circuit_open_until>clock_timestamp())
+    then raise exception 'Transient half-open probe did not reopen circuit'; end if;
   id2:=public.atlas_notion_enqueue_async_task(cid,ws,actor,nw,1,'task_to_revoke');
   if id2 is null then raise exception 'Second enqueue failed'; end if;
   if not public.atlas_notion_claim_refresh(cid,ws,actor,1,

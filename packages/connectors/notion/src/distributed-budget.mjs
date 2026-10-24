@@ -36,11 +36,14 @@ export function createNotionDistributedBudget({
     async beforeRequest(signal) {
       if (signal?.aborted) throw new NotionBudgetError("REQUEST_ABORTED");
       await localBudget.beforeRequest(signal);
-      let ms;
-      try { ms = await store.reserve({ ...key, maxWaitMs }); }
+      let reservation;
+      try { reservation = await store.reserve({ ...key, maxWaitMs }); }
       catch { throw new NotionBudgetError("BUDGET_UNAVAILABLE"); }
+      const ms = reservation?.delayMs;
+      const probeLeaseId = reservation?.probeLeaseId ?? null;
       if (signal?.aborted) throw new NotionBudgetError("REQUEST_ABORTED");
-      if (ms === null || !Number.isInteger(ms)) {
+      if (!Number.isInteger(ms) || (probeLeaseId !== null &&
+          (typeof probeLeaseId !== "string" || !UUID.test(probeLeaseId)))) {
         throw new NotionBudgetError("BUDGET_UNAVAILABLE");
       }
       if (ms < 0) {
@@ -48,6 +51,7 @@ export function createNotionDistributedBudget({
       }
       if (ms > maxWaitMs) throw new NotionBudgetError("BUDGET_UNAVAILABLE");
       await wait(ms, signal);
+      return Object.freeze({ probeLeaseId });
     },
     async observeRateLimit(seconds) {
       // Keep local cooldown even if a distributed DB call is unavailable.
@@ -60,12 +64,15 @@ export function createNotionDistributedBudget({
         throw new NotionBudgetError("BUDGET_UNAVAILABLE");
       }
     },
-    async observeOutcome(outcome) {
+    async observeOutcome(outcome, reservation = null) {
       if (!["success","transient"].includes(outcome)) {
         throw new NotionBudgetError("INVALID_BUDGET_OUTCOME");
       }
       try {
-        if (await store.reportOutcome({ ...key, outcome }) !== true) {
+        const probeLeaseId = reservation?.probeLeaseId ?? null;
+        if (probeLeaseId !== null && (typeof probeLeaseId !== "string" ||
+            !UUID.test(probeLeaseId))) throw new Error("INVALID_PROBE_LEASE");
+        if (await store.reportOutcome({ ...key, outcome, probeLeaseId }) !== true) {
           throw new Error("NOTION_BUDGET_OUTCOME_REJECTED");
         }
       } catch {

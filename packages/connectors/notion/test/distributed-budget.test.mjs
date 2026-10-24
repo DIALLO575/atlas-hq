@@ -23,7 +23,7 @@ function fixture(store) {
 test("distributed gate reserves through authenticated/versioned store before Notion call",async()=>{
   let sent;
   const {gate,events} = fixture({
-    async reserve(binding){ sent=binding; return 350; },
+    async reserve(binding){ sent=binding; return {delayMs:350,probeLeaseId:null}; },
     async cooldown(){return true;},
   });
   await gate.beforeRequest();
@@ -32,14 +32,14 @@ test("distributed gate reserves through authenticated/versioned store before Not
 });
 test("cross-worker cooldown failure blocks retries and retains process-local cooldown",async()=>{
   const {gate,events}=fixture({
-    async reserve(){return 0;}, async cooldown(){throw Error("DB unavailable");},
+    async reserve(){return {delayMs:0,probeLeaseId:null};}, async cooldown(){throw Error("DB unavailable");},
   });
   await assert.rejects(gate.observeRateLimit(5),{code:"BUDGET_UNAVAILABLE"});
   assert.deepEqual(events,[["local-cooldown",5]]);
 });
 test("negative deferred slot is a bounded 429, not a long sleep",async()=>{
   const {gate,events}=fixture({
-    async reserve(){return -29;}, async cooldown(){return true;},
+    async reserve(){return {delayMs:-29,probeLeaseId:null};}, async cooldown(){return true;},
   });
   await assert.rejects(gate.beforeRequest(),err=>
     err.code==="BUDGET_DEFERRED" && err.retryAfterSeconds===29);
@@ -57,7 +57,7 @@ test("invalid scope, stale versions and unavailable DB fail closed",async()=>{
 });
 test("aborted caller does not issue distributed reservation",async()=>{
   let reservations=0;
-  const {gate}=fixture({async reserve(){reservations++;return 0;},async cooldown(){return true;}});
+  const {gate}=fixture({async reserve(){reservations++;return {delayMs:0,probeLeaseId:null};},async cooldown(){return true;}});
   const controller=new AbortController();controller.abort();
   await assert.rejects(gate.beforeRequest(controller.signal),{code:"REQUEST_ABORTED"});
   assert.equal(reservations,0);
@@ -66,7 +66,7 @@ test("aborted caller does not issue distributed reservation",async()=>{
 test("full standard UUIDs are valid but truncated UUIDs fail closed",()=>{
   assert.throws(()=>createNotionDistributedBudget({
     binding:{...key,userId:"11111111-1111-1111-111111111111"},
-    store:{reserve:async()=>0,cooldown:async()=>true},
+    store:{reserve:async()=>({delayMs:0,probeLeaseId:null}),cooldown:async()=>true},
     localBudget:{beforeRequest:async()=>{},observeRateLimit(){}},
   }),{code:"INVALID_BUDGET_CONFIG"});
 });
@@ -74,18 +74,32 @@ test("full standard UUIDs are valid but truncated UUIDs fail closed",()=>{
 test("provider outcome is shared or fails closed before a retry",async()=>{
   const outcomes=[];
   const {gate}=fixture({
-    async reserve(){return 0;},async cooldown(){return true;},
+    async reserve(){return {delayMs:0,probeLeaseId:null};},async cooldown(){return true;},
     async reportOutcome(key){outcomes.push(key);return true;},
   });
   await gate.observeOutcome("transient");
   await gate.observeOutcome("success");
   assert.deepEqual(outcomes.map(x=>x.outcome),["transient","success"]);
+  assert.deepEqual(outcomes.map(x=>x.probeLeaseId),[null,null]);
   const unavailable=fixture({
-    async reserve(){return 0;},async cooldown(){return true;},
+    async reserve(){return {delayMs:0,probeLeaseId:null};},async cooldown(){return true;},
     async reportOutcome(){return false;},
   });
   await assert.rejects(unavailable.gate.observeOutcome("transient"),
     {code:"BUDGET_UNAVAILABLE"});
   await assert.rejects(gate.observeOutcome("bogus"),
     {code:"INVALID_BUDGET_OUTCOME"});
+});
+test("half-open probe lease is returned and fenced into its exact outcome",async()=>{
+  const lease="77777777-7777-4777-8777-777777777777";
+  let reported;
+  const {gate}=fixture({
+    async reserve(){return {delayMs:0,probeLeaseId:lease};},
+    async cooldown(){return true;},
+    async reportOutcome(value){reported=value;return true;},
+  });
+  const reservation=await gate.beforeRequest();
+  assert.deepEqual(reservation,{probeLeaseId:lease});
+  await gate.observeOutcome("success",reservation);
+  assert.equal(reported.probeLeaseId,lease);
 });

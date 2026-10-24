@@ -102,9 +102,10 @@ export function createNotionReadClient({
       else signal?.addEventListener?.("abort", cancel, { once: true });
       const timeout = setTimeout(cancel, timeoutMs);
       let response;
+      let reservation = null;
       try {
         if (requestBudget) {
-          try { await requestBudget.beforeRequest(controller.signal); }
+          try { reservation = await requestBudget.beforeRequest(controller.signal) ?? null; }
           catch (error) {
             if (error instanceof NotionBudgetError) {
               const aborted = error.code === "REQUEST_ABORTED";
@@ -147,7 +148,7 @@ export function createNotionReadClient({
         const status = response.status;
         const seconds = retryAfter(response.headers);
         if (status >= 500 && requestBudget?.observeOutcome) {
-          try { await requestBudget.observeOutcome("transient"); }
+          try { await requestBudget.observeOutcome("transient",reservation); }
           catch { throw new NotionReadError("PROVIDER_UNAVAILABLE", 503); }
         }
         if ((status === 429 || status === 529) && requestBudget) {
@@ -183,7 +184,7 @@ export function createNotionReadClient({
       try {
         const result = requireObject(await response.json());
         if (requestBudget?.observeOutcome) {
-          try { await requestBudget.observeOutcome("success"); }
+          try { await requestBudget.observeOutcome("success",reservation); }
           catch { throw new NotionReadError("PROVIDER_UNAVAILABLE", 503); }
         }
         return result;

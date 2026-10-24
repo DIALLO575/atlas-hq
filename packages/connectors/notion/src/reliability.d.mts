@@ -2,9 +2,10 @@ export class NotionBudgetError extends Error {
   code: string; retryAfterSeconds: number | null;
 }
 export interface NotionScopedReadBudget {
-  beforeRequest(signal?: AbortSignal): Promise<void>;
+  beforeRequest(signal?: AbortSignal): Promise<void | { probeLeaseId: string | null }>;
   observeRateLimit(seconds: number | null): void | Promise<void>;
-  observeOutcome?(outcome: "success" | "transient"): void | Promise<void>;
+  observeOutcome?(outcome: "success" | "transient",
+    reservation?: { probeLeaseId: string | null } | null): void | Promise<void>;
 }
 export interface NotionRestBudget {
   beforeRequest(scope: { workspaceId: string; connectionId: string },
