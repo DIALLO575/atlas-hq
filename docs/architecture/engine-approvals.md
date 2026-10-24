@@ -1,64 +1,44 @@
-# SHA-150 — Engine human approvals, preconnection contract
+# SHA-150 — Inbox des approbations ATLAS
 
-Status: **offline implementation only**. The workflow is not connected to
-the current Supabase private schema or to an HTTP route. No MAUSBOT action
-was executed. Tests are pure Node mocks of a trusted PostgreSQL transaction.
+## Livré le 24 octobre 2026
 
-## Implemented in this change
+L'Inbox de consultation `/engines/approvals`, son API GET
+`/api/engines/approvals?workspaceId=...` et les migrations Supabase
+`20261024193128` et `20261024193537` sont codées et appliquées.
+**Aucune approbation ou exécution n'est encore possible depuis l'UI.**
 
-- \`packages/engine-core/src/approval-workflow.mjs\`, types, and 10 mock tests.
-- \`request\`: verified active session (must be checked again against
-  \`auth.sessions\` under the trusted database transaction), current workspace
-  membership, ownership of the actual run, expected state draft, 15-minute
-  expiry, immutable intent digest, and append-only audit.
-- \`decide\`: reviewer is a current owner/admin **different** from requester;
-  active session, pending-only transition, nonexpired request, same run,
-  instance, mission, primitive, and payload digest; optimistic lock / CAS
-  and audit share the same database transaction. \`approved\` does NOT
-  authorize engine dispatch.
-- \`inspect\`: only the requester or workspace admin sees decision,
-  intent digest and expiry. No prompts, raw action arguments or PII.
-- Input strictly forbids caller-supplied \`approved:true\` shortcuts,
-  role grants, fake requester identities or extra controls. Provider
-  errors are masked and no transaction writes persist if the audit fails.
+La RPC retourne au maximum 50 métadonnées : run_id, instance_id,
+mission_id, primitive_id, intent_digest, requested_at, expires_at.
+Elle exige auth.uid(), une session existante dans auth.sessions et
+non expirée, le rôle owner/admin ACTUEL dans workspace_members,
+le même workspace, une demande pending non expirée et un reviewer
+différent du demandeur. Le BFF vérifie la session via auth.getUser()
+avant d'appeler la fonction SQL. Le contenu des prompts, tokens et
+payloads n'est jamais renvoyé.
 
-## Intent binding and database gap
+**Isolation des privilèges :** la RPC `public.atlas_engine_pending_approvals`
+est SECURITY INVOKER. La fonction `private.atlas_engine_pending_approvals_internal`
+est SECURITY DEFINER, confinée à un schéma non exposé au Data API,
+sans SQL dynamique, avec search_path vide et contrôles d'identité
+à chaque appel. Le rôle anon ne peut appeler aucune de ces fonctions
+et authenticated ne peut pas lire la table private des approbations.
+La correction de séparation a supprimé l'avertissement du conseiller
+Supabase sur la fonction publique avec privilèges élevés.
 
-The SHA-256 intent hash is derived from a canonical LF-separated tuple:
+**Vérification :** PostgreSQL 17 jetable teste deux tenants, rôle
+retiré, session expirée/supprimée/absente, JWT malformé, anti-self-review,
+grants et absence d'élévation dans la fonction publique. Supabase connecté
+confirme 0 instance, 0 run, 0 approbation, les cinq migrations, permissions
+correctes et aucun résultat sans session.
 
-\`[ATLAS approval v1, workspace_id, instance_id, run_id, mission_id,
-primitive_id, payload_sha256]\`.
+## Reste avant SHA-150 Done
 
-The requester identity is tracked separately in the approval record, and
-the DB trigger already rejects self-approval. The payload fingerprint
-must come from the **trusted immutable run**; a client-provided digest is
-not sufficient.
+Le contrat offline `packages/engine-core/src/approval-workflow.mjs`
+ne dispose toujours pas de pilote SQL privé transactionnel permettant
+de demander, approuver ou rejeter. Il faut ajouter la preuve de session
+et les verrous au moment de la décision, l'Inbox interactive reviewer,
+CSRF, audit, E2E Supabase Auth réel et tests de concurrence.
+SHA-149 KMS et SHA-151 worker sont encore requis.
 
-**The deployed database does NOT have \`payload_sha256\` on
-\`public.atlas_engine_runs\`, nor \`intent_digest\` on
-\`private.atlas_engine_approvals\`.** This is a deliberate hard blocker
-for connecting this workflow to a real session or database. The next
-reviewed additive migration must introduce immutable intent-binding
-columns and DB-level checks before production wiring.
-
-## Required before SHA-150 Done
-
-1. New schema is applied and tested on disposable PostgreSQL; now test
-   it under real Supabase Auth sessions and simultaneous reviewers.
-2. Implement a trusted private SQL adapter: \`SELECT ... FOR UPDATE\` or
-   equivalent CAS on run/approval, and COMMIT/ROLLBACK of audit in one
-   transaction. Do not expose private tables to PostgREST.
-3. Use \`supabase.auth.getUser()\` to establish identity, and at sensitive
-   decision time check \`session_id\` against the live \`auth.sessions\`
-   row, then re-read current \`workspace_members\` role, in the same
-   trusted transaction. A JWT that remains valid after logout is not
-   enough. Supabase guidance:
-   https://supabase.com/docs/guides/auth/sessions .
-4. Build a reviewer Inbox UI, a safe same-origin POST+CSRF flow, explicit
-   scopes and audit receipts. Test two workspaces, concurrent reviewers,
-   expired tokens, deactivated sessions, duplicate requests and races.
-5. SHA-151 worker must recheck approved intent and policy at dispatch.
-   No approval alone may activate a disabled engine or bypass HTTP 423.
-
-Already applied migrations \`20261024161305\` and \`20261024163943\`
-remain unchanged. No new migration applied by this PR.
+**MAUSBOT write/execute reste hard-blocked (HTTP 423).** Le merge de
+code ou l'application de SQL n'est pas un déploiement Web confirmé.

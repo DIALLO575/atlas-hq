@@ -45,6 +45,9 @@ jobs:
           -f supabase/migrations/20261024163943_atlas_engine_outbox_envelope_v1.sql
           -f supabase/migrations/20261024182928_atlas_engine_approval_intent_v1.sql
           -f tests/sql/engine-foundation-checks.sql
+          -f supabase/migrations/20261024193128_atlas_engine_pending_approvals_readonly.sql
+          -f supabase/migrations/20261024193537_atlas_engine_approval_inbox_definer_hardening.sql
+          -f tests/sql/approval-inbox-readonly-checks.sql
 
   linear-oauth-postgres:
     runs-on: ubuntu-latest
