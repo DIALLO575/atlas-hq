@@ -20,7 +20,7 @@ test("Native contract covers independently verified route families, not just 20 
 });
 test("Route plans accept only path parameters and never arbitrary API URLs",()=>{
  assert.deepEqual(planNativePrimitive("skills.bot.read",{botId:"bot-1",skillId:"good-slug"}),{
-  id:"skills.bot.read",transport:"http",method:"GET",path:"/api/bots/bot-1/skills/good-slug",permission:"sensitive",callable:false,implementation:"contract-only"
+  id:"skills.bot.read",transport:"http",method:"GET",path:"/api/bots/bot-1/skills/good-slug",permission:"sensitive",callable:false,implementation:"adapter-mock-tested"
  });
  for(const candidate of ["../secret","foo/bar","a%2Fb","..","foo?x=1"])
  assert.throws(()=>planNativePrimitive("memory.bot.read-file",{botId:candidate}),/NATIVE_ID_INVALID/);
@@ -39,4 +39,17 @@ test("Admin/approval/browser primitives never become callable in the preconnecti
 test("Native source-mapped team memory and skill editing use actual HTTP verbs",()=>{
  const expected=[["memory.team.patch-entry","PATCH"],["memory.team.delete-entry","DELETE"],["skills.bot.import","POST"],["skills.bot.update","PATCH"],["skills.bot.delete","DELETE"],["skills.library.add","POST"],["skills.library.update","PATCH"]];
  for(const [name,method] of expected){const p=nativePrimitive(name);assert.ok(p,name);assert.equal(p.method,method);assert.equal(p.callable,false)}
+});
+
+test("Offline adapter classifications match exactly eleven native reads and eleven guarded mutation plans",()=>{
+ const sum=nativeCoverageSummary();
+ assert.equal(sum.mockTestedReads,11);
+ assert.equal(sum.validatedMutationPlans,11);
+ assert.equal(sum.callable,0);
+ assert.equal(sum.testedLive,0);
+ for(const p of MAUSBOT_NATIVE_CAPABILITIES){
+  if(p.implementation==="adapter-mock-tested" || p.implementation==="validated-plan"){
+   assert.equal(p.callable,false);assert.equal(p.hostTested,false);
+  }
+ }
 });

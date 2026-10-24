@@ -101,7 +101,7 @@ Ces contrats ne constituent PAS une connexion MCP, SSE ou CLI opérationnelle.
 
 Source gelée : `milind-soni/OpenMausBot@0a78caa91a64c1ab1adfa972ab4e540e89b66c6d`.
 
-Le catalogue `packages/engine-core/src/native-capabilities.mjs` comporte **125
+Le catalogue `packages/engine-core/src/native-capabilities.mjs` comporte **128
 entrées natives** réparties entre : agents/profils, mémoire, skills, MCP bots,
 équipes, channels, fichiers, webhooks, routines, observabilité, ordinateurs,
 connecteurs et live. Chaque entrée garde la méthode/route ou la preuve
@@ -133,3 +133,26 @@ Ce catalogue ne doit pas être considéré comme une garantie de complétude
 historique ou une surface publique stable. Les versions futures de MAUSBOT
 pourraient déplacer, ajouter ou supprimer des routes ; un diff source
 automatisé et la comparaison de la version live seront obligatoires.
+
+## Lot M0.2 — 11 adaptateurs de lecture + 11 plans de mutation
+
+`packages/engines/mausbot/src/native-read.mjs` :
+11 opérations GET strictement allowlistées (mémoires, journal et upkeep,
+skills et bibliothèque, contexte et team memory). Chaque opération vérifie
+les IDs, les paramètres, l'existence du bot dans l'inventaire autorisé,
+les limites et projette uniquement des **métadonnées**. Les contenus
+SKILL.md, mémoire, diffs et chemins de travail restent occultés. Le
+module est testable avec fetch mock, mais **non exposé via le BFF public**.
+
+`packages/engines/mausbot/src/native-mutation-plans.mjs` :
+11 plans sans réseau (écritures et suppression mémoire, validation humaine
+de mémoire, rangement, activation/attribution skills, contexte d'équipe).
+Chaque plan exige une approbation réelle et une piste d'audit persistante,
+puis impose un retry prudent. Les simples booléens d'approbation fournis
+par un navigateur sont rejetés. Aucune mutation n'est effectuée par le plan.
+
+Sur **128 capacités natives répertoriées** :
+- 11 adaptateurs de lectures de métadonnées mock-testés, pas live;
+- 11 plans de mutations validés offline, non exécutables;
+- 106 autres contrats cartographiés, à approfondir.
+Toutes les 128 capacités restent `callable=false` et `hostTested=false`.
