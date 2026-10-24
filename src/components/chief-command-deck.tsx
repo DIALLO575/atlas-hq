@@ -126,7 +126,8 @@ export function ChiefCommandDeck({workspace,workspaces,initialReply}:{
   const [github,setGithub]=useState<GitHubView>({
     stage:"loading",repositories:0,truncated:false,pullCount:null,pullTruncated:false,firstRepo:null,verified:0,
   });
-  const bottomRef=useRef<HTMLDivElement>(null);
+  const scrollerRef=useRef<HTMLDivElement>(null);
+  const hasMessagedRef=useRef(false);
   const thread=threads.find(item=>item.id===activeId);
   const [requestCount,setRequestCount]=useState(0);
   useEffect(()=>{
@@ -164,16 +165,19 @@ export function ChiefCommandDeck({workspace,workspaces,initialReply}:{
     })();
     return ()=>controller.abort();
   },[workspace.id,requestCount]);
-  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth",block:"end"});},[activeId,thread?.entries.length]);
+  useEffect(()=>{if(hasMessagedRef.current && scrollerRef.current) {
+    scrollerRef.current.scrollTo({top:scrollerRef.current.scrollHeight,behavior:"smooth"});
+  }},[activeId,thread?.entries.length]);
 
   const send=async(raw:string)=>{
     const value=raw.trim();
     if(!value||sending||value.length>700)return;
     const destination=activeId;
+    hasMessagedRef.current=true;
     setDraft("");setNotice(null);setSending(true);
     setThreads(all=>all.map(item=>item.id===destination?{
       ...item,title:item.entries.length===0?value.slice(0,42):item.title,
-      entries:[...item.entries,{id:Date.now(),author:"user",text:value}]
+      entries:[...item.entries,{id:Date.now(),author:"user" as const,text:value}]
     }:item));
     try{
       const response=await fetch("/api/chief",{method:"POST",cache:"no-store",credentials:"same-origin",
@@ -181,7 +185,7 @@ export function ChiefCommandDeck({workspace,workspaces,initialReply}:{
       if(!response.ok)throw new Error("Lecture du briefing impossible. Vérifiez votre session et réessayez.");
       const data=await response.json() as {reply:ChiefReply};
       setThreads(all=>all.map(item=>item.id===destination?{...item,entries:[
-        ...item.entries,{id:Date.now()+1,author:"chief",text:data.reply.text,reply:data.reply}
+        ...item.entries,{id:Date.now()+1,author:"chief" as const,text:data.reply.text,reply:data.reply}
       ]}:item));
     }catch(error){setNotice(error instanceof Error?error.message:"Le service Chief est indisponible.");}
     finally{setSending(false);}
@@ -237,7 +241,7 @@ export function ChiefCommandDeck({workspace,workspaces,initialReply}:{
             <small>Consultation de données réelles · IA libre non connectée</small></div>
           <span className="atlas-chief-readonly">Lecture seule</span>
         </div>
-        <div className="atlas-chief-chat-scroller">
+        <div className="atlas-chief-chat-scroller" ref={scrollerRef}>
           {thread?.entries.length ? thread.entries.map(entry=><div
             className={"atlas-chief-message is-"+entry.author} key={entry.id}>
             {entry.author==="chief" && <span className="atlas-chief-avatar"><Icon name="spark"/></span>}
@@ -249,7 +253,6 @@ export function ChiefCommandDeck({workspace,workspaces,initialReply}:{
             <span><Icon name="spark"/></span><h2>Sur quoi travaillons-nous ?</h2>
             <p>Posez une question sur les missions, les décisions ou les données GitHub de votre workspace.</p>
           </div>}
-          <div ref={bottomRef}/>
         </div>
         <div className="atlas-chief-input-area">
           {notice && <p role="alert" className="atlas-chief-message-error">{notice}</p>}

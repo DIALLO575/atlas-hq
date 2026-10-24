@@ -41,8 +41,8 @@
 .atlas-chief-readonly{white-space:nowrap;color:#8467b3;background:#f4f0fc;font-size:9px;font-weight:695;padding:6px 8px;border-radius:99px}
 .atlas-chief-chat-scroller{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:17px 16px 12px;scrollbar-width:thin}
 .atlas-chief-message{display:flex;align-items:flex-start;gap:10px;margin-bottom:19px;max-width:100%}
-.atlas-chief-avatar{display:grid;place-items:center;flex:0 0 31px;width:31px;height:31px;border-radius:11px;background:#7853dd;color:#fff;box-shadow:0 5px 13px #7652d92e}
-.atlas-chief-avatar svg{height:16px;width:16px}
+.atlas-chief-command-page .atlas-chief-avatar{display:grid;place-items:center;flex:0 0 31px;width:31px;height:31px;border-radius:11px;background:#7853dd;color:#fff;box-shadow:0 5px 13px #7652d92e}
+.atlas-chief-command-page .atlas-chief-avatar svg{height:16px;width:16px}
 .atlas-chief-message-content{min-width:0;flex:1}
 .atlas-chief-message-content>p{margin:0 0 10px;padding:12px 14px;border-radius:12px 12px 12px 3px;background:#f6f4fa;color:#615b72;line-height:1.65;font-size:11px;max-width:840px}
 .atlas-chief-message.is-user{justify-content:flex-end}
