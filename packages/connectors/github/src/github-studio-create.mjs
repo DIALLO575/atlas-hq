@@ -78,13 +78,18 @@ async function checkedResponse(request, url, init) {
  * No automatic retries on POST: a timeout may occur after GitHub created a repo.
  */
 export async function createPersonalRepository({
-  workspaceId, installationId, binding, draft, appId, privateKey,
+  workspaceId, installationId, binding, draft, appId, privateKey, userAccessToken,
   request = fetch, now = () => Date.now(),
 }) {
   if (!validId(installationId) || !verifiedPersonalInstallation(binding, workspaceId, installationId)) {
     throw new GitHubStudioError("PERMISSION_DENIED");
   }
   const spec = parseRepositoryDraft({ ...draft, workspaceId, installationId });
+  // POST /user/repos is a user-authenticated operation on GitHub.com.
+  // An installation token is NOT a substitute for a user access token.
+  if (typeof userAccessToken !== "string" || !userAccessToken.trim()) {
+    throw new GitHubStudioError("USER_TOKEN_REQUIRED");
+  }
   if (!appId || !privateKey) throw new GitHubStudioError("NOT_CONFIGURED");
   let jwt;
   try { jwt = createGitHubAppJwt({ appId, privateKey, now }); }
@@ -100,24 +105,20 @@ export async function createPersonalRepository({
     throw new GitHubStudioError("PERMISSION_DENIED");
   }
 
-  // Installation-scoped token with ONLY repository creation. No contents/admin.
-  const grant = await checkedResponse(request,
-    `${API}/app/installations/${installationId}/access_tokens`, {
-      method: "POST",
-      headers: { ...headers(jwt), "Content-Type": "application/json" },
-      body: JSON.stringify({ permissions: { repository_creation: "write" } }),
-    });
-  if (!grant || typeof grant.token !== "string" || !grant.token ||
-      grant.permissions?.repository_creation !== "write" ||
-      !Number.isFinite(Date.parse(grant.expires_at)) ||
-      Date.parse(grant.expires_at) <= now()) {
+  // User access token must be obtained through a separate approved GitHub
+  // App user OAuth flow, held only by the trusted server, never in the request
+  // body or browser. Verify the authorized user's actual GitHub identity.
+  const actor = await checkedResponse(request, `${API}/user`, {
+    method: "GET", headers: headers(userAccessToken),
+  });
+  if (actor?.login !== installation.account.login || actor?.type !== "User") {
     throw new GitHubStudioError("PERMISSION_DENIED");
   }
 
   // Do NOT retry automatically. Caller must persist/reconcile before more writes.
   const created = await checkedResponse(request, `${API}/user/repos`, {
     method: "POST",
-    headers: { ...headers(grant.token), "Content-Type": "application/json" },
+    headers: { ...headers(userAccessToken), "Content-Type": "application/json" },
     body: JSON.stringify({
       name: spec.name, description: spec.description,
       private: spec.private, auto_init: spec.autoInit,

@@ -33,10 +33,11 @@ type DraftInput = {
  * verified workspace installation, explicit confirmation and feature flag.
  */
 export function prepareGitHubStudioMutation({
-  workspaceId, actorId, installationId, binding, draft, idempotencyKey,
+  workspaceId, actorId, installationId, binding, draft, idempotencyKey, userAccessToken,
 }: {
   workspaceId: string; actorId: string; installationId: number;
   binding: InstallationBinding; draft: DraftInput; idempotencyKey: string;
+  userAccessToken?: string; // must come from an approved SERVER-side user OAuth flow
 }) {
   const spec = parseRepositoryDraft(draft);
   if (spec.workspaceId !== workspaceId || spec.installationId !== installationId ||
@@ -45,6 +46,12 @@ export function prepareGitHubStudioMutation({
   }
   const config = githubConnectSettings();
   if (!config) throw new GitHubStudioError("NOT_CONFIGURED");
+  // No GitHub App user authorization is currently persisted or exchanged.
+  // Fail BEFORE reserving an operation: never dispatch a provider request with
+  // an installation token against the user-only /user/repos endpoint.
+  if (typeof userAccessToken !== "string" || !userAccessToken.trim()) {
+    throw new GitHubStudioError("USER_TOKEN_REQUIRED");
+  }
   const intent = createRepositoryIntent({ draft: spec, actorId, idempotencyKey });
   const admin = adminGitHubClient(config);
   const store = createGitHubStudioOperationStore({
@@ -61,6 +68,7 @@ export function prepareGitHubStudioMutation({
     create: () => createPersonalRepository({
       workspaceId, installationId, binding, draft: spec,
       appId: config.appId, privateKey: config.appPrivateKey,
+      userAccessToken,
     }),
     verifyAccess: (created: { repositoryId: number; fullName: string; url: string }) =>
       verifyCreatedRepositoryAccess({

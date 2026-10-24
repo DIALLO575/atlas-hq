@@ -21,6 +21,7 @@ export declare function createPersonalRepository(args: {
   draft: Partial<RepositoryDraft> & { name: string };
   appId: string;
   privateKey: string;
+  userAccessToken: string;
   request?: typeof fetch;
   now?: () => number;
 }): Promise<Readonly<{

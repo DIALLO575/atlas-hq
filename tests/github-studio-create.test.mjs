@@ -46,20 +46,19 @@ test("tenant and installation binding must be previously verified, before any Gi
   }
 });
 
-test("only creates a private repository after account and scoped permission verification", async () => {
+test("creates a personal repository only with a verified GitHub App USER token", async () => {
   const calls = [];
   const request = async (url, init) => {
     calls.push([url, init]);
     if (url.endsWith("/app/installations/77")) return body({
       id: 77, target_type: "User", account: { login: "octocat" },
       permissions: { repository_creation: "write" }, suspended_at: null });
-    if (url.endsWith("/access_tokens")) {
-      assert.deepEqual(JSON.parse(init.body), { permissions: { repository_creation: "write" } });
-      return body({ token: "ghs-mock-do-not-log", expires_at: "2026-10-24T13:00:00Z",
-        permissions: { repository_creation: "write" } }, 201);
+    if (url.endsWith("/user")) {
+      assert.equal(init.headers.Authorization, "Bearer mock-user-token");
+      return body({ login: "octocat", type: "User" });
     }
     assert.equal(url, "https://api.github.com/user/repos");
-    assert.equal(init.headers.Authorization, "Bearer ghs-mock-do-not-log");
+    assert.equal(init.headers.Authorization, "Bearer mock-user-token");
     assert.deepEqual(JSON.parse(init.body), {
       name: "sample-studio", description: "", private: true, auto_init: true,
     });
@@ -69,18 +68,18 @@ test("only creates a private repository after account and scoped permission veri
   };
   const result = await createPersonalRepository({
     workspaceId, installationId: 77, binding, draft: valid(),
-    appId: "1234", privateKey, now, request,
+    appId: "1234", privateKey, userAccessToken: "mock-user-token", now, request,
   });
   assert.deepEqual(result, { repositoryId: 91, fullName: "octocat/sample-studio",
     url: "https://github.com/octocat/sample-studio",
     private: true, reconciliationRequired: true });
   assert.equal(calls.length, 3);
   assert.equal(calls[0][1].method, "GET");
-  assert.equal(calls[1][1].method, "POST");
+  assert.equal(calls[1][1].method, "GET");
   assert.equal(calls[2][1].method, "POST");
 });
 
-test("refuses nonpersonal and ungranted installations without minting or creating", async () => {
+test("refuses nonpersonal and ungranted installations without creating", async () => {
   for (const installation of [
     { id: 77, target_type: "Organization", account: { login: "test-org" },
       permissions: { repository_creation: "write" } },
@@ -90,7 +89,7 @@ test("refuses nonpersonal and ungranted installations without minting or creatin
   ]) {
     let calls = 0;
     await assert.rejects(createPersonalRepository({ workspaceId, installationId: 77,
-      binding, draft: valid(), appId: "1234", privateKey, now,
+      binding, draft: valid(), appId: "1234", privateKey, userAccessToken: "mock-user-token", now,
       request: () => { calls++; return body(installation); } }),
     (e) => e.code === "PERMISSION_DENIED");
     assert.equal(calls, 1);
@@ -105,14 +104,40 @@ test("provider failures never retry POST nor expose GitHub errors", async () => 
       if (url.endsWith("/app/installations/77")) return body({
         id: 77, target_type: "User", account: { login: "octocat" },
         permissions: { repository_creation: "write" } });
-      if (url.endsWith("/access_tokens")) return body({
-        token: "secret", expires_at: "2026-10-24T13:00:00Z",
-        permissions: { repository_creation: "write" } }, 201);
+      if (url.endsWith("/user")) return body({ login: "octocat", type: "User" });
       return body({ message: "sensitive provider message" }, status);
     };
     await assert.rejects(createPersonalRepository({ workspaceId, installationId: 77,
-      binding, draft: valid(), appId: "1234", privateKey, now, request: mock }),
+      binding, draft: valid(), appId: "1234", privateKey, userAccessToken: "mock-user-token", now, request: mock }),
     (e) => e instanceof GitHubStudioError && !e.message.includes("sensitive"));
     assert.equal(calls, 3);
   }
+});
+
+test("without a trusted user token, no GitHub POST or DB-side effect may start", async () => {
+  let calls = 0;
+  await assert.rejects(createPersonalRepository({
+    workspaceId, installationId: 77, binding, draft: valid(),
+    appId: "1234", privateKey, now,
+    request: () => { calls++; throw Error("should not call"); },
+  }), e => e.code === "USER_TOKEN_REQUIRED");
+  assert.equal(calls, 0);
+});
+
+test("a GitHub user token for a different account cannot create a repository", async () => {
+  let calls = 0;
+  const request = async (url) => {
+    calls++;
+    if (url.endsWith("/app/installations/77")) return body({
+      id: 77, target_type: "User", account: { login: "octocat" },
+      permissions: { repository_creation: "write" }, suspended_at: null,
+    });
+    if (url.endsWith("/user")) return body({ login: "attacker", type: "User" });
+    throw Error("must not write");
+  };
+  await assert.rejects(createPersonalRepository({
+    workspaceId, installationId: 77, binding, draft: valid(),
+    appId: "1234", privateKey, userAccessToken: "wrong-user", now, request,
+  }), e => e.code === "PERMISSION_DENIED");
+  assert.equal(calls, 2);
 });

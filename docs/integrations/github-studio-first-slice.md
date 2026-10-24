@@ -24,3 +24,13 @@ Les actions POST ne sont pas rejouées automatiquement : un timeout peut surveni
 - https://linear.app/shadoron/issue/SHA-153
 - https://linear.app/shadoron/issue/SHA-154
 - https://linear.app/shadoron/issue/SHA-155
+
+## Mise à jour critique : authentification de la création personnelle (24/10/2026)
+
+La documentation REST GitHub.com version 2026-03-10 indique pour `POST /user/repos` **GitHub App user access token**, et non **GitHub App installation access token**. Le provider personnel refuse désormais toute création sans un jeton utilisateur attribué au bon compte (`USER_TOKEN_REQUIRED`), puis valide `GET /user` avant le POST. Les jetons d'installation restent appropriés pour inspecter les dépôts accessibles et pour les endpoints d'installation compatibles.
+
+Le flux OAuth actuel de connexion Atlas vérifie l'installation et supprime le jeton utilisateur temporaire ; **il n'existe pas encore de session utilisateur GitHub autorisée pour les écritures**. Donc même avec le flag sandbox, l'exécution est refusée avant toute réservation du journal. Ne pas confondre approbation de la permission GitHub App et autorisation individuelle de l'utilisateur.
+
+Références :
+- https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10#create-a-repository-for-the-authenticated-user
+- https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app
