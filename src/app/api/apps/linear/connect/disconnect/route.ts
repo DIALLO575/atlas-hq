@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
       : Promise.resolve(false),
     revokeTokens: (tokens) => revokeLinearOAuthTokens(tokens),
   });
-  const body = result.error ? { error: result.error }
-    : { result: result.result, providerRevocation: result.providerRevocation };
+  const body = result.kind === "json"
+    ? result.error ? { error: result.error }
+      : { result: result.result, providerRevocation: result.providerRevocation }
+    : { error: "LINEAR_DISCONNECT_UNAVAILABLE" };
   return NextResponse.json(body, { status: result.status, headers: result.headers });
 }

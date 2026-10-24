@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 1279)
+Total output lines: 72
+
 export const LINEAR_STATE_COOKIE: string;
 export const LINEAR_PKCE_COOKIE: string;
 export const LINEAR_CALLBACK_PATH: string;
@@ -25,28 +28,11 @@ export function callbackLinearOAuthRoute(request: Request, dependencies: {
   callbackEnabled?: boolean;
   clientSecret?: string;
   prepareConnectionStore?: (actor: { workspaceId: string; userId: string }) => Promise<void>;
-  revokeTokens?: (tokens: { accessToken: string; refreshToken: string }) => Promise<void>;
+  revokeTokens?: (tokens: { accessToken: string; refreshToken: string }) => Promise<unknown>;
   exchangeCode?: (args: {
     code: string; clientId: string; clientSecret?: string; redirectUri: string; codeVerifier: string;
   }) => Promise<{ accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[] }>;
-  verifyLinearIdentity?: (accessToken: string) => Promise<{ userId: string; workspaceId: string }>;
-  saveConnection?: (record: {
-    actor: { workspaceId: string; userId: string };
-    linearIdentity: { userId: string; workspaceId: string };
-    tokens: { accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[] };
-    scopes: string[]; expiresAt: string;
-  }) => Promise<unknown>;
-  resolveActorForState: (stateHash: string, now: string) => Promise<{ workspaceId: string; userId: string } | null>;
-  consumeState: (args: {
-    state: string; cookieState: string; workspaceId: string; userId: string; stateKey: string; now: number;
-  }) => Promise<unknown>;
-  now?: number;
-}): Promise<LinearRouteResult>;
-export function refreshLinearConnectionRoute(request: Request, dependencies: {
-  settings: { publicOrigin: string; clientId: string; clientSecret?: string } | null;
-  authorizeWorkspaceAdmin: (workspaceId: string) => Promise<{ workspaceId: string; userId: string } | null>;
-  loadConnection: (actor: { workspaceId: string; userId: string }) => Promise<null | {
-    accessToken: string; refreshToken: string; linearWorkspaceId: string; linearActorId: string;
+ …279 tokens truncated…tring; refreshToken: string; linearWorkspaceId: string; linearActorId: string;
     scopes: string[]; accessExpiresAt: string; version: number; revokedAt: string | null;
     refreshAttemptId: string | null; refreshStartedAt: string | null;
   }>;
