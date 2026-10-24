@@ -93,6 +93,10 @@ do $decision$ begin
  exception when insufficient_privilege then null;end;
 end $decision$;
 reset role;
+-- Restore the VALID independent reviewer session after negative JWT tests.
+set role authenticated;
+select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
+select set_config('request.jwt.claims','{"session_id":"cccc0000-0000-4000-8000-000000000003"}',false);
 -- Real reviewer, pinned digest from verified Inbox, approve once.
 do $$
 declare fingerprint text;result_decision text;dispatch_flag boolean;
