@@ -62,3 +62,11 @@ test("aborted caller does not issue distributed reservation",async()=>{
   await assert.rejects(gate.beforeRequest(controller.signal),{code:"REQUEST_ABORTED"});
   assert.equal(reservations,0);
 });
+
+test("full standard UUIDs are valid but truncated UUIDs fail closed",()=>{
+  assert.throws(()=>createNotionDistributedBudget({
+    binding:{...key,userId:"11111111-1111-1111-111111111111"},
+    store:{reserve:async()=>0,cooldown:async()=>true},
+    localBudget:{beforeRequest:async()=>{},observeRateLimit(){}},
+  }),{code:"INVALID_BUDGET_CONFIG"});
+});

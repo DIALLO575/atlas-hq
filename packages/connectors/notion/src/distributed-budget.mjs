@@ -8,7 +8,7 @@ import { NotionBudgetError, waitForNotionBudget } from "./reliability.mjs";
  * A reservation is a short time-slot, NOT a lease that holds a transaction
  * across the network request. Aborted waits waste a slot (safe fail-closed).
  */
-const UUID = /^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i;
+const UUID = /^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i;
 function valid(binding) {
   return binding && typeof binding === "object" &&
     ["workspaceId","userId","connectionId","notionWorkspaceId"]
