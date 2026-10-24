@@ -100,10 +100,13 @@ export async function consumeConnectAttempt(
 }
 
 export async function persistVerifiedPersonalInstallation(admin: SupabaseClient, {
-  workspaceId, installationId, repositoryIds,
-}: { workspaceId: string; installationId: number; repositoryIds: number[] }) {
+  workspaceId, installationId, repositoryIds, repositorySelection,
+}: { workspaceId: string; installationId: number; repositoryIds: number[]; repositorySelection: "selected" | "all" }) {
   if (!Number.isSafeInteger(installationId) || installationId < 1 ||
-      !Array.isArray(repositoryIds) || repositoryIds.length === 0 || repositoryIds.length > 500 ||
+      !["selected", "all"].includes(repositorySelection) ||
+      !Array.isArray(repositoryIds) || repositoryIds.length > 500 ||
+      (repositorySelection === "selected" && repositoryIds.length === 0) ||
+      (repositorySelection === "all" && repositoryIds.length !== 0) ||
       repositoryIds.some((id) => !Number.isSafeInteger(id) || id < 1) ||
       new Set(repositoryIds).size !== repositoryIds.length) throw new Error("Invalid GitHub selection");
 
@@ -118,7 +121,7 @@ export async function persistVerifiedPersonalInstallation(admin: SupabaseClient,
   const base = {
     workspace_id: workspaceId,
     status: "active",
-    repository_selection: "selected",
+    repository_selection: repositorySelection,
     ownership_verified_at: now,
     repositories_verified_at: null,
     updated_at: now,
@@ -139,9 +142,14 @@ export async function persistVerifiedPersonalInstallation(admin: SupabaseClient,
   const { error: clearError } = await admin.from("atlas_github_authorized_repositories")
     .delete().eq("installation_id", installationId);
   if (clearError) throw new Error("Cannot refresh authorized repositories");
-  const { error: insertError } = await admin.from("atlas_github_authorized_repositories")
-    .insert(repositoryIds.map((id) => ({ installation_id: installationId, repository_id: id })));
-  if (insertError) throw new Error("Cannot store authorized repositories");
+  // For "all", GitHub owns the complete (and future) repository grant.
+  // No static repository IDs are persisted; the installation token and live
+  // /installation/repositories endpoint enforce current access on every read.
+  if (repositorySelection === "selected") {
+    const { error: insertError } = await admin.from("atlas_github_authorized_repositories")
+      .insert(repositoryIds.map((id) => ({ installation_id: installationId, repository_id: id })));
+    if (insertError) throw new Error("Cannot store authorized repositories");
+  }
   const { data: ready, error: readyError } = await admin.from("atlas_github_installations")
     .update({ status: "repositories-ready", repositories_verified_at: now, updated_at: now })
     .eq("installation_id", installationId).eq("workspace_id", workspaceId)
