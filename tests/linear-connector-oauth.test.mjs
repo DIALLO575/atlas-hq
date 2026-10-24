@@ -99,6 +99,49 @@ test("Linear GraphQL client keeps bearer auth server-side and maps errors safely
     (error) => error instanceof LinearApiError && error.code === "LINEAR_API_FORBIDDEN" && !error.message.includes("private"));
 });
 
+test("Linear GraphQL rejects every non-query operation before transport", async () => {
+  let requests = 0;
+  const fetchImpl = async () => { requests++; return Response.json({ data: {} }); };
+  const denied = (query, operationName) => assert.rejects(
+    linearGraphql({ accessToken: "server-token", query, operationName, fetchImpl }),
+    (error) => error instanceof LinearApiError && error.code === "LINEAR_API_INVALID_REQUEST",
+  );
+
+  await denied("mutation { issueCreate(input: {}) { success } }");
+  await denied("mutation { safeAlias: issueCreate(input: {}) { success } }");
+  await denied("query Read { viewer { id } } mutation Write { issueCreate(input: {}) { success } }", "Read");
+  await denied("subscription Watch { issue { id } }");
+  assert.equal(requests, 0);
+});
+
+test("Linear GraphQL resolves multiple read operations explicitly and ignores comments and string content", async () => {
+  let request;
+  const query = `# mutation { ignored }
+    query First { viewer { id } }
+    query Second {
+      search(term: "mutation subscription { ignored }") { nodes { id } }
+      teams(filter: """mutation subscription { ignored }""") { nodes { id } }
+    }
+  `;
+  const result = await linearGraphql({
+    accessToken: "server-token", query, operationName: "Second",
+    fetchImpl: async (_url, init) => { request = JSON.parse(init.body); return Response.json({ data: { search: { nodes: [] } } }); },
+  });
+  assert.equal(request.operationName, "Second");
+  assert.deepEqual(result, { search: { nodes: [] } });
+});
+
+test("Linear GraphQL rejects ambiguous or unresolved multi-operation documents before transport", async () => {
+  let requests = 0;
+  const fetchImpl = async () => { requests++; return Response.json({ data: {} }); };
+  const query = "query First { viewer { id } } query Second { viewer { id } }";
+  for (const operationName of [undefined, "Missing"]) {
+    await assert.rejects(linearGraphql({ accessToken: "t", query, operationName, fetchImpl }),
+      (error) => error instanceof LinearApiError && error.code === "LINEAR_API_INVALID_REQUEST");
+  }
+  assert.equal(requests, 0);
+});
+
 test("ATLAS workspace membership and exact Linear workspace binding fail closed", () => {
   const base = { actorUserId: "user-a", memberUserId: "user-a", memberRole: "member", requestedWorkspaceId: "atlas-a", linkedWorkspaceId: "atlas-a" };
   assert.equal(authorizeLinearWorkspaceAccess(base), true);

@@ -12,6 +12,10 @@ Base reviewed: `c161c7b819ed64d8a57e8b3b7212d2b9be9c57c7` (`main`, 2026-10-24). 
 
 This is not a live integration. There is no OAuth callback/start route, Supabase state-store adapter, encrypted credential store, token refresh/revocation lifecycle, database binding between ATLAS and Linear workspaces, real API request, webhook, or UI status. OAuth app credentials were not created or configured. Tokens must not be persisted until encrypted server-side storage and tenant-scoped RLS/revocation are designed and tested. The client transport is a base for the following read-only API slice, not a general write API.
 
+## Read-only transport correction (2026-10-24)
+
+The initial `graphql-client.mjs` accepted arbitrary GraphQL documents despite `writesEnabled: false`. The isolated follow-up `fix/linear-graphql-readonly` adds a GraphQL-aware lexical scan before transport: it rejects mutations, subscriptions, invalid/ambiguous operation selection, and multi-operation documents without a uniquely matching `operationName`. It ignores comments and string/block-string contents while classifying operations, and includes tests proving rejected documents never call `fetch`. Multiple read operations are allowed only with an explicit operation name. This is a narrow operation-kind guard, not a full GraphQL validator; Linear remains responsible for schema and document validation. The targeted connector test file passes 11/11 locally. No Linear API request or live deployment was made.
+
 ## API behavior checked against Linear documentation
 
 - Linear recommends OAuth 2.0 for third-party applications. Its authorization URL is `https://linear.app/oauth/authorize`; send `response_type=code`, callback, scope, and CSRF-protected state. PKCE uses `code_challenge` with `S256`.
@@ -23,8 +27,8 @@ Sources: [Linear OAuth 2.0 authentication](https://linear.app/developers/oauth-2
 
 ## Remaining SHA-108 work
 
-1. Add server routes and a durable Supabase state-store adapter for the signed, expiring, one-time state bound to authenticated actor and ATLAS workspace; only workspace owners/admins can initiate linking.
-2. Add encrypted server-only access/refresh token storage with RLS and per-workspace Linear workspace binding; implement refresh, disconnect, revocation, and cross-workspace negative tests.
-3. Add a read-only GraphQL reader for teams, projects, cycles, issues, statuses, comments, and relations; apply membership and linked workspace authorization on every request, with pagination/rate-limit behavior.
-4. Add explicit preview/approval/idempotency/audit gates before any write capability, and surface freshness/provenance in Mes Apps.
-5. Prove real reads and controlled sandbox writes only after a Linear test workspace and OAuth application are available. No live proof is claimed by this slice.
+1. **OAuth route and state persistence:** add start/callback server routes. Resolve actor and ATLAS membership from the verified server session/database; require owner/admin to start linking. Set an HttpOnly, Secure, SameSite state cookie and implement the existing atomic state-store contract with a durable Supabase adapter. Test expiry, replay, cookie mismatch, actor mismatch, workspace mismatch, and unauthorized roles.
+2. **Credential and tenant binding:** design and implement encrypted server-only access/refresh token storage, tenant-scoped RLS, and the binding from each ATLAS workspace to its Linear workspace. Add refresh, disconnect and revocation handling, plus cross-user/cross-workspace negative tests. Do not store exchanged tokens before this is complete.
+3. **Read API:** implement narrow read operations over teams, projects, cycles, issues, statuses, comments, and relations using the guarded transport. Recheck verified membership and the linked workspace on each request; handle pagination, rate limits, and malformed responses. Add tests for authorization failures and provider errors.
+4. **Later write capability:** keep writes disabled until explicit preview, approval, idempotency, and audit gates are designed and tested. Surface connection freshness and data provenance in Mes Apps.
+5. **Live proof:** only after Linear OAuth credentials and a sandbox workspace are configured, verify a real read and separately approved controlled writes. No live proof is claimed by this slice.
