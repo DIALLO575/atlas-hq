@@ -37,14 +37,14 @@ function objectId(value) {
   return value;
 }
 
-async function request(config, path, { method = "GET", body, fetchImpl = fetch } = {}) {
+export async function mausbotRequest(config, path, { method = "GET", body, timeoutMs = 8000, fetchImpl = fetch } = {}) {
   const headers = { Accept: "application/json", Authorization: "Bearer " + config.token };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   let response;
   try {
     response = await fetchImpl(config.baseUrl + path, {
       method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(8000),
+      cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(Math.min(26000, Math.max(1000, timeoutMs))),
     });
   } catch {
     throw new MausbotAdapterError("MAUSBOT_UNREACHABLE", 503);
@@ -60,13 +60,13 @@ async function request(config, path, { method = "GET", body, fetchImpl = fetch }
 }
 
 export async function mausbotHealth(config, deps) {
-  const health = await request(config, "/api/health", deps);
+  const health = await mausbotRequest(config, "/api/health", deps);
   if (health?.app !== "openmausbot") throw new MausbotAdapterError("MAUSBOT_IDENTITY_MISMATCH", 502);
   return { online: true, engine: "mausbot" };
 }
 
 export async function mausbotAgents(config, deps) {
-  const result = await request(config, "/api/bots", deps);
+  const result = await mausbotRequest(config, "/api/bots", deps);
   if (!Array.isArray(result?.bots)) throw new MausbotAdapterError("MAUSBOT_RESPONSE_INVALID", 502);
   return result.bots.filter((bot) => bot && typeof bot.id === "string" && MAUSBOT_OBJECT_ID.test(bot.id))
     .map((bot) => ({
@@ -85,7 +85,7 @@ export async function mausbotDispatch(config, { botId, title, instruction }, dep
   }
   const bots = await mausbotAgents(config, deps);
   if (!bots.some((bot) => bot.id === id)) throw new MausbotAdapterError("MAUSBOT_BOT_NOT_FOUND", 404);
-  const result = await request(config, "/api/bots/" + encodeURIComponent(id) + "/tasks", {
+  const result = await mausbotRequest(config, "/api/bots/" + encodeURIComponent(id) + "/tasks", {
     ...deps, method: "POST", body: { title: title.trim(), approvalMode: "ask" },
   });
   const threadId = result?.task?.threadId;
@@ -94,7 +94,7 @@ export async function mausbotDispatch(config, { botId, title, instruction }, dep
   }
   const sendId = randomUUID().replace(/-/g, "");
   try {
-    await request(config, "/api/bots/" + encodeURIComponent(id) + "/messages", {
+    await mausbotRequest(config, "/api/bots/" + encodeURIComponent(id) + "/messages", {
       ...deps, method: "POST",
       body: { threadId, text: instruction.trim(), sendId },
     });
@@ -109,7 +109,7 @@ export async function mausbotDispatch(config, { botId, title, instruction }, dep
 
 export async function mausbotJob(config, threadId, deps) {
   const id = objectId(threadId);
-  const data = await request(config, "/api/threads/" + encodeURIComponent(id) + "/job?scope=job", deps);
+  const data = await mausbotRequest(config, "/api/threads/" + encodeURIComponent(id) + "/job?scope=job", deps);
   if (!data || typeof data !== "object") throw new MausbotAdapterError("MAUSBOT_RESPONSE_INVALID", 502);
   return {
     threadId: id,

@@ -7,7 +7,13 @@ export const ENGINE_CATALOG = Object.freeze([
     id: "mausbot", name: "MAUSBOT", phase: "adapter-v0",
     description: "Moteur multi-agents : bots, missions, conversations et jobs.",
     transports: ["http", "mcp-stdio", "cli", "sse"],
-    capabilities: ["agents.list", "tasks.create", "messages.send", "jobs.read"],
+    capabilities: [
+      "system.health", "agents.list", "agents.create", "agents.update",
+      "conversations.messages.list", "conversations.messages.send", "conversations.messages.edit",
+      "channels.list", "channels.create", "channels.update", "channels.messages.list", "channels.messages.send",
+      "tasks.create", "tasks.activate", "tasks.rename", "search.messages",
+      "jobs.wait", "jobs.interrupt", "models.list", "models.set",
+    ],
   }),
   Object.freeze({
     id: "hermes", name: "Hermes", phase: "planned",

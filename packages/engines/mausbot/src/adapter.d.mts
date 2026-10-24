@@ -20,3 +20,5 @@ export function mausbotJob(config: MausbotConfig, threadId: unknown, deps?: Maus
   threadId: string; status: string | null; state: string | null;
   phase: string | null; version: number | null;
 }>;
+
+export function mausbotRequest(config: MausbotConfig, path: string, deps?: MausbotDeps & {method?: string; body?: unknown; timeoutMs?: number}): Promise<any>;

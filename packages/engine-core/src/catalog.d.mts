@@ -1,4 +1,9 @@
-export type EngineCapability = "agents.list" | "tasks.create" | "messages.send" | "jobs.read";
+export type EngineCapability =
+  | "system.health" | "agents.list" | "agents.create" | "agents.update"
+  | "conversations.messages.list" | "conversations.messages.send" | "conversations.messages.edit"
+  | "channels.list" | "channels.create" | "channels.update" | "channels.messages.list" | "channels.messages.send"
+  | "tasks.create" | "tasks.activate" | "tasks.rename" | "search.messages"
+  | "jobs.wait" | "jobs.interrupt" | "models.list" | "models.set";
 export type EngineTransport = "http" | "mcp-stdio" | "cli" | "sse";
 export type EngineDefinition = {
   readonly id: string;
