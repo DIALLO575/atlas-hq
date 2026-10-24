@@ -53,17 +53,17 @@ test("verifies a personal installation owned by the authorized GitHub user", asy
     userToken: "temporary", appId: 123, installationId: 77, request: fixture(),
   });
   assert.deepEqual(verified, {
-    installationId: 77, repositoryIds: [101, 202], accountLogin: "atlas-tester",
+    installationId: 77, repositoryIds: [101, 202], repositorySelection: "selected", accountLogin: "atlas-tester",
   });
 });
 
-test("organization, collaborator, wrong app, suspended and all-repositories claims fail closed", async () => {
+test("organization, collaborator, wrong app, suspended and unsupported selections fail closed", async () => {
   const variants = [
     { ...installation, target_type: "Organization" },
     { ...installation, account: { id: 1234, login: "another" } },
     { ...installation, app_id: 999 },
     { ...installation, suspended_at: "2026-10-23" },
-    { ...installation, repository_selection: "all" },
+    { ...installation, repository_selection: "none" },
     { ...installation, permissions: {} },
   ];
   for (const item of variants) {
@@ -74,6 +74,29 @@ test("organization, collaborator, wrong app, suspended and all-repositories clai
       ["GITHUB_INSTALLATION_NOT_OWNED", "GITHUB_INSTALLATION_SUSPENDED",
        "GITHUB_REPOSITORY_SELECTION_REQUIRED", "GITHUB_PULL_REQUESTS_PERMISSION_REQUIRED"].includes(error.code));
   }
+});
+
+test("all-repositories installation is owner-verified without a stale repository snapshot", async () => {
+  let repoListingCalls = 0;
+  const authorized = await verifyPersonalInstallation({
+    userToken: "temporary", appId: 123, installationId: 77,
+    request: async (url) => {
+      if (url === "https://api.github.com/user") return ok(owner);
+      if (url.includes("/user/installations?")) {
+        return ok({ total_count: 1, installations: [{ ...installation, repository_selection: "all" }] });
+      }
+      if (url.includes("/repositories")) repoListingCalls++;
+      throw new Error("Unexpected API request");
+    },
+  });
+  assert.deepEqual(authorized, {
+    installationId: 77, repositoryIds: [], repositorySelection: "all", accountLogin: "atlas-tester",
+  });
+  assert.equal(repoListingCalls, 0, "New repositories are resolved live with installation tokens");
+  await assert.rejects(verifyPersonalInstallation({
+    userToken: "temporary", appId: 123, installationId: 77,
+    request: fixture({ installation: { ...installation, target_type: "Organization", repository_selection: "all" } }),
+  }), (error) => error.code === "GITHUB_INSTALLATION_NOT_OWNED");
 });
 
 test("invalid, missing and duplicated repository IDs are refused", async () => {
