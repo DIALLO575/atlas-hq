@@ -31,3 +31,8 @@ L'équipe Vercel partage un quota de déploiements. Un simple \`git push\` sur u
 - En cas de conflit avec une consigne explicite de sécurité ou avec les instructions de plus haute priorité, appliquer la consigne prioritaire.
 
 *Instruction instituée pour limiter les previews et préserver les déploiements de production d'ATLAS HQ.*
+
+
+## Relais opérationnel obligatoire avant un nouveau chantier ATLAS
+
+Avant de travailler sur Chief, GitHub V2, Missions/Inbox ou la publication, consultez [le handoff du 24 octobre 2026](docs/operations/worker-handoff-2026-10-24.md) et [son document Linear](https://linear.app/shadoron/document/atlas-hq-relais-operationnel-chief-github-v2-24-oct-2026-72a0cb97e5a6). Vérifiez le SHA GitHub et le SHA Vercel **séparément**. Les tickets [SHA-118](https://linear.app/shadoron/issue/SHA-118/atlas-deployer-chief-command-deck-github-v2-en-production-vercel-402) (production) et [SHA-119](https://linear.app/shadoron/issue/SHA-119/atlas-chief-v2-modele-ia-memoire-des-chats-et-actions-avec-approbation) (Chief LLM futur) ne sont pas terminés.

@@ -12,3 +12,11 @@ Illustration-inspired functional Chief interface at /chief, using existing Atlas
 - Data is bounded to the recent 200 missions/reviews in readAtlasWorkflow. Counts are for visible items only.
 
 Next phase (requires explicit integration): agent/model provider, encrypted persistent conversations, actual streaming, server tools, permissions+approvals for autonomous actions, event timeline and richer analytics.
+
+
+## Release/handoff evidence (2026-10-24)
+- Code intégré dans GitHub main par [PR #29](https://github.com/DIALLO575/atlas-hq/pull/29), commit applicatif `832dce2` ; CI success, preview combinée READY.
+- L'URL de production officielle pointe encore vers `db3152e` à la date du rapport (Vercel 402). Ne pas déclarer Chief déployé en production.
+- La page consomme réellement les tables workspace Missions/Inbox : snapshot actuel 0 mission/0 validation, donc graphiques et cartes à zéro attendus.
+- Aucune conversation persistante, LLM, streaming, actions d'agents ou analytics historiques. Voir [SHA-119](https://linear.app/shadoron/issue/SHA-119/atlas-chief-v2-modele-ia-memoire-des-chats-et-actions-avec-approbation).
+- Suite de travail : [handoff inter-workers](../operations/worker-handoff-2026-10-24.md).

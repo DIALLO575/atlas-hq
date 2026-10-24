@@ -24,7 +24,13 @@ API routes validate user authentication, workspace membership, verified installa
 - GitHub accessible is shown after successful live repository read; stored authorization alone is not a live check.
 - PR file patches are displayed as escaped text, with bounded progressive file listing (35 entries per page) and clear missing-diff messaging.
 - In-flight requests are aborted when selecting another repository or switching workspace; provider errors are shown.
-- Observed Supabase read-only state 2026-10-23: 0 GitHub installations, 0 authorized repositories. Real workspace data cannot appear until GitHub App installation is completed.
+- Historical snapshot from 2026-10-23 recorded 0 installations / 0 authorized repositories. **Updated official Supabase snapshot on 2026-10-24: 1 recorded installation and 1 authorized repository.** Persistence alone is not proof of a successful real GitHub provider read; verification of current access and tenant isolation remains required.
 
 ## Compatibility
 The read-only UI accepts both `selected` and `all` GitHub App repository grants, preserving the latest backend permissions and diagnostics on `main`.
+
+
+## Release evidence and next worker (24 October 2026)
+- Consolidated [PR #29](https://github.com/DIALLO575/atlas-hq/pull/29) merged into main as `832dce2` with Chief; PR #22 superseded/closed. Preview READY + `/apps/github` HTTP 200, **but production Vercel remains at db3152e** due deployment cap 402.
+- Follow-up GitHub read/install/security evidence: [SHA-102](https://linear.app/shadoron/issue/SHA-102/05-developper-le-connecteur-produit-github-complet), [SHA-113](https://linear.app/shadoron/issue/SHA-113/052-implementer-linstallation-github-app-multi-tenant), [SHA-114](https://linear.app/shadoron/issue/SHA-114/053-implementer-les-lectures-github-et-le-contexte-pr-minimal), [SHA-116](https://linear.app/shadoron/issue/SHA-116/055-prouver-le-connecteur-github-en-sandbox-multi-tenant).
+- [Worker handoff](../operations/worker-handoff-2026-10-24.md) tracks exact deployment state and next actions.

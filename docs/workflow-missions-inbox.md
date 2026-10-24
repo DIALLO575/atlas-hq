@@ -21,3 +21,7 @@ This changes both Atlas pages together. Neither page displays fake missions, age
 - Completing a mission directly is currently permitted for its creator or workspace admin; requesting independent approval is an optional workflow. Do not claim completion always requires approval.
 - This is an Atlas-native workflow; nothing is inferred from external providers, CI runs or AI agents until those services write verified events.
 - No background polling, notifications, emails, webhook ingestion or agent actions are implemented.
+
+
+## Verified later state (24 October 2026)
+The workflow schema migration was applied to the official Atlas Supabase database and the Missions/Inbox pages are deployed in the previously published production build. The deployment prerequisites above remain useful as the **reproduction procedure**, not as instructions to reapply the migration. Latest read-only official counts: 1 workspace, 0 missions, 0 review requests. No live two-user end-to-end approval test is evidenced here; complete such validation before claiming operational readiness. More: [worker handoff](../operations/worker-handoff-2026-10-24.md).

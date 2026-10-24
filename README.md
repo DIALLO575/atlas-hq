@@ -2,17 +2,17 @@
 
 > **Agents de développement :** lisez [AGENTS.md](AGENTS.md) avant de pousser ou déployer. La règle de quota Vercel impose de regrouper les corrections et de limiter les previews automatiques.
 
-ATLAS HQ est le cockpit Web/PWA du Personal Operating System. Cette première fondation propose une interface responsive utilisable sans IA et sans connexion aux services externes.
+ATLAS HQ est le cockpit Web/PWA du Personal Operating System. Le projet contient désormais des pages réelles appuyées sur Supabase et un connecteur GitHub en lecture seule, ainsi qu'un cockpit Chief à réponses guidées (sans LLM connecté). **Attention : le dernier code mergé sur main peut ne pas être encore publié sur Vercel.** Voir le [relais des workers](docs/operations/worker-handoff-2026-10-24.md).
 
-## Cockpit V0
+## ATLAS actuel — surfaces et réalité des données
 
-- Six destinations : Accueil, Workspaces, Missions, Agents & Équipes, Mes Apps et Inbox.
-- Recherche globale, Éléments liés, Chief et Paramètres sont accessibles depuis le shell.
-- Sur mobile, une barre rapide donne accès à Accueil, Missions, Inbox et Menu; le menu latéral est un panneau unique.
-- Navigation adaptée aux lecteurs d’écran, au clavier et au tactile; thème clair et tokens compatibles avec le mode sombre du système.
-- Le catalogue et les résultats de recherche utilisent uniquement des exemples d’interface, signalés par « Mode démonstration ». Ils ne décrivent pas l’état réel des comptes.
-- Les espaces sans source connectée affichent des états vides explicites. Les routes secondaires ont des états de chargement et une erreur récupérable.
-- Les intégrations, l’activité opérationnelle et les connexions ne sont pas encore activées.
+- Accueil, Workspaces, Missions, Agents & Équipes, Mes Apps, Inbox et Chief sont accessibles via le shell Next.js responsive, avec navigation préchargée, barre de progression et squelettes de chargement.
+- **Workspaces** : Supabase Auth, rôles et règles RLS réels. **Missions / Inbox** : création, statuts et décisions transactionnelles réels sur des tables Supabase dédiées; pas de faux résultats lorsqu'aucune mission n'existe.
+- **Mes Apps** : catalogue d'applications ; le lien `Piloter` GitHub ouvre le Control Center. Les autres cartes ne garantissent aucune connexion fournisseur.
+- **GitHub Control Center V2** : installation autorisée `selected` ou `all`, lecture de dépôts et de PR, inspection des fichiers/diffs, aucune écriture GitHub. Un accès GitHub réellement opérationnel exige l'installation et les permissions fournisseur vérifiées.
+- **Chief Command Deck** : cockpit conversationnel à réponses **guidées**, métriques et graphiques de répartition fondés sur les données du workspace; historique temporaire. **Aucun modèle LLM libre / agent autonome n'est connecté**.
+- Les zones non raccordées (certains agents, recherche transverse, automatisations) doivent rester des états honnêtes, jamais des données fictives présentées comme réelles.
+- Suivi de livraison GitHub vs Vercel, limitations et prochaines actions : [relais inter-workers](docs/operations/worker-handoff-2026-10-24.md).
 
 ## Démarrage
 
@@ -65,7 +65,7 @@ Le manifeste est dans `public/manifest.webmanifest`, l’icône dans `public/ico
 
 ## Sécurité et périmètre
 
-Aucun secret, client Supabase ou donnée opérationnelle n’est inclus. Les fichiers `.env*` sont ignorés par Git; `.env.example` ne contient qu’un réglage public indicatif. Chaque plateforme connectée restera sa propre source de vérité. Aucune intégration backend n’est activée dans cette fondation.
+Aucun secret privilégié ne doit apparaître dans le code client ; les fichiers `.env*` sont ignorés par Git. Supabase Auth, workspaces, Missions/Inbox et l'API GitHub App sont déjà présents côté serveur ; chaque plateforme externe reste la source de vérité de ses propres données. Les droits sont vérifiés par workspace et les capacités non implémentées ne doivent pas être simulées.
 
 ### Workspace roles and migration order
 
