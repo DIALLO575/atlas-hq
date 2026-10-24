@@ -35,6 +35,8 @@ test("Mes Apps is a proper working discovery interface, not fictitious integrati
   assert.doesNotMatch(page, /<GitHubWorkspacePicker|force-dynamic|supabase\.auth\.getUser/);
   assert.doesNotMatch(directory, /githubSlot|hasVerifiedGitHub/);
   assert.match(directory, /app.slug === "github"/);
+  assert.match(directory, /href="\/apps\/linear"/);
+  assert.match(directory, /app.slug === "linear"/);
   assert.match(page, /Vos applications, au même endroit/);
   assert.match(page, /href="#apps-catalog"/);
   assert.match(directory, /useState/);
