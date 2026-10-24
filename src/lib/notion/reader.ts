@@ -1,5 +1,6 @@
 import "server-only";
 import { createNotionReadClient } from "../../../packages/connectors/notion/src/rest-client.mjs";
+import { rotateNotionCredentials } from "../../../packages/connectors/notion/src/refresh-flow.mjs";
 import { assertPersonalNotionConnection } from "../../../packages/connectors/notion/src/resource-view.mjs";
 import { adminNotionClient, notionConnectSettings, notionTokenVault,
   requireNotionWorkspaceActor } from "./connect";
@@ -27,6 +28,9 @@ export async function loadNotionPersonalConnection({
     .eq("user_id", actor.userId).is("revoked_at", null).maybeSingle();
   if (credentialError) throw new NotionConnectionAccessError("STORE_UNAVAILABLE");
   if (!connection) throw new NotionConnectionAccessError("NOT_FOUND");
+  if (connection.refresh_attempt_id !== null) {
+    throw new NotionConnectionAccessError("REFRESH_IN_PROGRESS");
+  }
   const { data: registry, error: registryError } = await admin.from("atlas_connections")
     .select("id,owner_id,workspace_id,provider,status")
     .eq("id", connectionId).eq("workspace_id", actor.workspaceId)
@@ -44,4 +48,51 @@ export async function loadNotionPersonalConnection({
     actor, settings, admin, vault, record: connection, tokens,
     client: createNotionReadClient({ token: tokens.accessToken }),
   };
+}
+
+/** Refresh only after a verified Notion 401, never on speculative timers. */
+export async function refreshNotionPersonalConnection(
+  loaded: Awaited<ReturnType<typeof loadNotionPersonalConnection>>,
+) {
+  const { admin, actor, record, tokens, vault, settings } = loaded;
+  return rotateNotionCredentials({
+    record, actor, tokens, vault,
+    clientId: settings.clientId, clientSecret: settings.clientSecret,
+    store: {
+      async claim(value) {
+        const { data, error } = await admin.rpc("atlas_notion_claim_refresh", {
+          p_connection_id: value.connectionId,
+          p_workspace_id: value.workspaceId, p_user_id: value.userId,
+          p_expected_version: value.expectedVersion, p_attempt_id: value.attemptId,
+        });
+        if (error) throw new Error("NOTION_REFRESH_STORE_UNAVAILABLE");
+        return data === true;
+      },
+      async complete(value) {
+        const { data, error } = await admin.rpc("atlas_notion_complete_refresh", {
+          p_connection_id: value.connectionId,
+          p_workspace_id: value.workspaceId, p_user_id: value.userId,
+          p_expected_version: value.expectedVersion, p_attempt_id: value.attemptId,
+          p_token_key_id: value.encrypted.token_key_id,
+          p_access_nonce: value.encrypted.access_nonce,
+          p_access_ciphertext: value.encrypted.access_ciphertext,
+          p_access_tag: value.encrypted.access_tag,
+          p_refresh_nonce: value.encrypted.refresh_nonce,
+          p_refresh_ciphertext: value.encrypted.refresh_ciphertext,
+          p_refresh_tag: value.encrypted.refresh_tag,
+        });
+        if (error) throw new Error("NOTION_REFRESH_STORE_UNAVAILABLE");
+        return typeof data === "number" ? data : null;
+      },
+      async fail(value) {
+        const { data, error } = await admin.rpc("atlas_notion_fail_refresh", {
+          p_connection_id: value.connectionId,
+          p_workspace_id: value.workspaceId, p_user_id: value.userId,
+          p_expected_version: value.expectedVersion, p_attempt_id: value.attemptId,
+        });
+        if (error) throw new Error("NOTION_REFRESH_STORE_UNAVAILABLE");
+        return data === true;
+      },
+    },
+  });
 }

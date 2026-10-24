@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { notionBlockView, notionListView } from "../../../../../../packages/connectors/notion/src/resource-view.mjs";
-import { NotionReadError } from "../../../../../../packages/connectors/notion/src/rest-client.mjs";
-import { loadNotionPersonalConnection, NotionConnectionAccessError } from "@/lib/notion/reader";
+import { NotionReadError, createNotionReadClient } from "../../../../../../packages/connectors/notion/src/rest-client.mjs";
+import { NotionRefreshError } from "../../../../../../packages/connectors/notion/src/refresh-token.mjs";
+import { loadNotionPersonalConnection, NotionConnectionAccessError, refreshNotionPersonalConnection } from "@/lib/notion/reader";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,20 +29,38 @@ export async function GET(request: NextRequest) {
     return json({ error: "notion-invalid-request" }, 400);
   }
   try {
-    // Only reads the personal connection of the logged-in, still-authorized admin.
-    const { client } = await loadNotionPersonalConnection({ workspaceId, connectionId });
-    if (kind === "search") {
-      const response = await client.searchByTitle({ query, startCursor: cursor, size: 30 });
-      return json(notionListView(response));
+    const loaded = await loadNotionPersonalConnection({ workspaceId, connectionId });
+    const execute = async (client: typeof loaded.client) => {
+      if (kind === "search") {
+        return notionListView(await client.searchByTitle({
+          query, startCursor: cursor, size: 30,
+        }));
+      }
+      return notionBlockView(await client.listBlockChildren(resourceId, {
+        startCursor: cursor, size: 40,
+      }));
+    };
+    try {
+      return json(await execute(loaded.client));
+    } catch (firstError) {
+      if (!(firstError instanceof NotionReadError) ||
+          firstError.code !== "AUTH_REQUIRED") throw firstError;
+      // At most ONE rotating token grant, with a durable SQL claim. Never
+      // replay a provider write or retry refresh on unknown outcome.
+      const refreshed = await refreshNotionPersonalConnection(loaded);
+      const client = createNotionReadClient({ token: refreshed.accessToken });
+      return json(await execute(client));
     }
-    const response = await client.listBlockChildren(resourceId, {
-      startCursor: cursor, size: 40,
-    });
-    return json(notionBlockView(response));
   } catch (error) {
+    if (error instanceof NotionRefreshError) {
+      const status = error.code === "REFRESH_UNAVAILABLE" ? 503 : 409;
+      return json({ error: error.code === "REFRESH_BUSY"
+        ? "notion-refresh-in-progress" : "notion-reconnection-required" }, status);
+    }
     if (error instanceof NotionConnectionAccessError) {
       const status = error.code === "INVALID_REQUEST" ? 400
         : error.code === "NOT_CONFIGURED" || error.code === "STORE_UNAVAILABLE" ? 503
+        : error.code === "REFRESH_IN_PROGRESS" ? 409
         : error.code === "FORBIDDEN" ? 403 : 404;
       return json({ error: "notion-" + error.code.toLowerCase().replaceAll("_", "-") }, status);
     }

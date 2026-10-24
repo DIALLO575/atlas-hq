@@ -56,3 +56,12 @@ Official docs:
 - The public API cannot read pages outside those actually shared with the Notion connection. 403/404 remain actual provider constraints.
 - Refresh-token lifecycle requires a separate serialization-safe implementation. Do not implement naive concurrent refresh attempts; Notion rotates refresh tokens.
 - No migrations have been applied to ATLAS official Supabase. These files are source artifacts until disposable DB tests and explicit production approval.
+
+## Rotating OAuth token lifecycle (SHA-122, commit pending CI)
+- Notion REST OAuth refresh uses JSON POST with HTTP Basic at the **fixed** official /v1/oauth/token endpoint, grant_type=refresh_token. Both returned tokens must be checked and rotated atomically. Verify Notion bot/workspace identities match the previously bound connection; never trust client-supplied IDs.
+- Database migration 20261024141500_atlas_notion_refresh_gate.sql adds an unexpiring claim (refresh_attempt_id/refresh_started_at), exact-version transactional completion, attempt id audit, and a fail-closed tombstone. All RPCs are service_role only, not browser executable.
+- Normal reads use the stored bearer; one Notion 401 may trigger **one** protected refresh and a single retry of the read-only request. Calls with an active refresh claim return an in-progress status; no arbitrary polling or unlock on timeout.
+- If the provider outcome or DB completion is unknown, or Notion reports invalid authorization, fail_refresh tombstones the exact attempted credential and marks the registry disconnected; the user must reconnect. NEVER retry a rotated refresh token automatically.
+- Local disconnect and reauthorization are prevented from modifying an active rotation. Cross-session PostgreSQL CI competes for one refresh claim and verifies a single winner.
+- Treat each additional git push as potentially triggering a Vercel preview. This work is in a draft PR, and never changes deployed Supabase without explicit approval.
+- Notion documentation: https://developers.notion.com/reference/refresh-a-token ; https://developers.notion.com/guides/get-started/authorization

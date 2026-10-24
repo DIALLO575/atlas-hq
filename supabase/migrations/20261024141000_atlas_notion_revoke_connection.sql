@@ -22,7 +22,7 @@ begin
     revoked_at = now(), version = version+1, updated_at = now()
   where connection_id = p_connection_id and workspace_id = p_workspace_id
     and user_id = p_user_id and version = p_expected_version
-    and revoked_at is null;
+    and revoked_at is null and refresh_attempt_id is null;
   if not found then return false; end if;
   update public.atlas_connections set
     status = 'disconnected', updated_at = now(), checked_at = now()

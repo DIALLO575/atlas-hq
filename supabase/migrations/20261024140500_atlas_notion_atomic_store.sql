@@ -39,6 +39,10 @@ begin
   where n.workspace_id = p_workspace_id and n.user_id = p_user_id
     and n.notion_workspace_id = p_notion_workspace_id and n.revoked_at is null
   for update;
+  if chosen is not null and exists (select 1 from public.atlas_notion_connections
+    where connection_id=chosen and refresh_attempt_id is not null) then
+    raise exception 'NOTION_REFRESH_IN_PROGRESS';
+  end if;
   if chosen is null then
     insert into public.atlas_connections(
       id,owner_id,workspace_id,provider,account_label,tenant_key,
