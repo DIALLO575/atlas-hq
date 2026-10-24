@@ -54,6 +54,39 @@ test("mints a selected-repository installation token with read-only permissions"
   assert.equal(requests[0].init.headers["X-GitHub-Api-Version"], "2026-03-10");
 });
 
+test("all grant mints a read-only token with no repository snapshot and reads live new repos", async () => {
+  const seen = [];
+  const token = await mintReadOnlyInstallationToken({
+    appId: 1234, privateKey, installationId: 77, repositoryIds: [], repositorySelection: "all", now,
+    request: async (url, init) => {
+      assert.equal(url, "https://api.github.com/app/installations/77/access_tokens");
+      assert.deepEqual(JSON.parse(init.body), { permissions: { pull_requests: "read" } });
+      seen.push(url);
+      return json({ token: "ghs-all", expires_at: "2026-10-23T13:00:00Z", permissions: { pull_requests: "read" } }, 201);
+    },
+  });
+  const reader = createGitHubReadClient({
+    token: token.token, installationId: 77, repositoryIds: [], repositorySelection: "all",
+    request: async (url, init) => {
+      seen.push(url);
+      assert.equal(init.headers.Authorization, "Bearer ghs-all");
+      if (url.includes("/installation/repositories")) {
+        return json({ repository_selection: "all", repositories: [repo(3, "owner/current"), repo(4, "owner/new-repo")] });
+      }
+      if (url.includes("/repos/owner/new-repo/pulls?")) return json([pr(5)]);
+      throw new Error("Unexpected access: " + url);
+    },
+  });
+  assert.deepEqual((await reader.listRepositories()).repositories.map(x => x.id), [3, 4]);
+  assert.equal((await reader.listPullRequests(4)).pullRequests[0].number, 5);
+  await assert.rejects(reader.getPullRequest(9999, 5), error => error.code === "PERMISSION_DENIED");
+  assert.equal(seen.filter(x => x.includes("access_tokens")).length, 1);
+  await assert.rejects(mintReadOnlyInstallationToken({
+    appId: 1234, privateKey, installationId: 77, repositoryIds: [3], repositorySelection: "all",
+    request: async () => { throw new Error("must not be sent"); },
+  }), error => error.code === "INVALID_INPUT");
+});
+
 test("rejects unverified/unbounded repository selection before any GitHub request", async () => {
   for (const repositoryIds of [[], [0], [12, 12], ["12"], Array.from({ length: 501 }, (_, i) => i + 1)]) {
     await assert.rejects(mintReadOnlyInstallationToken({

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const migration = await readFile(new URL("../supabase/migrations/20261023210000_atlas_github_installations_rls.sql", import.meta.url), "utf8");
+const allMigration = await readFile(new URL("../supabase/migrations/20261024064800_allow_all_github_installation_repositories.sql", import.meta.url), "utf8");
 const route = await readFile(new URL("../src/app/api/apps/github/route.ts", import.meta.url), "utf8");
 const reader = await readFile(new URL("../packages/connectors/github/src/authorized-reader.mjs", import.meta.url), "utf8");
 
@@ -24,6 +25,9 @@ test("ready state is impossible without both ownership proof and repository veri
   assert.match(migration, /constraint github_ready_requires_proof check/);
   assert.match(migration, /status <> 'repositories-ready'/);
   assert.match(migration, /repository_selection is not distinct from 'selected'/);
+  assert.match(allMigration, /repository_selection in \('selected', 'all'\)/);
+  assert.match(allMigration, /ownership_verified_at is not null/);
+  assert.match(allMigration, /repositories_verified_at is not null/);
   assert.match(migration, /ownership_verified_at is not null/);
   assert.match(migration, /repositories_verified_at is not null/);
   assert.match(migration, /installation_id bigint primary key check \(installation_id > 0\)/);

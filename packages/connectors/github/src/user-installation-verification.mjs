@@ -95,11 +95,17 @@ export async function verifyPersonalInstallation({
     item?.target_type === "User");
   if (!installation) throw new GitHubAuthorizationError("GITHUB_INSTALLATION_NOT_OWNED");
   if (installation.suspended_at) throw new GitHubAuthorizationError("GITHUB_INSTALLATION_SUSPENDED");
-  if (installation.repository_selection !== "selected") {
+  if (installation.repository_selection !== "selected" && installation.repository_selection !== "all") {
     throw new GitHubAuthorizationError("GITHUB_REPOSITORY_SELECTION_REQUIRED");
   }
   if (!["read", "write"].includes(installation.permissions?.pull_requests)) {
     throw new GitHubAuthorizationError("GITHUB_PULL_REQUESTS_PERMISSION_REQUIRED");
+  }
+  // GitHub's 'all' grant covers present and future repositories. The GitHub
+  // installation token will be checked on EACH read instead of treating this
+  // one-time user OAuth token as a permanent repository snapshot.
+  if (installation.repository_selection === "all") {
+    return { installationId, repositoryIds: [], repositorySelection: "all", accountLogin: person.login };
   }
   const repositoryPath = `/user/installations/${installationId}/repositories`;
   const repositories = await collection(request, userToken, repositoryPath, "repositories", MAX_REPOS);
@@ -111,6 +117,7 @@ export async function verifyPersonalInstallation({
   return {
     installationId,
     repositoryIds: ids,
+    repositorySelection: "selected",
     accountLogin: person.login,
   };
 }

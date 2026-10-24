@@ -76,17 +76,25 @@ export function createGitHubAppJwt({ appId, privateKey, now = () => Date.now() }
  * IDs must come from a verified tenant binding, never from browser parameters.
  */
 export async function mintReadOnlyInstallationToken({
-  appId, privateKey, installationId, repositoryIds, request = fetch, now = () => Date.now(),
+  appId, privateKey, installationId, repositoryIds, repositorySelection = "selected", request = fetch, now = () => Date.now(),
 }) {
   positiveId(installationId, "installation ID");
-  const ids = [...allowedIds(repositoryIds)];
+  if (repositorySelection !== "selected" && repositorySelection !== "all") {
+    throw new GitHubReadError("INVALID_INPUT", "Unverified repository selection mode");
+  }
+  if (repositorySelection === "all" && (!Array.isArray(repositoryIds) || repositoryIds.length !== 0)) {
+    throw new GitHubReadError("INVALID_INPUT", "All mode must not carry a spoofable repository ID list");
+  }
+  const ids = repositorySelection === "selected" ? [...allowedIds(repositoryIds)] : [];
   const jwt = createGitHubAppJwt({ appId, privateKey, now });
   let response;
   try {
     response = await request(`${API_ORIGIN}/app/installations/${installationId}/access_tokens`, {
       method: "POST",
       headers: { ...apiHeaders(jwt), "Content-Type": "application/json" },
-      body: JSON.stringify({ repository_ids: ids, permissions: { pull_requests: "read" } }),
+      body: JSON.stringify(repositorySelection === "all"
+        ? { permissions: { pull_requests: "read" } }
+        : { repository_ids: ids, permissions: { pull_requests: "read" } }),
       cache: "no-store",
     });
   } catch {
@@ -100,7 +108,8 @@ export async function mintReadOnlyInstallationToken({
   if (body.permissions?.pull_requests !== "read" && body.permissions?.pull_requests !== "write") {
     throw new GitHubReadError("PERMISSION_DENIED", "GitHub installation lacks Pull requests read permission");
   }
-  if (Array.isArray(body.repositories) && body.repositories.some((repo) => !ids.includes(repo.id))) {
+  if (repositorySelection === "selected" &&
+      Array.isArray(body.repositories) && body.repositories.some((repo) => !ids.includes(repo.id))) {
     throw new GitHubReadError("INVALID_RESPONSE", "Installation token exceeds approved repository selection");
   }
   return { token: body.token, expiresAt: body.expires_at };
@@ -138,10 +147,16 @@ function positiveRepo(repo) {
     repo.full_name.split("/").every(githubName);
 }
 
-export function createGitHubReadClient({ token, installationId, repositoryIds, request = fetch }) {
+export function createGitHubReadClient({ token, installationId, repositoryIds, repositorySelection = "selected", request = fetch }) {
   positiveId(installationId, "installation ID");
   if (typeof token !== "string" || !token.trim()) throw new GitHubReadError("AUTH_REQUIRED", "Installation token missing");
-  const ids = allowedIds(repositoryIds);
+  if (repositorySelection !== "selected" && repositorySelection !== "all") {
+    throw new GitHubReadError("INVALID_INPUT", "Invalid installation repository grant mode");
+  }
+  if (repositorySelection === "all" && (!Array.isArray(repositoryIds) || repositoryIds.length !== 0)) {
+    throw new GitHubReadError("INVALID_INPUT", "Untrusted repository IDs in an all-repositories grant");
+  }
+  const ids = repositorySelection === "selected" ? allowedIds(repositoryIds) : new Set();
 
   async function get(url) {
     if (url.origin !== API_ORIGIN || !url.pathname.startsWith("/")) throw new GitHubReadError("INVALID_INPUT", "Unsafe GitHub endpoint");
@@ -180,12 +195,17 @@ export function createGitHubReadClient({ token, installationId, repositoryIds, r
     const { items, truncated } = await pages("/installation/repositories?per_page=100", {
       maximum: MAX_REPOSITORIES, maxPages: 6, arrayKey: "repositories",
     });
-    return { repositories: items.filter((repo) => ids.has(repo?.id)).map(mapRepo), truncated };
+    return { repositories: items.filter((repo) => repositorySelection === "all" || ids.has(repo?.id)).map(mapRepo), truncated };
   }
 
   async function checkedRepository(repositoryId) {
     positiveId(repositoryId, "repository ID");
-    if (!ids.has(repositoryId)) throw new GitHubReadError("PERMISSION_DENIED", "Repository not granted to this workspace");
+    if (repositorySelection === "selected" && !ids.has(repositoryId)) {
+      throw new GitHubReadError("PERMISSION_DENIED", "Repository not granted to this workspace");
+    }
+    // Even for all-repositories installs, never accept a caller's arbitrary ID.
+    // Validate each requested repository against the LIVE installation token's
+    // /installation/repositories listing before fetching its PRs.
     const { repositories, truncated } = await listRepositories();
     const repo = repositories.find((item) => item.id === repositoryId);
     if (!repo) {

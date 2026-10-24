@@ -69,3 +69,32 @@ GitHub App documentation:
 - https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app
 - https://docs.github.com/en/rest/apps/installations
 - https://docs.github.com/en/rest/pulls/pulls
+
+## All repositories (2026-10-24)
+
+ATLAS supports both verified personal-account installation grants: `selected`
+and `all`. Owner verification always requires GitHub App OAuth and a matching
+GitHub user, App ID and personal installation; setup callback arguments are not
+authorization evidence.
+
+- **Selected:** Up to 500 distinct repository IDs are verified and persisted.
+  The read token is restricted to those IDs and pull_requests:read.
+- **All:** No repository IDs are persisted as a stale allowlist. The server
+  persists the `all` grant only after real OAuth ownership proof. Each read
+  mints an installation token with `pull_requests:read` only and **without**
+  a repository_ids field; GitHub limits it to repositories of that installation.
+  Each repository or PR request checks the current `/installation/repositories`
+  response using that token, including any future repositories granted through
+  the installation. Client repository IDs alone never authorize an operation.
+- Up to 500 repositories are displayed in one bounded paginated listing.
+  Larger installations may show a truncated listing instead of claiming all
+  repositories were loaded; unlisted IDs are not accessed.
+- Only authenticated Workspace members can browse, and only verified owners
+  or admins can connect. All GitHub reads stay read-only. Existing explicit
+  server-side service-role and RLS boundaries remain in effect.
+
+Important: `All repositories` grants the GitHub App access to every
+current and future repository of the chosen account. Grant only if desired,
+and reduce the app's registered permissions to minimum read access. Any
+existing broad GitHub App permissions must be corrected in the GitHub App
+settings separately; ATLAS narrows its generated installation token.

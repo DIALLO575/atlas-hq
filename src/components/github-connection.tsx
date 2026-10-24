@@ -93,7 +93,7 @@ export function GitHubConnection({ workspaceId, canInstall, isConfigured }: {
     {canInstall && isConfigured ? <form action="/api/apps/github/connect/start" method="post">
       <input type="hidden" name="workspaceId" value={workspaceId}/>
       <button type="submit" className="app-action">Connecter GitHub</button>
-      <p className="connector-inline-note">Sur GitHub, choisissez votre compte personnel puis « Only select repositories ». ATLAS ne réclame pas l’accès à tous vos dépôts.</p>
+      <p className="connector-inline-note">Sur GitHub, choisissez votre compte personnel, puis « All repositories » ou « Only select repositories ». ATLAS vérifie l&apos;installation et lit uniquement les Pull Requests.</p>
     </form> : <p className="connector-inline-note">{!isConfigured
       ? "Connexion indisponible : la GitHub App ATLAS HQ n’est pas encore configurée."
       : "Un administrateur du Workspace doit autoriser la connexion GitHub."}</p>}
