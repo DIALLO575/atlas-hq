@@ -22,6 +22,11 @@ export class CredentialLifecycleError extends Error {
 }
 const fail = code => { throw new CredentialLifecycleError(code); };
 const rec = x => x !== null && typeof x === "object" && !Array.isArray(x);
+function exact(input,fields) {
+  if (!rec(input) || Object.keys(input).some(k=>!fields.includes(k)) ||
+      fields.some(k=>!Object.hasOwn(input,k)))
+    fail("CREDENTIAL_INPUT_INVALID");
+}
 function ids(input) {
   if (!rec(input) || Object.keys(input).some(k => !["workspaceId", "instanceId"].includes(k))
       || !UUID.test(input.workspaceId ?? "") || !UUID.test(input.instanceId ?? ""))
@@ -48,7 +53,7 @@ function validateRow(row,c, allowRevoked = false) {
       typeof row.instance_id !== "string" ||
       row.workspace_id.toLowerCase() !== c.workspaceId ||
       row.instance_id.toLowerCase() !== c.instanceId ||
-      !KEY.test(row.key_id ?? "") ||
+      !KEY.test(row.key_id ?? "") || row.version!==1 ||
       (row.revoked_at !== null && row.revoked_at !== undefined && !allowRevoked))
     fail("CREDENTIAL_RECORD_INVALID");
   return row;
@@ -91,12 +96,18 @@ export function createEngineCredentialLifecycle(input) {
     catch { fail("CREDENTIAL_PROVIDER_UNAVAILABLE"); }
   }
   async function atomic(callback) {
-    // Repository must implement an actual DB transaction that rolls back on
-    // any error, including failed audit. Tests simulate this property.
-    return deps.repository.transaction(callback);
+    // Repository must provide atomic COMMIT/ROLLBACK incl. audit. Do not leak
+    // raw PostgreSQL errors or plaintext from a future provider to callers.
+    try { return await deps.repository.transaction(callback); }
+    catch (e) {
+      if (e instanceof CredentialLifecycleError) throw e;
+      fail("CREDENTIAL_STORAGE_FAILED");
+    }
   }
   return Object.freeze({
-    async create({scope,session,secret}) {
+    async create(input) {
+      exact(input,["scope","session","secret"]);
+      const {scope,session,secret}=input;
       const {scope:c,actor} = await authorize(scope,session,"create");
       // Never accept JSON, caller's "approved" flag or coerced objects.
       if (!Buffer.isBuffer(secret) || secret.length < 1 || secret.length > 65536)
@@ -115,7 +126,9 @@ export function createEngineCredentialLifecycle(input) {
         return Object.freeze({created:true,keyId:encrypted.keyId,version:encrypted.version});
       });
     },
-    async rotate({scope,session}) {
+    async rotate(input) {
+      exact(input,["scope","session"]);
+      const {scope,session}=input;
       const {scope:c,actor}=await authorize(scope,session,"rotate");
       const v=await vault(c);
       return atomic(async tx => {
@@ -138,7 +151,9 @@ export function createEngineCredentialLifecycle(input) {
         return Object.freeze({rotated:true,keyId:renewed.keyId,version:renewed.version});
       });
     },
-    async revoke({scope,session}) {
+    async revoke(input) {
+      exact(input,["scope","session"]);
+      const {scope,session}=input;
       const {scope:c,actor}=await authorize(scope,session,"revoke");
       return atomic(async tx => {
         checkTx(tx,"revokeCredential");
@@ -148,7 +163,9 @@ export function createEngineCredentialLifecycle(input) {
         return Object.freeze({revoked:true});
       });
     },
-    async inspect({scope,session}) {
+    async inspect(input) {
+      exact(input,["scope","session"]);
+      const {scope,session}=input;
       const {scope:c}=await authorize(scope,session,"inspect");
       return atomic(async tx => {
         if (!rec(tx) || typeof tx.getCredential !== "function")

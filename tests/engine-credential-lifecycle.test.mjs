@@ -137,7 +137,7 @@ test("Cross-workspace or cross-instance record substitution is rejected before d
 test("Audit failure aborts credential insert, rotate and revoke transaction",async()=>{
  const state=mockService({failAudit:true});
  await assert.rejects(state.svc.create({scope,session:"trusted-session",secret:Buffer.from("SENSITIVE")}),
- /AUDIT_DOWN/);
+ e=>e.code==="CREDENTIAL_STORAGE_FAILED");
  assert.equal(state.memory.size,0);assert.equal(state.auditLog.length,0);
  const second=mockService({failRotate:true});
  await second.svc.create({scope,session:"trusted-session",secret:Buffer.from("SECRET")});
@@ -155,7 +155,23 @@ test("Reject extra body fields, raw strings, invalid dependency providers and du
    e=>e.code==="CREDENTIAL_SCOPE_INVALID");
  await state.svc.create({scope,session:"trusted-session",secret:Buffer.from("x")});
  await assert.rejects(state.svc.create({scope,session:"trusted-session",secret:Buffer.from("y")}),
-  /DUPLICATE_RECORD/);
+  e=>e.code==="CREDENTIAL_STORAGE_FAILED");
  assert.equal(state.memory.size,1);
  assert.equal(state.auditLog.length,1);
+});
+
+test("Rejects untrusted approval flags and provider SQL errors never leak",async()=>{
+  const state=mockService();
+  const payload={scope,session:"trusted-session",secret:Buffer.from("PRIVATE")};
+  await assert.rejects(state.svc.create({...payload,approved:true}),
+    e=>e.code==="CREDENTIAL_INPUT_INVALID");
+  await assert.rejects(state.svc.rotate({scope,session:"trusted-session",connectionState:"enabled"}),
+    e=>e.code==="CREDENTIAL_INPUT_INVALID");
+  await assert.rejects(state.svc.revoke({scope,session:"trusted-session",actorId:A}),
+    e=>e.code==="CREDENTIAL_INPUT_INVALID");
+  await assert.rejects(state.svc.inspect({scope,session:"trusted-session",token:"BAD"}),
+    e=>e.code==="CREDENTIAL_INPUT_INVALID");
+  await state.svc.create(payload);
+  await assert.rejects(state.svc.create(payload),
+    e=>e.code==="CREDENTIAL_STORAGE_FAILED" && !e.message.includes("DUPLICATE"));
 });
