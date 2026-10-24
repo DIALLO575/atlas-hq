@@ -25,8 +25,11 @@ export async function createAuthorizedGitHubReader({
     throw new GitHubReadError("PROVIDER_UNAVAILABLE", "Installation authorization store is unavailable");
   }
   if (!record || record.tenantId !== tenantId || record.installationId !== installationId ||
-      record.status !== "repositories-ready" || record.repositorySelection !== "selected" ||
-      !Array.isArray(record.repositories) || record.repositories.length === 0) {
+      record.status !== "repositories-ready" ||
+      !["selected", "all"].includes(record.repositorySelection) ||
+      !Array.isArray(record.repositories) ||
+      (record.repositorySelection === "selected" && record.repositories.length === 0) ||
+      (record.repositorySelection === "all" && record.repositories.length !== 0)) {
     throw new GitHubReadError("PERMISSION_DENIED", "GitHub installation is not verified for this workspace");
   }
   const repositoryIds = record.repositories.map((repo) => repo?.id);
@@ -35,7 +38,10 @@ export async function createAuthorizedGitHubReader({
   }
   // The installation token is never returned to the caller. Only bounded read tools are exposed.
   const { token } = await mintReadOnlyInstallationToken({
-    appId, privateKey, installationId, repositoryIds, request, now,
+    appId, privateKey, installationId, repositoryIds,
+    repositorySelection: record.repositorySelection, request, now,
   });
-  return createGitHubReadClient({ token, installationId, repositoryIds, request });
+  return createGitHubReadClient({
+    token, installationId, repositoryIds, repositorySelection: record.repositorySelection, request,
+  });
 }
