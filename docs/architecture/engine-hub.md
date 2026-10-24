@@ -106,8 +106,12 @@ suivre AGENTS.md et docs/operations/worker-handoff-2026-10-24.md.
 URL+token configurés ne suffisent pas. `ATLAS_MAUSBOT_RELEASE_STAGE` vaut
 `offline` par défaut (si absent, mal orthographié ou explicitement offline).
 Les requêtes live (health, agents, job) exigent `read-only` ou `enabled`.
-Toute opération de mutation exige à la fois `enabled` et
-`ATLAS_MAUSBOT_MUTATIONS_ACK=I_ACKNOWLEDGE_ENGINE_ACTIONS`.
+Les mutations `write` et `execute` sont **bloquées matériellement**
+en préconnexion (423 `MAUSBOT_DURABLE_APPROVAL_REQUIRED`) même si
+`ATLAS_MAUSBOT_RELEASE_STAGE=enabled` et l'ancien drapeau
+`ATLAS_MAUSBOT_MUTATIONS_ACK` sont présents. La présence d'un jeton
+MAUSBOT ou d'un booléen d'environnement ne peut pas suppléer
+l'approbation humaine et l'audit durables.
 L'interface garde les capacités offline visibles avec statut `preconnection`.
 Ces flags **ne constituent pas une autorisation suffisante pour la production** :
 les gates humains, registre multi-instance et audit durable doivent être
