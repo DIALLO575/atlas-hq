@@ -101,7 +101,7 @@ Ces contrats ne constituent PAS une connexion MCP, SSE ou CLI opérationnelle.
 
 Source gelée : `milind-soni/OpenMausBot@0a78caa91a64c1ab1adfa972ab4e540e89b66c6d`.
 
-Le catalogue `packages/engine-core/src/native-capabilities.mjs` comporte **119
+Le catalogue `packages/engine-core/src/native-capabilities.mjs` comporte **125
 entrées natives** réparties entre : agents/profils, mémoire, skills, MCP bots,
 équipes, channels, fichiers, webhooks, routines, observabilité, ordinateurs,
 connecteurs et live. Chaque entrée garde la méthode/route ou la preuve

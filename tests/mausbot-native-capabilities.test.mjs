@@ -35,3 +35,8 @@ test("Admin/approval/browser primitives never become callable in the preconnecti
  const coverage=nativeCoverageSummary(); assert.equal(coverage.callable,0);assert.equal(coverage.testedLive,0);
  assert.ok(coverage.restricted>10);assert.equal(coverage.total,MAUSBOT_NATIVE_CAPABILITIES.length);
 });
+
+test("Native source-mapped team memory and skill editing use actual HTTP verbs",()=>{
+ const expected=[["memory.team.patch-entry","PATCH"],["memory.team.delete-entry","DELETE"],["skills.bot.import","POST"],["skills.bot.update","PATCH"],["skills.bot.delete","DELETE"],["skills.library.add","POST"],["skills.library.update","PATCH"]];
+ for(const [name,method] of expected){const p=nativePrimitive(name);assert.ok(p,name);assert.equal(p.method,method);assert.equal(p.callable,false)}
+});
