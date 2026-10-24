@@ -80,9 +80,10 @@ begin
   if public.atlas_notion_purge_terminal_async_jobs(0,250) is not null
     or public.atlas_notion_purge_terminal_async_jobs(30,0) is not null
     then raise exception 'Invalid retention bounds accepted'; end if;
-  if public.atlas_notion_purge_terminal_async_jobs(30,1)<>1
-    or exists(select 1 from public.atlas_notion_async_jobs where id=id1)
-    then raise exception 'Expired terminal job not purged'; end if;
+  d:=public.atlas_notion_purge_terminal_async_jobs(30,1);
+  if d<>1 then raise exception 'Expired terminal purge count invalid: %',d; end if;
+  if exists(select 1 from public.atlas_notion_async_jobs where id=id1)
+    then raise exception 'Expired terminal job still present'; end if;
   if not public.atlas_notion_report_rest_outcome(cid,ws,actor,nw,1,'success')
     then raise exception 'Success not recorded'; end if;
   if public.atlas_notion_report_rest_outcome(cid,ws,other,nw,1,'transient')
