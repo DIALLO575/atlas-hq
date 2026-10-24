@@ -50,6 +50,9 @@ jobs:
           -f tests/sql/approval-inbox-readonly-checks.sql
           -f supabase/migrations/20261024200020_atlas_engine_approval_decision_atomic_v1.sql
           -f tests/sql/approval-decision-atomic-checks.sql
+          -f tests/sql/engine-worker-fencing-preflight.sql
+          -f supabase/proposals/engine-outbox-fencing-v1.sql
+          -f tests/sql/engine-outbox-fencing-checks.sql
 
   linear-oauth-postgres:
     runs-on: ubuntu-latest
