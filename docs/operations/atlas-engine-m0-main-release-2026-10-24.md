@@ -17,10 +17,10 @@ Vercel/Netlify ni activation MAUSBOT.
 | Interface Espace Moteurs | Catalogue et écran de préconnexion | Aucun moteur relié |
 | API instances | GET métadonnées, POST réservé owner/admin, création uniquement offline | Disponibilité Web dépend du déploiement |
 | Chiffrement | AES-256-GCM/HKDF-SHA256, clés versionnées, contexte tenant/instance, rotation mock-testée | Pas de vrai KMS ni de pilote d'accès private |
-| Persistance | Trois migrations réelles dans Supabase ATLAS, neuf tables Engines avec RLS | Aucune exécution réelle ni secret opérationnel |
+| Persistance | Cinq migrations réelles dans Supabase ATLAS, neuf tables Engines avec RLS | Aucune exécution réelle ni secret opérationnel |
 | Mutations moteur | Blocage HTTP 423 même avec anciens drapeaux env | Déverrouillage interdit avant vérification et approbations durables |
 
-### Les trois migrations Supabase déjà appliquées
+### Les cinq migrations Supabase déjà appliquées
 
 - 20261024161305_atlas_engine_foundation_preconnection : 9 tables
   dont 2 dans public (instances, runs) et 7 dans private.
@@ -29,6 +29,10 @@ Vercel/Netlify ni activation MAUSBOT.
 - 20261024182928_atlas_engine_approval_intent_v1 : SHA-256 obligatoire
   sur les runs et approbations ; deux triggers empêchent de modifier
   la mission/primitive/payload ou de remplacer une empreinte approuvée.
+- 20261024193128_atlas_engine_pending_approvals_readonly : Inbox SQL
+  consultative avec session active, rôle workspace actuel et anti-self-review.
+- 20261024193537_atlas_engine_approval_inbox_definer_hardening :
+  la RPC publique devient SECURITY INVOKER, sa logique privilégiée privée.
 
 Les SQL versionnés figurent dans supabase/migrations/.
 Ne PAS les rejouer : versions présentes dans l'historique Supabase.
@@ -121,3 +125,23 @@ Supabase Auth réels. Il reste le driver SQL privé, la vérification en
 live de `auth.sessions`, l'Inbox et les validations concurrentes.
 
 PR de travail : https://github.com/DIALLO575/atlas-hq/pull/38 .
+
+## Inbox des validations en lecture seule — intégration SHA-150
+
+Une API GET `/api/engines/approvals?workspaceId=...` et une page
+`/engines/approvals` sont codées. Elles affichent uniquement les
+métadonnées de demandes pending au reviewer owner/admin du workspace,
+après vérification de la session et du rôle par Next ET par SQL,
+avec contrôle de session active dans `auth.sessions`.
+
+Les tests PostgreSQL jetables couvrent session révoquée/expirée,
+rôle révoqué, absence de rôle, deux workspaces et interdiction
+d'auto-approbation. Les migrations Supabase officielles sont
+appliquées et vérifiées en lecture : 0 moteur, 0 run, 0 approbation ;
+la fonction publique est SECURITY INVOKER, le definer est dans
+`private`, le conseiller Supabase ne signale plus de fonction publique
+privilégiée accessible.
+
+**Non livré** : test E2E avec une vraie session reviewer,
+l'interface de décision et la transaction d'approbation auditée,
+KMS, worker et connexion MAUSBOT. Code sur GitHub ≠ site déployé.
