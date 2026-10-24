@@ -34,7 +34,7 @@ const tabs: { id: Pane; label: string; icon: "grid" | "layers" | "activity" | "b
 ];
 
 const errors: Record<string, string> = {
-  AUTH_REQUIRED: "Votre session a expiré. Reconnectez-vous à Atlas.",
+  AUTH_REQUIRED: "Votre session ATLAS ou le jeton GitHub a expiré. Reconnectez-vous à ATLAS, puis actualisez.",
   AUTH_UNAVAILABLE: "Authentification momentanément indisponible.",
   WORKSPACE_FORBIDDEN: "Vous n’avez pas accès à ce workspace.",
   WORKSPACE_UNAVAILABLE: "Droits du workspace indisponibles.",
@@ -45,6 +45,12 @@ const errors: Record<string, string> = {
   PERMISSION_DENIED: "Accès GitHub refusé pour cette ressource.",
   RATE_LIMITED: "GitHub limite actuellement les lectures. Réessayez plus tard.",
   NOT_FOUND_OR_HIDDEN: "Cette ressource est introuvable ou privée.",
+  NOT_CONFIGURED: "Impossible de signer le jeton GitHub App : vérifiez GITHUB_APP_ID et GITHUB_APP_PRIVATE_KEY sur Vercel Production. La clé doit appartenir à ATLAS HQ Connect.",
+  INVALID_RESPONSE: "GitHub a renvoyé une réponse inattendue. Vérifiez la connexion et les journaux du serveur.",
+  GITHUB_REJECTED: "GitHub a refusé la demande d’accès de l’App. Vérifiez ses permissions Pull Requests et que sa clé privée correspond à l’App installée.",
+  PROVIDER_UNAVAILABLE: "Le serveur n’a pas réussi à joindre l’API GitHub. Réessayez et vérifiez les journaux Vercel.",
+  INVALID_INPUT: "La configuration enregistrée pour cette installation GitHub est invalide. Réautorisez l’application dans ce workspace.",
+  INCOMPLETE: "La liste des dépôts autorisés fournie par GitHub est incomplète. Réessayez ou réduisez la sélection.",
 };
 
 async function githubRead<T>(params: Record<string, string>): Promise<T> {

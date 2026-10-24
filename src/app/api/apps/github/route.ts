@@ -113,6 +113,7 @@ export async function GET(request: NextRequest) {
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
   if (!appId || !privateKey) return fail("GITHUB_NOT_CONFIGURED", 503);
 
+  let stage: "installation-token" | "repositories" | "pulls" | "pull-detail" = "installation-token";
   try {
     const github = await createAuthorizedGitHubReader({
       tenantId: workspaceId,
@@ -132,16 +133,27 @@ export async function GET(request: NextRequest) {
       privateKey,
     });
 
-    if (view === "repositories") return success(await github.listRepositories());
+    if (view === "repositories") {
+      stage = "repositories";
+      return success(await github.listRepositories());
+    }
 
     const repositoryId = positiveId(searchParams.get("repositoryId"));
     if (!repositoryId) return fail("INVALID_REQUEST", 400);
-    if (view === "pulls") return success(await github.listPullRequests(repositoryId));
+    if (view === "pulls") {
+      stage = "pulls";
+      return success(await github.listPullRequests(repositoryId));
+    }
 
     const pullNumber = positiveId(searchParams.get("pullNumber"));
     if (!pullNumber) return fail("INVALID_REQUEST", 400);
+    stage = "pull-detail";
     return success(await github.getPullRequest(repositoryId, pullNumber));
   } catch (error) {
+    // Only the allowlisted phase and GitHubReadError code are logged.
+    // Never log tokens, private keys, GitHub response bodies or user identifiers.
+    const safeCode = error instanceof GitHubReadError ? error.code : "UNEXPECTED_FAILURE";
+    console.warn("ATLAS_GITHUB_READ_FAILURE", { stage, reason: safeCode });
     return providerFailure(error);
   }
 }
