@@ -13,11 +13,12 @@ ab21fcfbfeb6ef75bc6147cd80b7137ae22be301. CI du commit fusionné :
 [GitHub Actions](https://github.com/DIALLO575/atlas-hq/actions/runs/40114818208)
 (tous les jobs réussis).
 
-**Six migrations Supabase Engines sont appliquées** :
+**Sept migrations Supabase Engines sont appliquées** :
 20261024161305 (9 tables RLS), 20261024163943 (clé/version d'outbox),
 20261024182928 (empreinte immuable), 20261024193128 (Inbox lecture seule)
 20261024193537 (privilèges internes privés) et 20261024200020
-(décision humaine atomique + audit).
+(décision humaine atomique + audit), puis 20261024205621
+(leases privés, fencing, backoff et dead-letter pour futur worker).
 La page `/engines/approvals` possède désormais une consultation et des
 boutons **Approuver / Refuser**. Le POST passe par une RPC à session
 active, contrôle du rôle, verrouillage de l'approval et du run et audit

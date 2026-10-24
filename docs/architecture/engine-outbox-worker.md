@@ -1,12 +1,13 @@
 # SHA-151 — Outbox leases and fencing (preconnection)
 
-Status 2026-10-24: **SQL functions and PostgreSQL disposable tests only.**
+Status 2026-10-24: **migration applied and verified on ATLAS Supabase;**
+SQL functions and PostgreSQL disposable tests, but no actual worker.
 No real worker, no MAUSBOT network I/O, no credential/KMS decrypt, no
 session-based approval queueing, no application deployment.
 
 ## Private worker foundation
 
-The additive SQL proposal `supabase/proposals/engine-outbox-fencing-v1.sql`
+The applied migration `supabase/migrations/20261024205621_atlas_engine_outbox_fencing_v1.sql`
 extends `private.atlas_engine_outbox` with:
 
 - `lease_token` (unguessable UUID), `lease_epoch` (monotonically increasing
@@ -56,9 +57,10 @@ tests are a remaining release requirement.
 
 ## Before SHA-151 Done
 
-- Apply an approved versioned migration after CI, advisors and
-  preflight confirm **no leased records**. Production database currently
-  has no engines or work items.
+- The versioned migration is applied after green CI, security advisors,
+  and preflight confirming **no leased records**. Live verification shows
+  5 columns, 4 private SECURITY INVOKER functions, role-limited EXECUTE,
+  zero engines, zero runs and zero outbox records.
 - Build trusted server-side worker with narrowly scoped DB identity.
   Service-role access must never be exposed to HTTP/browser; prefer a
   dedicated role/least-privilege internal adapter during review.

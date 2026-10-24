@@ -17,10 +17,10 @@ Vercel/Netlify ni activation MAUSBOT.
 | Interface Espace Moteurs | Catalogue et écran de préconnexion | Aucun moteur relié |
 | API instances | GET métadonnées, POST réservé owner/admin, création uniquement offline | Disponibilité Web dépend du déploiement |
 | Chiffrement | AES-256-GCM/HKDF-SHA256, clés versionnées, contexte tenant/instance, rotation mock-testée | Pas de vrai KMS ni de pilote d'accès private |
-| Persistance | Six migrations réelles dans Supabase ATLAS, neuf tables Engines avec RLS | Aucune exécution réelle ni secret opérationnel |
+| Persistance | Sept migrations réelles dans Supabase ATLAS, neuf tables Engines avec RLS | Aucune exécution réelle ni secret opérationnel |
 | Mutations moteur | Blocage HTTP 423 même avec anciens drapeaux env | Déverrouillage interdit avant vérification et approbations durables |
 
-### Les six migrations Supabase déjà appliquées
+### Les sept migrations Supabase déjà appliquées
 
 - 20261024161305_atlas_engine_foundation_preconnection : 9 tables
   dont 2 dans public (instances, runs) et 7 dans private.
@@ -36,6 +36,9 @@ Vercel/Netlify ni activation MAUSBOT.
 - 20261024200020_atlas_engine_approval_decision_atomic_v1 :
   décision unique sous session et rôle actifs, même empreinte,
   transaction et audit atomiques, aucun dispatch.
+- 20261024205621_atlas_engine_outbox_fencing_v1 : metadata de leases,
+  jetons et époques anti-rejeu, heartbeat, reprise, backoff et dead-letter
+  réservés au worker privé, sans transport moteur ni secrets renvoyés.
 
 Les SQL versionnés figurent dans supabase/migrations/.
 Ne PAS les rejouer : versions présentes dans l'historique Supabase.
@@ -172,3 +175,24 @@ Supabase Auth demandeur + reviewer, session révoquée réellement
 et navigateur déployé. Aucun moteur, run ou approval réel n'existe
 encore dans le projet connecté. Le KMS SHA-149 et le worker
 SHA-151 restent bloquants ; SHA-150 doit rester In Progress.
+
+
+## SHA-151 — leases SQL sécurisés, 24 octobre 2026
+
+Migration `20261024205621_atlas_engine_outbox_fencing_v1` **appliquée et vérifiée** sur Supabase ATLAS :
+5 nouvelles colonnes et 4 fonctions `private.atlas_engine_worker_*`
+à exécution exclusivement réservée au rôle serveur. Le rôle
+`anon` et le rôle `authenticated` n'ont pas EXECUTE sur ces fonctions ;
+les payloads chiffrés ne sont jamais renvoyés par claim, heartbeat,
+finish ou reaper. Après migration : 0 instance, 0 run, 0 tâche.
+
+CI PostgreSQL 17 jetable : 2 workers simulés, réservation par
+`SKIP LOCKED`, tentatives bornées, epoch/token de fencing, crash,
+reprise, heartbeat, retry et clôture dead-letter. Les tests sont
+**séquentiels dans une connexion** : tests multi-processus de
+concurrence, crash/replay réels et déduplication des effets externes
+restent obligatoires. Le code ne contient **aucun worker réseau**.
+
+KMS SHA-149, sessions/règles Auth et approbations SHA-150,
+worker applicatif SHA-151, validation SHA-133 et MAUSBOT live
+restent bloqués. SQL appliqué n'est pas mise en marche du moteur.
