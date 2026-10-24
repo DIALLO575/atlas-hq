@@ -89,3 +89,31 @@ do $$begin
  if exists(select 1 from public.atlas_engine_pending_approvals('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')) then
  raise exception 'REVOKED_SESSION';end if;end $$;
 reset role;
+
+-- Security advisor compliance: exposed RPC is INVOKER, definer stays private.
+do $$
+begin
+ if (select prosecdef from pg_proc
+  where oid='public.atlas_engine_pending_approvals(uuid)'::regprocedure)
+ then raise exception 'PUBLIC_APPROVAL_RPC_HAS_PRIVILEGE_ESCALATION'; end if;
+ if not (select prosecdef from pg_proc
+  where oid='private.atlas_engine_pending_approvals_internal(uuid)'::regprocedure)
+ then raise exception 'PRIVATE_INBOX_NOT_BOUND_TO_DATABASE_CHECKS'; end if;
+ if has_function_privilege('anon','private.atlas_engine_pending_approvals_internal(uuid)','EXECUTE')
+ then raise exception 'ANON_PRIVATE_INBOX_EXECUTE'; end if;
+end $$;
+-- Real current-role membership revocation should immediately remove access.
+insert into auth.sessions values
+ ('aaaabbbb-0000-4000-8000-000000000005',
+ '33333333-3333-4333-8333-333333333333',now()+interval '1 hour');
+update public.workspace_members set role='member'
+ where workspace_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+ and user_id='33333333-3333-4333-8333-333333333333';
+set role authenticated;
+select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
+select set_config('request.jwt.claims','{"session_id":"aaaabbbb-0000-4000-8000-000000000005"}',false);
+do $$begin
+ if exists(select 1 from public.atlas_engine_pending_approvals('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')) then
+ raise exception 'REVOKED_ADMIN_ROLE_STILL_HAS_INBOX';end if;
+end $$;
+reset role;
