@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createLinearPkcePair, linearAuthorizationUrl } from "../../../../../../../packages/connectors/linear/src/oauth.mjs";
+import { startLinearOAuthRoute } from "../../../../../../../packages/connectors/linear/src/connect-routes.mjs";
 import {
   adminLinearStateClient, linearConnectCookieName, linearConnectSettings,
   linearPkceCookieName, registerLinearOAuthState, requireLinearWorkspaceAdmin,
@@ -8,45 +8,28 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function toNextResponse(result: Awaited<ReturnType<typeof startLinearOAuthRoute>>) {
+  const response = result.kind === "redirect"
+    ? NextResponse.redirect(result.location, result.status)
+    : NextResponse.json({ error: result.error }, { status: result.status });
+  for (const [name, value] of Object.entries(result.headers)) response.headers.set(name, value);
+  for (const cookie of result.cookies) {
+    response.cookies.set(cookie.name, cookie.value, {
+      httpOnly: cookie.httpOnly, secure: cookie.secure, sameSite: cookie.sameSite,
+      path: cookie.path, maxAge: cookie.maxAge,
+    });
+  }
+  return response;
+}
+
 export async function POST(request: NextRequest) {
   const settings = linearConnectSettings();
-  if (!settings) return NextResponse.json({ error: "LINEAR_NOT_CONFIGURED" }, { status: 503 });
-  if (request.headers.get("origin") !== settings.publicOrigin) {
-    return NextResponse.json({ error: "BAD_ORIGIN" }, { status: 403 });
-  }
-
-  let workspaceId = "";
-  try {
-    workspaceId = String((await request.formData()).get("workspaceId") ?? "");
-  } catch {
-    return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400 });
-  }
-  const actor = await requireLinearWorkspaceAdmin(workspaceId);
-  if (!actor) return NextResponse.json({ error: "WORKSPACE_FORBIDDEN" }, { status: 403 });
-
-  try {
-    const admin = adminLinearStateClient(settings);
-    const state = await registerLinearOAuthState(admin, {
-      workspaceId: actor.workspaceId, userId: actor.userId, stateKey: settings.stateKey,
-    });
-    const { verifier, challenge } = createLinearPkcePair();
-    const authorize = linearAuthorizationUrl({
-      clientId: settings.clientId,
-      redirectUri: settings.redirectUri,
-      state,
-      codeChallenge: challenge,
-    });
-    const response = NextResponse.redirect(authorize, 303);
-    response.headers.set("Cache-Control", "private, no-store");
-    const cookieOptions = {
-      httpOnly: true, secure: true, sameSite: "lax" as const,
-      path: "/api/apps/linear/connect", maxAge: 15 * 60,
-    };
-    response.cookies.set(linearConnectCookieName, state, cookieOptions);
-    // PKCE verifier stays in a short-lived HttpOnly cookie and is never put in the URL.
-    response.cookies.set(linearPkceCookieName, verifier, cookieOptions);
-    return response;
-  } catch {
-    return NextResponse.json({ error: "LINEAR_OAUTH_UNAVAILABLE" }, { status: 503 });
-  }
+  return toNextResponse(await startLinearOAuthRoute(request, {
+    settings,
+    authorizeWorkspaceAdmin: requireLinearWorkspaceAdmin,
+    registerState: async ({ workspaceId, userId, stateKey, now }) => {
+      const admin = adminLinearStateClient(settings!);
+      return registerLinearOAuthState(admin, { workspaceId, userId, stateKey, now });
+    },
+  }));
 }

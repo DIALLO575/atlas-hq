@@ -2,11 +2,11 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { consumeLinearOAuthState, createLinearOAuthState } from "../../../packages/connectors/linear/src/oauth-state.mjs";
+import { LINEAR_CALLBACK_PATH, LINEAR_PKCE_COOKIE, LINEAR_STATE_COOKIE,
+  verifyLinearStateActor, verifyLinearWorkspaceAdmin } from "../../../packages/connectors/linear/src/connect-routes.mjs";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-export const linearConnectCookieName = "atlas_linear_oauth_state";
-export const linearPkceCookieName = "atlas_linear_pkce_verifier";
-export const LINEAR_CALLBACK_PATH = "/api/apps/linear/connect/oauth";
+export const linearConnectCookieName = LINEAR_STATE_COOKIE;
+export const linearPkceCookieName = LINEAR_PKCE_COOKIE;
 
 export function linearConnectSettings() {
   const publicOrigin = process.env.ATLAS_PUBLIC_ORIGIN;
@@ -36,32 +36,15 @@ export function adminLinearStateClient(settings: NonNullable<ReturnType<typeof l
 }
 
 export async function requireLinearWorkspaceAdmin(workspaceId: string) {
-  if (!UUID.test(workspaceId)) return null;
   const client = await createSupabaseServerClient();
   if (!client) return null;
-  const { data: { user }, error: identityError } = await client.auth.getUser();
-  if (identityError || !user) return null;
-  const { data, error } = await client.from("workspace_members").select("role")
-    .eq("workspace_id", workspaceId).eq("user_id", user.id).maybeSingle();
-  if (error || !data || !["owner", "admin"].includes(data.role)) return null;
-  return { workspaceId, userId: user.id };
+  return verifyLinearWorkspaceAdmin(client, workspaceId);
 }
 
 export async function requireLinearWorkspaceAdminForState(admin: SupabaseClient, stateHash: string) {
   const client = await createSupabaseServerClient();
   if (!client) return null;
-  const { data: { user }, error: identityError } = await client.auth.getUser();
-  if (identityError || !user) return null;
-  // Resolve only a state owned by this authenticated actor; state contains no tenant or user identifiers.
-  const { data: pending, error: stateError } = await admin.from("atlas_linear_oauth_states")
-    .select("workspace_id")
-    .eq("state_hash", stateHash).eq("user_id", user.id)
-    .is("consumed_at", null).gt("expires_at", new Date().toISOString()).maybeSingle();
-  if (stateError || !pending || !UUID.test(pending.workspace_id)) return null;
-  const { data: membership, error: membershipError } = await client.from("workspace_members")
-    .select("role").eq("workspace_id", pending.workspace_id).eq("user_id", user.id).maybeSingle();
-  if (membershipError || !membership || !["owner", "admin"].includes(membership.role)) return null;
-  return { workspaceId: pending.workspace_id, userId: user.id };
+  return verifyLinearStateActor({ client, admin, stateHash });
 }
 
 export function linearStateStore(admin: SupabaseClient) {
@@ -91,7 +74,7 @@ export function linearStateStore(admin: SupabaseClient) {
 }
 
 export async function registerLinearOAuthState(admin: SupabaseClient, args: {
-  workspaceId: string; userId: string; stateKey: string;
+  workspaceId: string; userId: string; stateKey: string; now?: number;
 }) {
   return createLinearOAuthState({ ...args, key: args.stateKey, store: linearStateStore(admin) });
 }

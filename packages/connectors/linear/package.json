@@ -5,6 +5,7 @@
   "exports": {
     "./oauth": "./src/oauth.mjs",
     "./oauth-state": "./src/oauth-state.mjs",
+    "./connect-routes": "./src/connect-routes.mjs",
     "./workspace-access": "./src/workspace-access.mjs",
     "./graphql-client": "./src/graphql-client.mjs"
   }

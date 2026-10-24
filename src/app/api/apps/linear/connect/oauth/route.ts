@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readLinearOAuthState } from "../../../../../../../packages/connectors/linear/src/oauth-state.mjs";
+import { callbackLinearOAuthRoute } from "../../../../../../../packages/connectors/linear/src/connect-routes.mjs";
 import {
-  adminLinearStateClient, consumeRegisteredLinearOAuthState, linearConnectCookieName,
-  linearConnectRedirect, linearConnectSettings, linearPkceCookieName, requireLinearWorkspaceAdminForState,
+  adminLinearStateClient, consumeRegisteredLinearOAuthState, linearConnectSettings,
+  requireLinearWorkspaceAdminForState,
 } from "@/lib/linear/connect";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function finish(settings: NonNullable<ReturnType<typeof linearConnectSettings>>, result: string) {
-  const response = NextResponse.redirect(linearConnectRedirect(settings, result), 303);
-  response.headers.set("Cache-Control", "private, no-store");
-  for (const name of [linearConnectCookieName, linearPkceCookieName]) {
-    response.cookies.set(name, "", {
-      httpOnly: true, secure: true, sameSite: "lax",
-      path: "/api/apps/linear/connect", maxAge: 0,
+function toNextResponse(result: Awaited<ReturnType<typeof callbackLinearOAuthRoute>>) {
+  const response = result.kind === "redirect"
+    ? NextResponse.redirect(result.location, result.status)
+    : NextResponse.json({ error: result.error }, { status: result.status });
+  for (const [name, value] of Object.entries(result.headers)) response.headers.set(name, value);
+  for (const cookie of result.cookies) {
+    response.cookies.set(cookie.name, cookie.value, {
+      httpOnly: cookie.httpOnly, secure: cookie.secure, sameSite: cookie.sameSite,
+      path: cookie.path, maxAge: cookie.maxAge,
     });
   }
   return response;
@@ -26,25 +28,15 @@ function finish(settings: NonNullable<ReturnType<typeof linearConnectSettings>>,
  */
 export async function GET(request: NextRequest) {
   const settings = linearConnectSettings();
-  if (!settings) return NextResponse.json({ error: "LINEAR_NOT_CONFIGURED" }, { status: 503 });
-  const state = request.nextUrl.searchParams.get("state") ?? "";
-  const cookieState = request.cookies.get(linearConnectCookieName)?.value ?? "";
-  const verifier = request.cookies.get(linearPkceCookieName)?.value ?? "";
-  const proof = readLinearOAuthState({ state, cookieState, key: settings.stateKey });
-  if (!proof || !/^[A-Za-z0-9_-]{43}$/.test(verifier)) return finish(settings, "invalid-state");
-
-  const admin = adminLinearStateClient(settings);
-  const actor = await requireLinearWorkspaceAdminForState(admin, proof.stateHash);
-  if (!actor) return finish(settings, "forbidden");
-  const consumed = await consumeRegisteredLinearOAuthState(admin, {
-    state, cookieState, workspaceId: actor.workspaceId, userId: actor.userId,
-    stateKey: settings.stateKey,
-  });
-  if (!consumed) return finish(settings, "invalid-state");
-  if (request.nextUrl.searchParams.has("error") || !request.nextUrl.searchParams.get("code")) {
-    return finish(settings, "oauth-denied");
-  }
-
-  // Fail closed before token exchange. No encrypted credential store is available yet.
-  return finish(settings, "callback-disabled");
+  return toNextResponse(await callbackLinearOAuthRoute(request, {
+    settings,
+    resolveActorForState: async (stateHash) => {
+      const admin = adminLinearStateClient(settings!);
+      return requireLinearWorkspaceAdminForState(admin, stateHash);
+    },
+    consumeState: async ({ state, cookieState, workspaceId, userId, stateKey }) => {
+      const admin = adminLinearStateClient(settings!);
+      return consumeRegisteredLinearOAuthState(admin, { state, cookieState, workspaceId, userId, stateKey });
+    },
+  }));
 }
