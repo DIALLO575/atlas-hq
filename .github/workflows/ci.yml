@@ -51,6 +51,40 @@ jobs:
       - name: Verify serialized refresh, connection rotation, and revocation
         run: bash tests/sql/linear-oauth-connection-concurrency.sh
 
+  notion-foundation-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-password
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Validate Notion foundation migration in disposable PostgreSQL
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f tests/sql/linear-oauth-state-fixture.sql
+          -f tests/sql/notion-base-fixture.sql
+          -f supabase/migrations/20261024140000_atlas_notion_connection_foundation.sql
+          -f tests/sql/notion-foundation-migration.sql
+
   validate:
     runs-on: ubuntu-latest
     steps:
