@@ -94,3 +94,13 @@ Follow-up verification: column not-null flags are true, outbox row count
 remains zero, and neither anon nor authenticated can select from private
 outbox. The versioned SQL is exercised after foundation migration in CI.
 No MAUSBOT connection, credential, dispatch or queue insertion occurred.
+
+
+## SHA-150 — human approvals preconnection
+
+The server-only request/decide/inspect contract is in
+\`packages/engine-core/src/approval-workflow.mjs\` and documented at
+\`docs/architecture/engine-approvals.md\`. It is intentionally not
+exposed to HTTP or Supabase. The existing SQL lacks the immutable
+run payload digest and approval intent hash; real authentication,
+transactions, migration and Inbox integration remain to be delivered.
