@@ -71,7 +71,8 @@ test("organization, collaborator, wrong app, suspended and all-repositories clai
       userToken: "temporary", appId: 123, installationId: 77,
       request: fixture({ installation: item }),
     }), (error) => error instanceof GitHubAuthorizationError &&
-      ["GITHUB_INSTALLATION_NOT_OWNED", "GITHUB_INSTALLATION_PERMISSIONS"].includes(error.code));
+      ["GITHUB_INSTALLATION_NOT_OWNED", "GITHUB_INSTALLATION_SUSPENDED",
+       "GITHUB_REPOSITORY_SELECTION_REQUIRED", "GITHUB_PULL_REQUESTS_PERMISSION_REQUIRED"].includes(error.code));
   }
 });
 
