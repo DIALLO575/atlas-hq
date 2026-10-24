@@ -32,10 +32,12 @@ test("cockpit navigation exposes six primary destinations and transversal access
 });
 
 test("missions and inbox are real workflow pages; transversal demos remain honest", () => {
-  for (const page of [related, chief, settings]) {
+  for (const page of [related, settings]) {
     assert.match(page, /<DemoNotice\/>/);
     assert.match(page, /<EmptyPanel/);
   }
+  assert.match(chief, /<ChiefCommandDeck/);
+  assert.match(chief, /readAtlasWorkflow\(params\.workspaceId\)/);
   assert.match(workspaces, /listWorkspaces\(\)/);
   assert.match(workspaces, /<WorkspacesDashboard/);
   assert.match(workspacesDashboard, /workspace\.name/);
@@ -45,7 +47,7 @@ test("missions and inbox are real workflow pages; transversal demos remain hones
   assert.match(inbox, /decideAtlasMissionReview/);
   assert.doesNotMatch(missions + inbox, /<DemoNotice\/>|<EmptyPanel/);
   assert.match(related, /Aucun lien n’est déduit ou inventé/);
-  assert.match(chief, /ne sont pas envoyées depuis cette interface/);
+  assert.doesNotMatch(chief, /<DemoNotice\/>|<EmptyPanel/);
 });
 
 test("premium Mes Apps preserves its directory and offers the real GitHub connector", () => {

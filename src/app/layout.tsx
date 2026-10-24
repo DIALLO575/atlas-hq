@@ -10,6 +10,7 @@ import "./workflow-redesign.css";
 import "./smart-dock.css";
 import "./dock-studio.css";
 import "./route-performance.css";
+import "./chief-command-deck.css";
 
 export const metadata: Metadata = {
   title: "Atlas — Agents, apps et missions",
