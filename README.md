@@ -1,5 +1,7 @@
 # ATLAS HQ
 
+> **Agents de développement :** lisez [AGENTS.md](AGENTS.md) avant de pousser ou déployer. La règle de quota Vercel impose de regrouper les corrections et de limiter les previews automatiques.
+
 ATLAS HQ est le cockpit Web/PWA du Personal Operating System. Cette première fondation propose une interface responsive utilisable sans IA et sans connexion aux services externes.
 
 ## Cockpit V0
