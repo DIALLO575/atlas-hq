@@ -12,19 +12,17 @@ begin
     or p_limit is null or p_limit not between 1 and 1000
   then return null; end if;
 
-  with expired as (
-    select j.id
-    from public.atlas_notion_async_jobs j
-    where j.status in ('succeeded','dead')
-      and j.completed_at is not null
-      and j.completed_at < clock_timestamp()
-        - make_interval(days=>p_retention_days)
-    order by j.completed_at,j.id
-    limit p_limit
-    for update skip locked
-  )
   delete from public.atlas_notion_async_jobs j
-  using expired e where j.id=e.id;
+  where j.id in (
+    select candidate.id
+    from public.atlas_notion_async_jobs candidate
+    where candidate.status in ('succeeded','dead')
+      and candidate.completed_at is not null
+      and candidate.completed_at < clock_timestamp()
+        - make_interval(days=>p_retention_days)
+    order by candidate.completed_at,candidate.id
+    limit p_limit
+  );
 
   get diagnostics deleted_count = row_count;
   return deleted_count;
