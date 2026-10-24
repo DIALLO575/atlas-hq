@@ -14,8 +14,25 @@ set +e
 wait "$ap"; ac=$?
 wait "$bp"; bc=$?
 set -e
-if [[ "$ac:$bc" != "0:3" && "$ac:$bc" != "3:0" ]]; then
-  cat "$a" "$b"; echo "Expected exactly one CAS winner" >&2; exit 1
+successes=0
+rejections=0
+for result in "$a" "$b"; do
+  if grep -Eq '^dispatching
+if [[ "$(psql -X -qAt -v ON_ERROR_STOP=1 -c "select count(*) from public.atlas_github_studio_audit where operation_id='$operation'::uuid and state='dispatching';")" != "1" ]]; then
+  echo "Expected exactly one dispatch audit event" >&2; exit 1
+fi
+echo "Single dispatch + atomic audit verified under concurrent sessions."
+ "$result"; then
+    successes=$((successes+1))
+  elif grep -q 'GH_STUDIO_INVALID_TRANSITION' "$result"; then
+    rejections=$((rejections+1))
+  else
+    cat "$a" "$b"; echo "Unexpected PostgreSQL concurrency outcome" >&2; exit 1
+  fi
+done
+if [[ "$successes" -ne 1 || "$rejections" -ne 1 ||
+      ( "$ac" -eq 0 && "$bc" -eq 0 ) ]]; then
+  cat "$a" "$b"; echo "Expected one CAS winner and one rejected request" >&2; exit 1
 fi
 if [[ "$(psql -X -qAt -v ON_ERROR_STOP=1 -c "select count(*) from public.atlas_github_studio_audit where operation_id='$operation'::uuid and state='dispatching';")" != "1" ]]; then
   echo "Expected exactly one dispatch audit event" >&2; exit 1
