@@ -54,8 +54,9 @@ test("premium Mes Apps preserves its directory and offers the real GitHub connec
   assert.match(apps, /<AppsDirectory/);
   assert.match(apps, /<AppsDirectory githubConfigured/);
   assert.doesNotMatch(apps, /<GitHubWorkspacePicker|from\("workspace_members"\)|auth\.getUser\(\)/);
-  assert.match(agents, /Aucun agent connecté/);
-  assert.match(agents, /Aucune conversation ni activité d’agent n’est simulée/);
+  assert.match(agents, /Le registre des agents ATLAS est en préparation/);
+  assert.match(agents, /href="\/engines"/);
+  assert.match(agents, /Aucune équipe ni conversation n.est simulée/);
   assert.match(demoData, /export const demoApps/);
   assert.match(demoData, /Google Calendar/);
 });
