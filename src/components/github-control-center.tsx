@@ -121,7 +121,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Space; configur
   const selectedRepository = repositories.find((repo) => repo.id === repositoryId);
   const canInstall = workspace.role === "owner" || workspace.role === "admin";
   const readyInstallations = installations.filter((item) =>
-    item.status === "repositories-ready" && item.repositorySelection === "selected" &&
+    item.status === "repositories-ready" && ["selected", "all"].includes(item.repositorySelection ?? "") &&
     item.ownershipVerifiedAt && item.repositoriesVerifiedAt);
   const busy = loadState !== null;
   const prefix = useMemo(() => ({ workspaceId: workspace.id }), [workspace.id]);
@@ -166,7 +166,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Space; configur
         setInstallations(data.installations);
         setLoadState(null);
         const ready = data.installations.find((item) =>
-          item.status === "repositories-ready" && item.repositorySelection === "selected" &&
+          item.status === "repositories-ready" && ["selected", "all"].includes(item.repositorySelection ?? "") &&
           item.ownershipVerifiedAt && item.repositoriesVerifiedAt);
         if (ready) void loadRepositories(ready.installationId);
       })
@@ -341,7 +341,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Space; configur
         {canInstall && configured ? <form method="post" action="/api/apps/github/connect/start">
           <input type="hidden" name="workspaceId" value={workspace.id}/>
           <button className="atlas-gh-primary-action" type="submit"><Icon name="link"/> Installer ou reconnecter GitHub</button>
-          <p>Sur GitHub, sélectionnez uniquement les dépôts nécessaires. Le serveur vérifie ensuite les autorisations.</p>
+          <p>Sur GitHub, vous pouvez choisir « All repositories » (actuels et futurs) ou « Only select repositories ». ATLAS vérifiera le propriétaire et limitera la connexion à la lecture des Pull Requests.</p>
         </form> : <p className="atlas-gh-notice">{!configured
           ? "La GitHub App ATLAS HQ n’est pas configurée."
           : "Seuls les administrateurs et propriétaires peuvent autoriser une installation."}</p>}
