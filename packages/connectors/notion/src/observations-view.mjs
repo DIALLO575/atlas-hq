@@ -2,7 +2,7 @@
  * A listing may be displayed only after live ATLAS membership + vault state
  * checks in the SQL RPC and authenticated Next.js loader.
  */
-const UUID = /^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+const UUID = /^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 const KINDS = new Set(["page", "block", "database", "data_source"]);
 function validDate(value) {
   return typeof value === "string" && value.length <= 35 &&
