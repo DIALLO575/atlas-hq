@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { Icon } from "@/components/icon";
+import { GitHubStudioRepositoryWizard } from "@/components/github-studio-repository-wizard";
 
 type Workspace = { id: string; name: string; role: "owner" | "admin" | "member" };
 type Installation = {
@@ -18,7 +19,7 @@ type PullDetail = {
   updatedAt: string | null; htmlUrl: string; resource: { headSha: string };
   files: FileChange[]; filesTruncated: boolean;
 };
-type Section = "overview" | "repositories" | "pulls" | "settings";
+type Section = "overview" | "repositories" | "pulls" | "studio" | "settings";
 type Loading = "connections" | "repositories" | "pulls" | "detail" | null;
 
 const labels: Record<string, string> = {
@@ -65,10 +66,11 @@ function verified(installation: Installation) {
     ["selected", "all"].includes(installation.repositorySelection ?? "") &&
     Boolean(installation.ownershipVerifiedAt && installation.repositoriesVerifiedAt);
 }
-const sections: { id: Section; title: string; icon: "grid" | "layers" | "activity" | "settings" }[] = [
+const sections: { id: Section; title: string; icon: "grid" | "layers" | "activity" | "spark" | "settings" }[] = [
   { id: "overview", title: "Vue générale", icon: "grid" },
   { id: "repositories", title: "Dépôts", icon: "layers" },
   { id: "pulls", title: "Pull Requests", icon: "activity" },
+  { id: "studio", title: "Studio", icon: "spark" },
   { id: "settings", title: "Connexion", icon: "settings" },
 ];
 
@@ -282,7 +284,11 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
     </div>}
     {!configured && <p className="atlas-gh-notice">Configuration de la GitHub App manquante côté serveur. Les données ne peuvent pas être chargées.</p>}
 
-    {section !== "settings" && <div className="atlas-gh-content atlas-gh-content-v2">
+    {section === "studio" && <GitHubStudioRepositoryWizard
+      workspaceId={workspace.id} installationId={installationId}
+      canManage={canInstall} ready={ready.some((item) => item.installationId === installationId)} />}
+
+    {section !== "settings" && section !== "studio" && <div className="atlas-gh-content atlas-gh-content-v2">
       <section className="atlas-gh-primary">
         <div className="atlas-gh-section-heading">
           <div><h2>{section === "repositories" ? "Dépôts autorisés" : "Pull Requests ouvertes"}</h2>
