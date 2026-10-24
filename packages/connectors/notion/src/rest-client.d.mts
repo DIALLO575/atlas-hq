@@ -1,6 +1,7 @@
 import type { NotionScopedReadBudget } from "./reliability.mjs";
 export const NOTION_API_VERSION: string;
 export class NotionReadError extends Error {
+  constructor(code: string, status?: number | null, retryAfterSeconds?: number | null);
   code: string; status: number | null; retryAfterSeconds: number | null;
 }
 export function createNotionReadClient(args: {

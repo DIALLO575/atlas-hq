@@ -4,7 +4,12 @@ import { classifyNotionAsyncTask, classifyNotionAsyncPollError,
   processOneNotionAsyncTask } from "../src/async-task-worker.mjs";
 const taskId="task_valid123";
 const claim={job_id:"11111111-1111-4111-8111-111111111111",
-  lease_id:"22222222-2222-4222-8222-222222222222",provider_task_id:taskId};
+  lease_id:"22222222-2222-4222-8222-222222222222",
+  connection_id:"33333333-3333-4333-8333-333333333333",
+  workspace_id:"44444444-4444-4444-8444-444444444444",
+  user_id:"55555555-5555-4555-8555-555555555555",
+  notion_workspace_id:"66666666-6666-4666-8666-666666666666",
+  credential_version:2,provider_task_id:taskId};
 test("Notion documented states are mapped without storing task result or error message",()=>{
   assert.deepEqual(classifyNotionAsyncTask({
     object:"async_task",id:taskId,status:"running",poll_after_seconds:4,
@@ -52,4 +57,34 @@ test("worker declines lost leases and does not start when queue empty",async()=>
     async claim(){return claim;},async finish(){return false;},
   },async readTask(){return {object:"async_task",id:taskId,status:"succeeded"};}}),
   /ASYNC_LEASE_LOST/);
+});
+test("poll signal is bounded and metrics expose only fixed aggregate names",async()=>{
+  let signal,metric;
+  const result=await processOneNotionAsyncTask({store:{
+    async claim(){return claim;},async finish(){return true;},
+  },async readTask(_claim,options){signal=options.signal;
+    return {object:"async_task",id:taskId,status:"succeeded",result:{secret:"never"}};
+  },onMetric(name){metric=name;}});
+  assert.equal(result.state,"succeeded");
+  assert.equal(signal instanceof AbortSignal,true);
+  assert.equal(signal.aborted,false);
+  assert.equal(metric,"succeeded");
+});
+test("malformed claim is rejected before any provider read",async()=>{
+  let read=false;
+  await assert.rejects(processOneNotionAsyncTask({store:{
+    async claim(){return {...claim,notion_workspace_id:"attacker"};},
+    async finish(){throw Error("not called");},
+  },async readTask(){read=true;}}),/INVALID_ASYNC_LEASE/);
+  assert.equal(read,false);
+});
+test("binding store outage leaves the lease for recovery without provider read or finish",async()=>{
+  let read=false,finished=false,metric;
+  await assert.rejects(processOneNotionAsyncTask({store:{
+    async claim(){return claim;},async finish(){finished=true;return true;},
+  },async readTask(){read=true;throw Object.assign(Error("private"),{code:"STORE_UNAVAILABLE"});},
+  onMetric(name){metric=name;}}),/ASYNC_STORE_UNAVAILABLE/);
+  assert.equal(read,true);
+  assert.equal(finished,false);
+  assert.equal(metric,"store_unavailable");
 });
