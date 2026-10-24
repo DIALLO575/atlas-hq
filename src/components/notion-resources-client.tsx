@@ -148,7 +148,7 @@ export function NotionResourcesClient({ workspaceId, connectionId }: Props) {
       <strong>{item.title}</strong> — {item.kind}
       {["page", "database", "data_source"].includes(item.kind) &&
         <button type="button" disabled={busy || disconnected}
-          onClick={() => void verifyResource(item)}>Vérifier l'accès à cette ressource</button>}
+          onClick={() => void verifyResource(item)}>Vérifier l&apos;accès à cette ressource</button>}
       {resourceResults[item.id] && <span role="status">{resourceResults[item.id]}</span>}
       {item.kind === "page" && <button type="button" disabled={busy || disconnected}
         onClick={() => void read("blocks", item.id)}>Voir les blocs</button>}
