@@ -243,3 +243,43 @@ compte, journal d'audit durable, vérifications d'ownership côté moteur.
 **Bilan à présent : 128 native cataloguées, 17 lectures avec adaptateur
 mock-testé, 29 plans de mutations validés offline, 82 source-only.
 20 primitives MCP externes testées en simulation, 0 connexion MAUSBOT réelle.**
+
+
+## M0.5 — SSE, jobs, automatisations et webhooks (hors connexion)
+
+Sources vérifiées dans OpenMausBot : server/routes/webhooks.ts,
+server/webhooks.ts, server/routes/jobs.ts, server/job-view.ts,
+server/routes/notifications.ts, shared/notification.ts,
+scripts/verify-routines.ts et docs/verification/routines.md.
+
+Le module packages/engines/mausbot/src/event-automation.mjs comprend :
+- 4 lectures de métadonnées mock-testées : webhooks.list,
+  routines.list, notifications.list, jobs.snapshot. Les textes de
+  notifications, instructions de routine, secrets/adresses de webhooks,
+  questions, réponses et résultats de job NE sont PAS retournés.
+- Jobs : paramètres threadId/since/version/wait bornés, scope=job
+  uniquement ; 25 000 ms est la limite source des attentes longues,
+  mais aucune attente ni worker live n'est mis en place.
+  Les états needs-input, failed et stalled ne sont jamais transformés
+  en succès. Un travail completed avec erreurs enfants n'est pas certifié
+  comme succès business. Les compteurs viennent du fournisseur.
+- 8 plans de mutation offline : webhooks.test (événement de vérification
+  prédéfini), webhooks.rotate, webhooks.update (enabled), webhooks.delete,
+  routines.update (enabled), routines.run, notifications.read et
+  notifications.read-all. Aucune création arbitraire ni rotation exécutée.
+- SSE : plan de reprise /api/events avec Last-Event-ID borné ;
+  réconciliation de curseur et rejet d'un replay manqué / duplicate
+  simulés. Une simple égalité de curseur ne suffit PAS pour
+  l'idempotence durable ; la prochaine étape doit inclure stockage,
+  reprise, version et contrôle de session. Aucun ticket de stream
+  n'est demandé avant la connexion.
+
+Sécurité avant activation : liaison d'un thread/job à une mission et son
+workspace; vérification de droits sur chaque lecture, redemande des scopes
+après long-poll, coffre pour les secrets de webhook, déclencheurs signés,
+déduplication des livraisons et coûts/rate-limits, approbations humaines.
+
+Totaux M0 : 128 capacités natives source-mappées, **21 lectures avec
+adaptateurs mock-testés**, **37 plans de mutations validés offline**,
+**70 capacités encore source-only**, 0 opérations natives autorisées live.
+Les 20 outils MCP officiels restent distincts.

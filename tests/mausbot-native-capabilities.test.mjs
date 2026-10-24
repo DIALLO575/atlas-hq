@@ -43,8 +43,8 @@ test("Native source-mapped team memory and skill editing use actual HTTP verbs",
 
 test("Offline adapters and mutation plans stay strictly non-callable across source families",()=>{
  const sum=nativeCoverageSummary();
- assert.equal(sum.mockTestedReads,17);
- assert.equal(sum.validatedMutationPlans,29);
+ assert.equal(sum.mockTestedReads,21);
+ assert.equal(sum.validatedMutationPlans,37);
  assert.equal(sum.callable,0);
  assert.equal(sum.testedLive,0);
  for(const p of MAUSBOT_NATIVE_CAPABILITIES){
@@ -71,8 +71,8 @@ test("Team + channel work is registered as offline-only implementation progress"
     assert.equal(found?.hostTested, false);
   }
   const summary = nativeCoverageSummary();
-  assert.equal(summary.mockTestedReads, 17);
-  assert.equal(summary.validatedMutationPlans, 29);
+  assert.equal(summary.mockTestedReads, 21);
+  assert.equal(summary.validatedMutationPlans, 37);
   assert.equal(summary.total, 128);
   assert.equal(summary.callable, 0);
   assert.equal(summary.testedLive, 0);
@@ -92,4 +92,24 @@ test("MCP and OAuth offline adapters preserve the preconnection release boundary
   assert.equal(total.validatedMutationPlans,29);
   assert.equal(total.callable,0);
   assert.equal(total.testedLive,0);
+});
+
+test("Event, routine and webhook family coverage remains offline-only",()=>{
+  const reads=["webhooks.list","routines.list","notifications.list","jobs.snapshot"];
+  const mutations=["webhooks.test","webhooks.rotate","webhooks.update","webhooks.delete",
+    "routines.update","routines.run","notifications.read","notifications.read-all"];
+  for(const id of reads) {
+    const p=nativePrimitive(id); assert.equal(p?.implementation,"adapter-mock-tested");
+    assert.equal(p.callable,false);assert.equal(p.hostTested,false);
+  }
+  for(const id of mutations){
+    const p=nativePrimitive(id);assert.equal(p?.implementation,"validated-plan");
+    assert.equal(p.callable,false);assert.equal(p.hostTested,false);
+  }
+  const summary=nativeCoverageSummary();
+  assert.equal(summary.total,128);
+  assert.equal(summary.mockTestedReads,21);
+  assert.equal(summary.validatedMutationPlans,37);
+  assert.equal(summary.testedLive,0);
+  assert.equal(summary.callable,0);
 });
