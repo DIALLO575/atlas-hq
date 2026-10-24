@@ -91,7 +91,7 @@ create table private.atlas_engine_approvals (
 -- Approval is created pending and can be decided once by a DIFFERENT human admin.
 -- This is defense in depth; the API must still authenticate the actor session.
 create function private.atlas_engine_approval_guard() returns trigger
- language plpgsql security invoker set search_path='' as $
+ language plpgsql security invoker set search_path='' as $$
 declare original public.atlas_engine_runs%rowtype;
 begin
  select * into original from public.atlas_engine_runs
@@ -121,7 +121,7 @@ begin
    end if;
  end if;
  return new;
-end; $;
+end; $$;
 revoke all on function private.atlas_engine_approval_guard() from public,anon,authenticated;
 create trigger atlas_engine_approval_guard before insert or update on private.atlas_engine_approvals
  for each row execute function private.atlas_engine_approval_guard();
