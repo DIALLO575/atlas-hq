@@ -110,14 +110,35 @@ begin
 end $$;
 
 -- Same workspace, a DIFFERENT real human approves; offline status still blocks dispatch.
-insert into private.atlas_engine_approvals(workspace_id,instance_id,run_id,requested_by,
- decided_by,decision,decided_at,expires_at)
+insert into private.atlas_engine_approvals(workspace_id,instance_id,run_id,requested_by,expires_at)
 values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
  'aaaaaaaa-0000-4000-8000-000000000001',
  'aaaaaaa1-0000-4000-8000-000000000001',
  '11111111-1111-4111-8111-111111111111',
- '33333333-3333-4333-8333-333333333333',
- 'approved',now(),now()+interval '1 hour');
+ now()+interval '1 hour');
+do $
+begin
+ begin
+  update private.atlas_engine_approvals set decision='approved',
+    decided_by='11111111-1111-4111-8111-111111111111',decided_at=now();
+  raise exception 'ENGINE_SELF_APPROVAL_ALLOWED';
+ exception when insufficient_privilege then null;end;
+ begin
+  update private.atlas_engine_approvals set decision='approved',
+    decided_by='22222222-2222-4222-8222-222222222222',decided_at=now();
+  raise exception 'ENGINE_FOREIGN_REVIEWER_ALLOWED';
+ exception when insufficient_privilege then null;end;
+end $;
+update private.atlas_engine_approvals set decision='approved',
+ decided_by='33333333-3333-4333-8333-333333333333', decided_at=now();
+do $
+begin
+ begin
+  update private.atlas_engine_approvals set decision='rejected',
+    decided_by='33333333-3333-4333-8333-333333333333',decided_at=now();
+  raise exception 'ENGINE_REAPPROVAL_ALLOWED';
+ exception when insufficient_privilege then null;end;
+end $;
 update public.atlas_engine_runs set state='authorized'
  where id='aaaaaaa1-0000-4000-8000-000000000001';
 do $$

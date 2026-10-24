@@ -88,6 +88,44 @@ create table private.atlas_engine_approvals (
  check (expires_at>created_at),
  unique(workspace_id,run_id)
 );
+-- Approval is created pending and can be decided once by a DIFFERENT human admin.
+-- This is defense in depth; the API must still authenticate the actor session.
+create function private.atlas_engine_approval_guard() returns trigger
+ language plpgsql security invoker set search_path='' as $
+declare original public.atlas_engine_runs%rowtype;
+begin
+ select * into original from public.atlas_engine_runs
+ where id=new.run_id and workspace_id=new.workspace_id and instance_id=new.instance_id;
+ if not found or new.requested_by<>original.requested_by then
+   raise exception 'ENGINE_APPROVAL_REQUESTER_MISMATCH' using errcode='42501';
+ end if;
+ if tg_op='INSERT' then
+   if new.decision<>'pending' then
+     raise exception 'ENGINE_APPROVAL_MUST_START_PENDING' using errcode='42501';
+   end if;
+ elsif tg_op='UPDATE' then
+   if old.decision<>'pending' or new.decision not in ('approved','rejected') or
+      old.workspace_id<>new.workspace_id or old.run_id<>new.run_id or
+      old.instance_id<>new.instance_id or old.requested_by<>new.requested_by or
+      old.created_at<>new.created_at or old.expires_at<>new.expires_at then
+     raise exception 'ENGINE_APPROVAL_IMMUTABLE' using errcode='42501';
+   end if;
+ end if;
+ if new.decision in ('approved','rejected') then
+   if new.expires_at<=now() or not exists (
+     select 1 from public.workspace_members wm
+      where wm.workspace_id=new.workspace_id
+      and wm.user_id=new.decided_by and wm.role in ('owner','admin')
+   ) or new.decided_by=original.requested_by then
+     raise exception 'ENGINE_APPROVAL_REVIEWER_INVALID' using errcode='42501';
+   end if;
+ end if;
+ return new;
+end; $;
+revoke all on function private.atlas_engine_approval_guard() from public,anon,authenticated;
+create trigger atlas_engine_approval_guard before insert or update on private.atlas_engine_approvals
+ for each row execute function private.atlas_engine_approval_guard();
+
 -- Idempotency key cannot be re-used within the same tenant and instance.
 create table private.atlas_engine_outbox (
  id uuid primary key default gen_random_uuid(),
