@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
 import { createAtlasMission, requestAtlasMissionReview, updateAtlasMission } from "@/app/missions/actions";
 import { readAtlasWorkflow, type AtlasMission } from "@/lib/atlas-workflow";
+import { NotionObservationsPanel } from "@/components/notion-observations-panel";
 
 export const dynamic = "force-dynamic";
 type Query = { workspaceId?: string; status?: string; q?: string; result?: string };
@@ -58,6 +59,7 @@ export default async function MissionsPage({ searchParams }: { searchParams: Pro
          params.result === "updated" ? "Statut de la mission mis à jour." :
          params.result === "requested" ? "Demande envoyée dans Inbox aux administrateurs." :
          "Action impossible : vérifiez les droits ou l’état de la mission."}</div>}
+      <NotionObservationsPanel workspaceId={data.selected.id}/>
       <section className="atlas-flow-kpis" aria-label="Résumé de vos missions">
         <div><span className="atlas-flow-kpi-icon"><Icon name="apps"/></span><strong>{data.missions.length}</strong><small>Missions visibles</small></div>
         <div><span className="atlas-flow-kpi-icon is-blue"><Icon name="activity"/></span><strong>{data.missions.filter((m) => m.status === "active").length}</strong><small>En cours</small></div>

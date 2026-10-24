@@ -86,3 +86,162 @@ test("malformed responses and aborted requests fail closed", async () => {
 test("never accepts a token with a newline", () => {
   assert.throws(() => createNotionReadClient({ token: "abc\nBearer hijack" }), NotionReadError);
 });
+
+test("safe GET retries transient 429/529 using Retry-After and shared budget hooks", async () => {
+  for (const status of [429, 529]) {
+    const delays = [];
+    const observed = [];
+    let attempts = 0;
+    const client = createNotionReadClient({
+      token: "secret",
+      requestBudget: {
+        async beforeRequest() { observed.push("before"); },
+        observeRateLimit(seconds) { observed.push(seconds); },
+      },
+      retryOptions: {
+        wait: async ms => { delays.push(ms); }, random: () => 0,
+      },
+      request: async () => {
+        attempts++;
+        return attempts === 1
+          ? response({message:"never leak raw body"},status,
+            new Headers({"retry-after":"1"}))
+          : response({object:"page",id:ID});
+      },
+    });
+    const page = await client.getPage(ID);
+    assert.equal(page.id, ID);
+    assert.equal(attempts, 2);
+    assert.deepEqual(delays, [1000]);
+    assert.deepEqual(observed, ["before",1,"before"]);
+  }
+});
+test("slow 429 obeys Retry-After without a long synchronous retry", async () => {
+  let calls = 0;
+  const client = createNotionReadClient({
+    token:"secret", request:async () => {
+      calls++; return response({message:"SECRET"},429,
+        new Headers({"retry-after":"40"}));
+    },
+    retryOptions:{wait:async () => { throw Error("must not sleep"); },
+      random:()=>0},
+  });
+  await assert.rejects(client.getPage(ID),error =>
+    error.code==="RATE_LIMITED" && error.retryAfterSeconds===40 &&
+    !error.message.includes("SECRET"));
+  assert.equal(calls,1);
+});
+test("5xx GET may retry, but 5xx POST title search cannot replay", async () => {
+  let reads = 0;
+  const getter = createNotionReadClient({
+    token:"secret", retryOptions:{wait:async()=>{},random:()=>0},
+    request:async () => (++reads === 1 ? response({},503) :
+      response({object:"page",id:ID})),
+  });
+  await getter.getPage(ID);
+  assert.equal(reads,2);
+  let searches = 0;
+  const searcher = createNotionReadClient({
+    token:"secret", retryOptions:{wait:async()=>{},random:()=>0},
+    request:async () => {searches++;return response({},503);},
+  });
+  await assert.rejects(searcher.searchByTitle(), {code:"PROVIDER_UNAVAILABLE"});
+  assert.equal(searches,1);
+});
+test("never retries 401/403, network exceptions, aborts or invalid JSON", async () => {
+  for (const status of [401,403]) {
+    let called=0;
+    const client=createNotionReadClient({
+      token:"secret", request:async()=>{called++;return response({},status);},
+    });
+    await assert.rejects(client.getPage(ID));
+    assert.equal(called,1);
+  }
+  let called=0;
+  const client=createNotionReadClient({token:"secret",request:async()=>{
+    called++;throw Error("secret-bearing stack");
+  }});
+  await assert.rejects(client.getPage(ID),err =>
+    err.code==="PROVIDER_UNAVAILABLE" && !err.message.includes("secret-bearing"));
+  assert.equal(called,1);
+});
+test("task status retrieval has fixed origin and bounded task ID", async () => {
+  let url;
+  const client=createNotionReadClient({token:"secret",request:async u=>{
+    url=u;return response({id:"task_abc123",status:"in_progress"});
+  }});
+  assert.equal((await client.getAsyncTask("task_abc123")).status,"in_progress");
+  assert.equal(url,"https://api.notion.com/v1/async_tasks/task_abc123");
+  await assert.rejects(client.getAsyncTask("https://evil.test/"), {
+    code:"INVALID_INPUT",
+  });
+});
+
+test("missing distributed cooldown fails closed after 429; never retries",async()=>{
+  let requests=0;
+  const client=createNotionReadClient({
+    token:"secret",
+    requestBudget:{
+      async beforeRequest(){},
+      async observeRateLimit(){throw Error("sql unavailable: secret-bearing diagnostic");},
+    },
+    retryOptions:{wait:async()=>{throw Error("must not retry");}},
+    request:async()=>{requests++;return response({access_token:"NEVER"},429,
+      new Headers({"Retry-After":"1"}));},
+  });
+  await assert.rejects(client.getPage(ID),error=>
+    error.code==="PROVIDER_UNAVAILABLE" && error.status===503 &&
+    !error.message.includes("secret-bearing"));
+  assert.equal(requests,1);
+});
+test("distributed reservation failure blocks provider request without fallback",async()=>{
+  let requests=0;
+  const client=createNotionReadClient({
+    token:"secret",
+    requestBudget:{
+      async beforeRequest(){throw Object.assign(Error("sql not migrated"),{
+        code:"BUDGET_UNAVAILABLE",
+      });},
+      async observeRateLimit(){},
+    },
+    request:async()=>{requests++;return response({object:"page",id:ID});},
+  });
+  await assert.rejects(client.getPage(ID),error=>
+    error.code==="PROVIDER_UNAVAILABLE" && requests===0);
+});
+
+test("transient and success provider outcomes reach the durable circuit hook",async()=>{
+  const outcomes=[];
+  let requests=0;
+  const client=createNotionReadClient({
+    token:"secret",
+    requestBudget:{
+      async beforeRequest(){},
+      observeRateLimit(){},
+      async observeOutcome(outcome){outcomes.push(outcome);},
+    },
+    retryOptions:{wait:async()=>{},random:()=>0},
+    request:async()=>{
+      requests++;
+      return requests===1 ? response({},503) : response({object:"page",id:ID});
+    },
+  });
+  await client.getPage(ID);
+  assert.deepEqual(outcomes,["transient","success"]);
+});
+test("reporting transient failure outage stops retry and fails closed",async()=>{
+  let requests=0;
+  const client=createNotionReadClient({
+    token:"secret",
+    requestBudget:{
+      async beforeRequest(){},
+      observeRateLimit(){},
+      async observeOutcome(){throw Error("secret-bearing diagnostic");},
+    },
+    retryOptions:{wait:async()=>{throw Error("never retry");}},
+    request:async()=>{requests++;return response({},503);},
+  });
+  await assert.rejects(client.getPage(ID),e=>e.code==="PROVIDER_UNAVAILABLE" &&
+    !e.message.includes("secret-bearing"));
+  assert.equal(requests,1);
+});

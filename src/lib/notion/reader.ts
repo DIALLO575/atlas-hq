@@ -1,5 +1,9 @@
 import "server-only";
 import { createNotionReadClient } from "../../../packages/connectors/notion/src/rest-client.mjs";
+import { notionRestBudgetForPersonalConnection }
+  from "../../../packages/connectors/notion/src/reliability.mjs";
+import { createNotionDistributedBudget }
+  from "../../../packages/connectors/notion/src/distributed-budget.mjs";
 import { rotateNotionCredentials } from "../../../packages/connectors/notion/src/refresh-flow.mjs";
 import { assertPersonalNotionConnection } from "../../../packages/connectors/notion/src/resource-view.mjs";
 import { adminNotionClient, notionConnectSettings, notionTokenVault,
@@ -44,9 +48,64 @@ export async function loadNotionPersonalConnection({
     notionWorkspaceId: connection.notion_workspace_id,
     notionBotId: connection.notion_bot_id,
   });
+  const budgetForVersion = (version: number) => {
+    const localBudget = notionRestBudgetForPersonalConnection({
+      workspaceId: connection.notion_workspace_id,
+      connectionId: connection.connection_id,
+    });
+    // Explicit opt-in AFTER official Supabase schema migration and live
+    // sandbox verification. If enabled but RPC is absent, fail closed.
+    if (process.env.NOTION_DISTRIBUTED_BUDGET_ENABLED !== "true") {
+      return localBudget;
+    }
+    return createNotionDistributedBudget({
+      binding: {
+        workspaceId: actor.workspaceId, userId: actor.userId,
+        notionWorkspaceId: connection.notion_workspace_id,
+        connectionId: connection.connection_id, version,
+      },
+      localBudget,
+      store: {
+        async reserve(key) {
+          const { data, error } = await admin.rpc("atlas_notion_reserve_rest_read", {
+            p_connection_id: key.connectionId,
+            p_workspace_id: key.workspaceId, p_user_id: key.userId,
+            p_notion_workspace_id: key.notionWorkspaceId,
+            p_expected_version: key.version, p_max_wait_ms: key.maxWaitMs,
+          });
+          if (error) throw new Error("NOTION_BUDGET_STORE_UNAVAILABLE");
+          return typeof data === "number" && Number.isInteger(data) ? data : null;
+        },
+        async cooldown(key) {
+          const { data, error } = await admin.rpc("atlas_notion_cooldown_rest_read", {
+            p_connection_id: key.connectionId,
+            p_workspace_id: key.workspaceId, p_user_id: key.userId,
+            p_notion_workspace_id: key.notionWorkspaceId,
+            p_expected_version: key.version,
+            p_retry_after_seconds: key.seconds,
+          });
+          if (error) throw new Error("NOTION_BUDGET_STORE_UNAVAILABLE");
+          return data === true;
+        },
+        async reportOutcome(key) {
+          const { data, error } = await admin.rpc("atlas_notion_report_rest_outcome", {
+            p_connection_id: key.connectionId,
+            p_workspace_id: key.workspaceId, p_user_id: key.userId,
+            p_notion_workspace_id: key.notionWorkspaceId,
+            p_expected_version: key.version, p_outcome: key.outcome,
+          });
+          if (error) throw new Error("NOTION_BUDGET_STORE_UNAVAILABLE");
+          return data === true;
+        },
+      },
+    });
+  };
+  const requestBudget = budgetForVersion(connection.version);
   return {
-    actor, settings, admin, vault, record: connection, tokens,
-    client: createNotionReadClient({ token: tokens.accessToken }),
+    actor, settings, admin, vault, record: connection, tokens, requestBudget, budgetForVersion,
+    client: createNotionReadClient({
+      token: tokens.accessToken, requestBudget,
+    }),
   };
 }
 
