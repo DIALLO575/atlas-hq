@@ -34,12 +34,12 @@ export function ApprovalInbox() {
   }, []);
 
   useEffect(() => {
-    setItems([]);
-    setError("");
     if (!selected) return;
     const controller = new AbortController();
     void Promise.resolve().then(async () => {
       if (controller.signal.aborted) return;
+      setItems([]);
+      setError("");
       setBusy(true);
       try {
         const response = await fetch("/api/engines/approvals?workspaceId="+encodeURIComponent(selected), {
@@ -57,7 +57,7 @@ export function ApprovalInbox() {
 
   return <section aria-labelledby="approval-inbox-title">
     <h2 id="approval-inbox-title">Demandes en attente</h2>
-    <p>Lecture seule. L'approbation et l'exécution des missions restent désactivées.</p>
+    <p>Lecture seule. L&apos;approbation et l&apos;exécution des missions restent désactivées.</p>
     {workspaceState.status === "ready" ? <>
       <label htmlFor="approval-workspace">Workspace</label>
       <select id="approval-workspace" value={selected} onChange={event => setSelected(event.target.value)}>
