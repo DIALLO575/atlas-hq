@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 
 type Workspace = { id: string; name: string; role: "owner" | "admin" | "member" };
@@ -43,23 +43,56 @@ export function LinearControlCenter({ workspaces, initialWorkspaceId, configured
   const [workspaceId, setWorkspaceId] = useState(initialWorkspaceId);
   const workspace = workspaces.find((item) => item.id === workspaceId);
   const [status, setStatus] = useState<Status | null>(null);
-  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(Boolean(initialWorkspaceId));
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(feedbackMessages[feedbackCode] ?? null);
   const [error, setError] = useState<string | null>(null);
   const [pages, setPages] = useState<Partial<Record<Resource, Page>>>({});
   const [loadingResource, setLoadingResource] = useState<Resource | null>(null);
+  const statusRequest = useRef(0);
 
-  const refreshStatus = useCallback(async () => {
-    if (!workspaceId) { setStatus(null); return; }
+  async function refreshStatus() {
+    if (!workspaceId) return;
+    const requestId = ++statusRequest.current;
     setStatusLoading(true); setError(null);
-    try { setStatus(await loadStatus(workspaceId)); }
-    catch (cause) { setStatus(null); setError(cause instanceof Error ? cause.message : "État Linear indisponible."); }
-    finally { setStatusLoading(false); }
+    try {
+      const nextStatus = await loadStatus(workspaceId);
+      if (statusRequest.current === requestId) setStatus(nextStatus);
+    } catch (cause) {
+      if (statusRequest.current === requestId) {
+        setStatus(null);
+        setError(cause instanceof Error ? cause.message : "État Linear indisponible.");
+      }
+    } finally {
+      if (statusRequest.current === requestId) setStatusLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const requestId = ++statusRequest.current;
+    let active = true;
+    loadStatus(workspaceId)
+      .then((nextStatus) => { if (active && statusRequest.current === requestId) setStatus(nextStatus); })
+      .catch((cause: unknown) => {
+        if (active && statusRequest.current === requestId) {
+          setStatus(null);
+          setError(cause instanceof Error ? cause.message : "État Linear indisponible.");
+        }
+      })
+      .finally(() => { if (active && statusRequest.current === requestId) setStatusLoading(false); });
+    return () => { active = false; };
   }, [workspaceId]);
 
-  useEffect(() => { void refreshStatus(); }, [refreshStatus]);
-  useEffect(() => { setStatus(null); setPages({}); setNotice(null); }, [workspaceId]);
+  function selectWorkspace(nextWorkspaceId: string) {
+    statusRequest.current += 1;
+    setWorkspaceId(nextWorkspaceId);
+    setStatus(null);
+    setStatusLoading(Boolean(nextWorkspaceId));
+    setPages({});
+    setNotice(null);
+    setError(null);
+  }
 
   async function readResource(resource: Resource, after?: string | null) {
     if (!workspaceId) return;
@@ -105,7 +138,7 @@ export function LinearControlCenter({ workspaces, initialWorkspaceId, configured
           <p>Vos équipes, projets et tickets accessibles depuis votre connexion personnelle.</p></div>
       </div>
       {workspaces.length > 1 && <label className="atlas-gh-workspace-pick">Workspace ATLAS
-        <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
+        <select value={workspaceId} onChange={(event) => selectWorkspace(event.target.value)}>
           {workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
       </label>}
