@@ -51,7 +51,7 @@ set role authenticated;
 -- Requester is an owner, but is not allowed to decide their own run.
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
 select set_config('request.jwt.claims','{"session_id":"aaaabbbb-0000-4000-8000-000000000001"}',false);
-do $begin
+do $decision$ begin
  begin
   perform public.atlas_engine_decide_approval(
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -59,9 +59,9 @@ do $begin
    current_setting('test.engine_fingerprint_a'),'approved');
   raise exception 'SELF_APPROVAL_ACCEPTED';
  exception when insufficient_privilege then null;end;
-end $;
+end $decision$;
 -- Cross-tenant request is denied, even with a valid session in A.
-do $begin
+do $decision$ begin
  begin
   perform public.atlas_engine_decide_approval(
    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -69,11 +69,11 @@ do $begin
    current_setting('test.engine_fingerprint_b'),'approved');
   raise exception 'FOREIGN_WORKSPACE_APPROVED';
  exception when insufficient_privilege then null;end;
-end $;
+end $decision$;
 -- A reviewer with expired session cannot approve any run.
 select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
 select set_config('request.jwt.claims','{"session_id":"aaaabbbb-0000-4000-8000-000000000004"}',false);
-do $begin
+do $decision$ begin
  begin
   perform public.atlas_engine_decide_approval(
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -81,9 +81,9 @@ do $begin
    current_setting('test.engine_fingerprint_a'),'approved');
   raise exception 'EXPIRED_SESSION_APPROVED';
  exception when insufficient_privilege then null;end;
-end $;
+end $decision$;
 select set_config('request.jwt.claims','{"session_id":"not-a-uuid"}',false);
-do $begin
+do $decision$ begin
  begin
   perform public.atlas_engine_decide_approval(
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -91,7 +91,7 @@ do $begin
    current_setting('test.engine_fingerprint_a'),'approved');
   raise exception 'MALFORMED_SESSION_APPROVED';
  exception when insufficient_privilege then null;end;
-end $;
+end $decision$;
 reset role;
 -- Real reviewer, pinned digest from verified Inbox, approve once.
 do $$
@@ -138,7 +138,7 @@ update public.workspace_members set role='member'
 set role authenticated;
 select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
 select set_config('request.jwt.claims','{"session_id":"cccc0000-0000-4000-8000-000000000003"}',false);
-do $begin
+do $decision$ begin
  begin
   perform public.atlas_engine_decide_approval(
    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -146,7 +146,7 @@ do $begin
    current_setting('test.engine_fingerprint_b'),'rejected');
   raise exception 'REVOKED_ROLE_APPROVED';
  exception when insufficient_privilege then null;end;
-end $;
+end $decision$;
 reset role;
 update public.workspace_members set role='admin'
  where workspace_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
