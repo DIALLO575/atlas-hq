@@ -13,14 +13,18 @@ ab21fcfbfeb6ef75bc6147cd80b7137ae22be301. CI du commit fusionné :
 [GitHub Actions](https://github.com/DIALLO575/atlas-hq/actions/runs/40114818208)
 (tous les jobs réussis).
 
-**Cinq migrations Supabase Engines sont appliquées** :
+**Six migrations Supabase Engines sont appliquées** :
 20261024161305 (9 tables RLS), 20261024163943 (clé/version d'outbox),
 20261024182928 (empreinte immuable), 20261024193128 (Inbox lecture seule)
-et 20261024193537 (privilèges internes privés).
-La page `/engines/approvals` et l'API GET utilisent la session Supabase
-et une RPC SQL liée au rôle actuel et à `auth.sessions` : **consultation
-uniquement**, sans décision ni exécution. Un véritable parcours de test
-avec compte reviewer doit encore être vérifié. Aucun moteur connecté. La vérification avait 0 instance moteur et 0 exécution.
+20261024193537 (privilèges internes privés) et 20261024200020
+(décision humaine atomique + audit).
+La page `/engines/approvals` possède désormais une consultation et des
+boutons **Approuver / Refuser**. Le POST passe par une RPC à session
+active, contrôle du rôle, verrouillage de l'approval et du run et audit
+atomique. C'est un parcours **codé et testé sur PostgreSQL jetable** ;
+les tests E2E sous deux vraies sessions Supabase Auth et le déploiement Web
+restent à réaliser. Une décision ne lance aucun moteur (`canDispatch:false`).
+La vérification de la base en direct confirme 0 instance, 0 run, 0 approbation.
 
 Le catalogue recense 20 outils MCP mock-testés et 128 entrées natives
 (24 lectures simulées, 42 plans de mutations non exécutables, 5 plans

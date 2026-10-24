@@ -48,7 +48,7 @@ jobs:
           -f supabase/migrations/20261024193128_atlas_engine_pending_approvals_readonly.sql
           -f supabase/migrations/20261024193537_atlas_engine_approval_inbox_definer_hardening.sql
           -f tests/sql/approval-inbox-readonly-checks.sql
-          -f supabase/proposals/engine-approval-decision-atomic.sql
+          -f supabase/migrations/20261024200020_atlas_engine_approval_decision_atomic_v1.sql
           -f tests/sql/approval-decision-atomic-checks.sql
 
   linear-oauth-postgres:

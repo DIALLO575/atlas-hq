@@ -6,8 +6,8 @@ ATLAS HQ est un Next.js 16 App Router/PWA; les routes applicatives sous src/app
 utilisent Supabase Auth SSR. Les workspaces et workspace_members controlent
 l'appartenance avec RLS. atlas_missions et atlas_mission_reviews gerent de vraies
 missions et decisions; la base a aussi des tables GitHub/Linear. Au début de cet audit, aucune table de registre moteur ou relation
-mission↔job n'existait ; elles ont depuis été créées par les deux
-migrations Supabase Engines du 24/10/2026 (voir section persistance). Agents & Equipes n'avait qu'un etat vide, Chief avait un
+mission↔job n'existait ; elles ont depuis été créées et protégées par les migrations
+Supabase Engines du 24/10/2026 (voir section persistance). Agents & Equipes n'avait qu'un etat vide, Chief avait un
 assistant guide sans LLM autonome. Mes Apps est un espace d'outils connectes,
 pas un espace de moteurs IA.
 
@@ -56,7 +56,7 @@ ATTENTION : le runtime Atlas heberge sur Vercel doit pouvoir joindre MAUSBOT.
 exposee sur HTTPS avec appairage correct est necessaire. Ne jamais exposer un
 serveur MAUSBOT sans authentification ni attribuer l'acces Full automatiquement.
 
-## Supabase Engines — cinq migrations déjà appliquées (24/10/2026)
+## Supabase Engines — six migrations déjà appliquées (24/10/2026)
 
 - 20261024161305_atlas_engine_foundation_preconnection : 9 tables RLS
   (2 tables publiques de métadonnées : instances et runs ; 7 tables privées :
@@ -70,6 +70,9 @@ serveur MAUSBOT sans authentification ni attribuer l'acces Full automatiquement.
   owner/admin validée par session Supabase active en base.
 - 20261024193537_atlas_engine_approval_inbox_definer_hardening :
   RPC publique SECURITY INVOKER ; logique privilégiée privée.
+- 20261024200020_atlas_engine_approval_decision_atomic_v1 :
+  décision transactionnelle avec audit, vérification de session actuelle,
+  sans envoi au moteur (canDispatch false).
 
 Après contrôle : 0 moteur MAUSBOT, 0 run, 0 approbation et 0 message
 outbox en base. Une primitive AES-256-GCM testée localement existe mais
