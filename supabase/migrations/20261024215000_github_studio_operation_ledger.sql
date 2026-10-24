@@ -185,7 +185,9 @@ begin
  if p_operation_id is null or p_repository_id is null or p_repository_id<=0 then
    raise exception 'GH_STUDIO_FINALIZE_INVALID' using errcode='22023';
  end if;
- -- Serialize with advance(), revocation and any competing finalization.
+ -- Serialize against concurrent finalizers and advance() for this operation.
+ -- Membership and installation must be freshly checked; authorization updates
+ -- are guarded by the server-side live provider validation before this RPC.
  select o.* into v from public.atlas_github_studio_operations o
  where o.id=p_operation_id for update;
  if not found or v.state not in('provider_confirmed','reconciliation_required')
@@ -195,7 +197,7 @@ begin
 
  select m.user_id into v_actor from public.workspace_members m
  where m.workspace_id=v.workspace_id and m.user_id=v.actor_id
-   and m.role in('owner','admin') for share;
+   and m.role in('owner','admin');
  if v_actor is null then
    raise exception 'GH_STUDIO_FINALIZE_REVOKED' using errcode='42501';
  end if;
