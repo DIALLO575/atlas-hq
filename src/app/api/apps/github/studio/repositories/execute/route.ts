@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { executeSandboxRepositoryCreation } from "@/lib/github/studio-runner";
+import { githubConnectSettings } from "@/lib/github/connect";
+import { readStudioUserGrant, studioOAuthGrantCookie,
+} from "../../../../../../../../packages/connectors/github/src/github-studio-user-oauth.mjs";
 import {
   GitHubStudioError, parseRepositoryDraft, verifiedPersonalInstallation,
 } from "../../../../../../../../packages/connectors/github/src/github-studio-create.mjs";
@@ -99,11 +102,21 @@ export async function POST(request: NextRequest) {
   if (!verifiedPersonalInstallation(binding, draft.workspaceId, draft.installationId)) {
     return respond({ error: "GITHUB_NOT_AUTHORIZED" }, 403);
   }
+  // The browser cannot supply a GitHub user token; only our OAuth callback
+  // issues this short-lived, authenticated+encrypted HttpOnly cookie.
+  const settings = githubConnectSettings();
+  const grant = settings && readStudioUserGrant({
+    cookie: request.cookies.get(studioOAuthGrantCookie)?.value,
+    workspaceId: draft.workspaceId, actorId: user.id,
+    installationId: draft.installationId, key: settings.stateKey,
+  });
+  if (!grant) return respond({ error: "STUDIO_USER_AUTH_REQUIRED" }, 403);
   try {
     const result = await executeSandboxRepositoryCreation({
       workspaceId: draft.workspaceId, actorId: user.id,
       installationId: draft.installationId, binding: binding!,
       draft, idempotencyKey: idempotencyKey!,
+      userAccessToken: grant.accessToken,
     });
     return respond(result, result.state === "succeeded" ? 201 : 202);
   } catch (error) {
