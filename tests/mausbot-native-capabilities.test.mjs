@@ -43,8 +43,8 @@ test("Native source-mapped team memory and skill editing use actual HTTP verbs",
 
 test("Offline adapters and mutation plans stay strictly non-callable across source families",()=>{
  const sum=nativeCoverageSummary();
- assert.equal(sum.mockTestedReads,21);
- assert.equal(sum.validatedMutationPlans,37);
+ assert.equal(sum.mockTestedReads,24);
+ assert.equal(sum.validatedMutationPlans,42);
  assert.equal(sum.callable,0);
  assert.equal(sum.testedLive,0);
  for(const p of MAUSBOT_NATIVE_CAPABILITIES){
@@ -71,8 +71,8 @@ test("Team + channel work is registered as offline-only implementation progress"
     assert.equal(found?.hostTested, false);
   }
   const summary = nativeCoverageSummary();
-  assert.equal(summary.mockTestedReads, 21);
-  assert.equal(summary.validatedMutationPlans, 37);
+  assert.equal(summary.mockTestedReads, 24);
+  assert.equal(summary.validatedMutationPlans, 42);
   assert.equal(summary.total, 128);
   assert.equal(summary.callable, 0);
   assert.equal(summary.testedLive, 0);
@@ -88,8 +88,8 @@ test("MCP and OAuth offline adapters preserve the preconnection release boundary
   for(const id of plans) assert.equal(nativePrimitive(id)?.implementation,"validated-plan",id);
   const total = nativeCoverageSummary();
   assert.equal(total.total,128);
-  assert.equal(total.mockTestedReads,21);
-  assert.equal(total.validatedMutationPlans,37);
+  assert.equal(total.mockTestedReads,24);
+  assert.equal(total.validatedMutationPlans,42);
   assert.equal(total.callable,0);
   assert.equal(total.testedLive,0);
 });
@@ -108,8 +108,26 @@ test("Event, routine and webhook family coverage remains offline-only",()=>{
   }
   const summary=nativeCoverageSummary();
   assert.equal(summary.total,128);
-  assert.equal(summary.mockTestedReads,21);
-  assert.equal(summary.validatedMutationPlans,37);
+  assert.equal(summary.mockTestedReads,24);
+  assert.equal(summary.validatedMutationPlans,42);
   assert.equal(summary.testedLive,0);
   assert.equal(summary.callable,0);
+});
+
+test("File, browser and computer coverage remains non-executable",()=>{
+ const reads=["computer.usage","computer.local.status","browser.sites"];
+ const changes=["browser.sign-out","computer.local.run","computer.local.start",
+  "computer.local.stop","computer.local.remove"];
+ const files=["files.thread.export","files.message.image","files.message.file",
+  "files.attachments.create","files.files.create"];
+ for(const id of reads)assert.equal(nativePrimitive(id)?.implementation,"adapter-mock-tested",id);
+ for(const id of changes)assert.equal(nativePrimitive(id)?.implementation,"validated-plan",id);
+ for(const id of files)assert.equal(nativePrimitive(id)?.implementation,"binary-plan",id);
+ const c=nativeCoverageSummary();
+ assert.equal(c.total,128);
+ assert.equal(c.mockTestedReads,24);
+ assert.equal(c.validatedMutationPlans,42);
+ assert.equal(c.validatedBinaryPlans,5);
+ assert.equal(c.callable,0);
+ assert.equal(c.testedLive,0);
 });

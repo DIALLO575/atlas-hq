@@ -283,3 +283,40 @@ Totaux M0 : 128 capacités natives source-mappées, **21 lectures avec
 adaptateurs mock-testés**, **37 plans de mutations validés offline**,
 **70 capacités encore source-only**, 0 opérations natives autorisées live.
 Les 20 outils MCP officiels restent distincts.
+
+## M0.6 — Fichiers, navigateur, ordinateurs et Companion (offline)
+
+Sources : OpenMausBot server/routes/threads.ts, computers.ts,
+browser-sites.ts, computer-usage.ts, computer-frames.ts,
+server/attachments.ts et docs/desktop-companion.md.
+
+Le nouveau module packages/engines/mausbot/src/file-computer-contracts.mjs
+contient trois groupes de primitives :
+- 3 lectures de MÉTADONNÉES simulées : computer.usage, computer.local.status,
+  browser.sites. Les résultats suppriment sites consultés, cookies, mots de
+  passe, URLs de viewer et commandes. Aucune API BFF ne les expose.
+- 5 plans de mutations hors réseau : browser.sign-out sur UN site nommé,
+  computer.local.run/start/stop/remove. Revue humaine, contrôle de propriété,
+  approbation de coût et confirmation destructive doivent être prouvés
+  dans un journal durable avant toute exécution.
+- 5 plans de TRANSFERT BINAIRE (sans flux réseau) : export de conversation
+  en Markdown, récupération d'image de message, aperçu d'une image issue
+  d'une référence de message, upload image et upload fichier avec UUID.
+  Les limites natives MAUSBOT sont 10 MiB (image) et 25 MiB (fichier).
+  Les MIME / extensions autorisés, le nom et l'uploadId sont contrôlés.
+  L'endpoint général POST de lecture de fichier avec chemin libre est exclu ;
+  seul le mode preview=1&ref=N validé est préparé.
+
+La surface Companion garde une identité d'appareil distincte, une allowlist
+et les droits viewer explicites. Ne jamais y proxifier l'API host entière
+ni exposer un viewer, une capture, un cookie, un mot de passe ou un tunnel.
+
+Ces plans ne font aucune action réelle : pas de téléchargement, d'upload,
+de capture, de commande ou de lecture de navigateur, pas de serveur raccordé.
+Un worker de streaming borné et un contrôle de droits sur chaque
+workspace/thread/message restent à implémenter avant activation.
+
+Bilan M0 : 128 natives = 24 lectures metadata mock-testées + 42 plans
+de mutation offline + 5 plans binaires + 57 autres capacités source-only.
+Le nombre de primitives natives autorisées ou testées sur MAUSBOT réel
+reste exactement zéro.

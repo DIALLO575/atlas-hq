@@ -13,7 +13,7 @@ type Agent = { id: string; name: string; emoji: string | null };
 type Dispatch = { accepted: boolean; taskCreated?: boolean; threadId?: string; sendId?: string; error?: string };
 type Job = { status: string | null; state: string | null; phase: string | null; version: number | null };
 type WorkspaceState = WorkspaceResult | { status: "loading" };
-type PrimitiveCoverage = { mappedMcp: number; native: number; nativeFamilies: Record<string,number>; callableNative: number; testedLive: number; mockTestedReads: number; validatedMutationPlans: number };
+type PrimitiveCoverage = { mappedMcp: number; native: number; nativeFamilies: Record<string,number>; callableNative: number; testedLive: number; mockTestedReads: number; validatedMutationPlans: number; validatedBinaryPlans: number };
 
 async function readResponse(url: string, init?: RequestInit) {
   const result = await fetch(url, { cache: "no-store", credentials: "same-origin", ...init });
@@ -83,6 +83,7 @@ export function EnginesHub() {
           testedLive: typeof nativeCoverage?.testedLive === "number" ? nativeCoverage.testedLive : 0,
           mockTestedReads: typeof nativeCoverage?.mockTestedReads === "number" ? nativeCoverage.mockTestedReads : 0,
           validatedMutationPlans: typeof nativeCoverage?.validatedMutationPlans === "number" ? nativeCoverage.validatedMutationPlans : 0,
+          validatedBinaryPlans: typeof nativeCoverage?.validatedBinaryPlans === "number" ? nativeCoverage.validatedBinaryPlans : 0,
         });
         if (entries.find((engine) => engine.id === "mausbot")?.status !== "configured") return;
         const base = "/api/engines/mausbot?workspaceId=" + encodeURIComponent(workspaceId);
@@ -211,7 +212,7 @@ export function EnginesHub() {
             {Object.entries(primitiveCoverage.nativeFamilies).map(([family, count]) =>
               <span key={family}>{family} · {count}</span>)}
           </div>
-          <p>{primitiveCoverage.mockTestedReads} lectures natives testées en simulation · {primitiveCoverage.validatedMutationPlans} plans d’écriture préparés hors ligne. Les fonctions sensibles et les appels natifs restent bloqués. Il faudra valider les contrats, les permissions, la traçabilité et les tests avant de raccorder MAUSBOT.</p>
+          <p>{primitiveCoverage.mockTestedReads} lectures natives testées en simulation · {primitiveCoverage.validatedMutationPlans} plans d’écriture préparés hors ligne · {primitiveCoverage.validatedBinaryPlans} plans de transfert binaire verrouillés. Les fonctions sensibles et les appels natifs restent bloqués. Il faudra valider les contrats, les permissions, la traçabilité et les tests avant de raccorder MAUSBOT.</p>
         </section>
       )}
 
