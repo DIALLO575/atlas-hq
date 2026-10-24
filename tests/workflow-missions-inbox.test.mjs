@@ -13,7 +13,9 @@ test("Missions & Inbox render real workspace data, not demo cards", async () => 
   ]);
   assert.match(missions, /readAtlasWorkflow\(params\.workspaceId\)/);
   assert.match(inbox, /readAtlasWorkflow\(params\.workspaceId\)/);
-  assert.match(data, /listWorkspaces\(\)/);
+  assert.match(data, /from\("workspace_members"\)/);
+  assert.match(data, /\.eq\("user_id", user\.id\)/);
+  assert.doesNotMatch(data, /await listWorkspaces\(\)/);
   assert.match(data, /supabase\.auth\.getUser\(\)/);
   assert.match(data, /from\("atlas_missions"\)/);
   assert.match(data, /from\("atlas_mission_reviews"\)/);
