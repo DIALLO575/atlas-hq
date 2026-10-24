@@ -65,7 +65,7 @@ export function readStudioOAuthAttempt({ cookie, state, key, now = Date.now() })
 }
 
 export function githubStudioAuthorizeUrl({ clientId, redirectUri, state, challenge }) {
-  if (typeof clientId !== "string" || !/^[A-Za-z0-9_-]{3,128}$/.test(clientId) ||
+  if (typeof clientId !== "string" || !/^[A-Za-z0-9_.-]{3,128}$/.test(clientId) ||
       typeof state !== "string" || !state || state.length > 2048 ||
       typeof challenge !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) issue("OAUTH_INVALID_INPUT");
   const callback = new URL(redirectUri);
