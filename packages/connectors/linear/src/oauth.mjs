@@ -105,17 +105,67 @@ export async function exchangeLinearAuthorizationCode({
 }
 
 
-/** Best-effort revoke for token pairs that could not be safely stored. */
+/** Refresh a rotated token pair once. Callers must durably claim the connection before this request. */
+export async function refreshLinearOAuthToken({ refreshToken, clientId, clientSecret, fetchImpl = fetch }) {
+  if (typeof refreshToken !== "string" || !refreshToken ||
+      typeof clientId !== "string" || !clientId ||
+      (clientSecret !== undefined && (typeof clientSecret !== "string" || !clientSecret))) {
+    throw new LinearOAuthError("LINEAR_OAUTH_INVALID_REQUEST");
+  }
+  const form = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: clientId });
+  if (clientSecret) form.set("client_secret", clientSecret);
+  let response;
+  try {
+    response = await fetchImpl(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+      body: form, cache: "no-store", signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw new LinearOAuthError("LINEAR_OAUTH_REFRESH_UNCERTAIN");
+  }
+  if (!response.ok) {
+    if (response.status === 400) {
+      try {
+        const body = await response.json();
+        if (body?.error === "invalid_grant") throw new LinearOAuthError("LINEAR_OAUTH_INVALID_GRANT");
+      } catch (error) {
+        if (error instanceof LinearOAuthError) throw error;
+      }
+    }
+    throw new LinearOAuthError("LINEAR_OAUTH_REFRESH_UNCERTAIN");
+  }
+  let token;
+  try { token = await response.json(); } catch {
+    throw new LinearOAuthError("LINEAR_OAUTH_REFRESH_UNCERTAIN");
+  }
+  if (!token || token.token_type?.toLowerCase() !== "bearer" ||
+      typeof token.access_token !== "string" || !token.access_token ||
+      typeof token.refresh_token !== "string" || !token.refresh_token ||
+      !Number.isSafeInteger(token.expires_in) || token.expires_in <= 0) {
+    throw new LinearOAuthError("LINEAR_OAUTH_REFRESH_UNCERTAIN");
+  }
+  const scopes = token.scope === undefined
+    ? ["read"]
+    : (Array.isArray(token.scope) ? token.scope : String(token.scope).split(/[ ,]+/).filter(Boolean));
+  return { accessToken: token.access_token, refreshToken: token.refresh_token,
+    expiresInSeconds: token.expires_in, scopes };
+}
+
+/** RFC 7009 revoke. Returns status only; callers never receive provider response bodies. */
 export async function revokeLinearOAuthTokens({ accessToken, refreshToken, fetchImpl = fetch }) {
-  for (const token of [accessToken, refreshToken]) {
-    if (typeof token !== "string" || !token) continue;
+  const results = [];
+  for (const [token, hint] of [[accessToken, "access_token"], [refreshToken, "refresh_token"]]) {
+    if (typeof token !== "string" || !token) { results.push(false); continue; }
     try {
-      await fetchImpl("https://api.linear.app/oauth/revoke", {
+      const response = await fetchImpl("https://api.linear.app/oauth/revoke", {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-        body: new URLSearchParams({ token }),
+        body: new URLSearchParams({ token, token_type_hint: hint }),
         cache: "no-store",
       });
-    } catch { /* Never expose provider responses or credentials to callers. */ }
+      results.push(response.status === 200);
+    } catch { results.push(false); }
   }
+  return { accessRevoked: results[0] === true, refreshRevoked: results[1] === true, allRevoked: results.length === 2 && results.every(Boolean) };
 }

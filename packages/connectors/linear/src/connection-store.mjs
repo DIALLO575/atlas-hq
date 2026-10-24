@@ -57,26 +57,81 @@ export async function saveLinearConnection(admin, { actor, linearIdentity, token
 }
 
 /** The user identity and role are derived from a verified session and live membership. */
-export async function loadLinearConnectionForActor({ session, admin, workspaceId, vault }) {
+export async function loadLinearConnectionForActor({ session, admin, workspaceId, vault, allowExpired = false, includeRevoked = false }) {
   if (typeof workspaceId !== "string" || !UUID.test(workspaceId)) return null;
   const { data: { user }, error: authError } = await session.auth.getUser();
   if (authError || !user?.id) return null;
   const { data: membership, error: membershipError } = await session.from("workspace_members")
     .select("role").eq("workspace_id", workspaceId).eq("user_id", user.id).maybeSingle();
   if (membershipError || !membership || !canManageLinearConnection(membership.role)) return null;
-  const { data: row, error } = await admin.from("atlas_linear_connections")
-    .select("workspace_id,user_id,linear_workspace_id,linear_actor_id,token_key_id,access_nonce,access_ciphertext,access_tag,refresh_nonce,refresh_ciphertext,refresh_tag,scopes,access_expires_at,version,revoked_at")
-    .eq("workspace_id", workspaceId).eq("user_id", user.id).is("revoked_at", null)
-    .gt("access_expires_at", new Date().toISOString()).maybeSingle();
+  let query = admin.from("atlas_linear_connections")
+    .select("workspace_id,user_id,linear_workspace_id,linear_actor_id,token_key_id,access_nonce,access_ciphertext,access_tag,refresh_nonce,refresh_ciphertext,refresh_tag,scopes,access_expires_at,version,revoked_at,refresh_attempt_id,refresh_started_at")
+    .eq("workspace_id", workspaceId).eq("user_id", user.id);
+  if (!includeRevoked) query = query.is("revoked_at", null);
+  if (!allowExpired) query = query.gt("access_expires_at", new Date().toISOString());
+  const { data: row, error } = await query.maybeSingle();
   if (error || !row || !vault) return null;
   return {
     ...vault.decryptTokens(row, bindingOf(row)),
+    actorUserId: user.id,
     linearWorkspaceId: row.linear_workspace_id,
     linearActorId: row.linear_actor_id,
     scopes: row.scopes,
     accessExpiresAt: row.access_expires_at,
     version: row.version,
+    revokedAt: row.revoked_at,
+    refreshAttemptId: row.refresh_attempt_id,
+    refreshStartedAt: row.refresh_started_at,
   };
+}
+
+export async function claimLinearConnectionRefresh(admin, { workspaceId, userId, expectedVersion, attemptId }) {
+  if (!UUID.test(workspaceId) || !UUID.test(userId) || !UUID.test(attemptId) || !Number.isSafeInteger(expectedVersion)) return false;
+  const { data, error } = await admin.rpc("atlas_linear_claim_refresh", {
+    p_workspace_id: workspaceId, p_user_id: userId,
+    p_expected_version: expectedVersion, p_attempt_id: attemptId,
+  });
+  return !error && data === true;
+}
+
+export async function completeLinearConnectionRefresh(admin, {
+  workspaceId, userId, expectedVersion, attemptId, connection, tokens, scopes, expiresAt, vault,
+}) {
+  if (!UUID.test(workspaceId) || !UUID.test(userId) || !UUID.test(attemptId) ||
+      !Number.isSafeInteger(expectedVersion) || !connection || !vault ||
+      !Array.isArray(scopes) || scopes.length !== 1 || scopes[0] !== "read" ||
+      !Number.isFinite(Date.parse(expiresAt))) return false;
+  const encrypted = vault.encryptTokens(tokens, bindingOf({
+    workspace_id: workspaceId, user_id: userId,
+    linear_workspace_id: connection.linearWorkspaceId, linear_actor_id: connection.linearActorId,
+  }));
+  const { data, error } = await admin.rpc("atlas_linear_complete_refresh", {
+    p_workspace_id: workspaceId, p_user_id: userId,
+    p_expected_version: expectedVersion, p_attempt_id: attemptId,
+    p_token_key_id: encrypted.token_key_id,
+    p_access_nonce: encrypted.access_nonce, p_access_ciphertext: encrypted.access_ciphertext, p_access_tag: encrypted.access_tag,
+    p_refresh_nonce: encrypted.refresh_nonce, p_refresh_ciphertext: encrypted.refresh_ciphertext, p_refresh_tag: encrypted.refresh_tag,
+    p_scopes: scopes, p_access_expires_at: expiresAt,
+  });
+  return !error && Number.isSafeInteger(data) ? { version: data } : false;
+}
+
+export async function rejectLinearConnectionRefresh(admin, { workspaceId, userId, expectedVersion, attemptId }) {
+  if (!UUID.test(workspaceId) || !UUID.test(userId) || !UUID.test(attemptId) || !Number.isSafeInteger(expectedVersion)) return false;
+  const { data, error } = await admin.rpc("atlas_linear_reject_refresh", {
+    p_workspace_id: workspaceId, p_user_id: userId,
+    p_expected_version: expectedVersion, p_attempt_id: attemptId,
+  });
+  return !error && data === true;
+}
+
+export async function invalidateUncertainLinearRefresh(admin, { workspaceId, userId, expectedVersion, attemptId }) {
+  if (!UUID.test(workspaceId) || !UUID.test(userId) || !UUID.test(attemptId) || !Number.isSafeInteger(expectedVersion)) return false;
+  const { data, error } = await admin.rpc("atlas_linear_uncertain_refresh", {
+    p_workspace_id: workspaceId, p_user_id: userId,
+    p_expected_version: expectedVersion, p_attempt_id: attemptId,
+  });
+  return !error && data === true;
 }
 
 /** Logical revocation preserves auditability and uses a version-checked database function. */

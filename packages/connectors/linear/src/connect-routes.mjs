@@ -1,5 +1,6 @@
 import { createLinearPkcePair, linearAuthorizationUrl } from "./oauth.mjs";
 import { consumeLinearOAuthState, createLinearOAuthState, readLinearOAuthState } from "./oauth-state.mjs";
+import { randomUUID } from "node:crypto";
 
 export const LINEAR_STATE_COOKIE = "atlas_linear_oauth_state";
 export const LINEAR_PKCE_COOKIE = "atlas_linear_pkce_verifier";
@@ -24,6 +25,138 @@ function trustedOrigin(settings) {
 
 function error(status, code) {
   return { kind: "json", status, error: code, headers: { "Cache-Control": "private, no-store" }, cookies: [] };
+}
+
+function outcome(status, result, providerRevocation) {
+  return { kind: "json", status, result, ...(providerRevocation ? { providerRevocation } : {}),
+    headers: { "Cache-Control": "private, no-store" }, cookies: [] };
+}
+
+async function authorizeMutation(request, settings, authorizeWorkspaceAdmin) {
+  if (!settings || !trustedOrigin(settings) || !settings.clientId ||
+      typeof authorizeWorkspaceAdmin !== "function") return { response: error(503, "LINEAR_NOT_CONFIGURED") };
+  if (request.headers.get("origin") !== settings.publicOrigin) return { response: error(403, "BAD_ORIGIN") };
+  let workspaceId;
+  try { workspaceId = String((await request.formData()).get("workspaceId") ?? ""); } catch {
+    return { response: error(400, "INVALID_REQUEST") };
+  }
+  const actor = await authorizeWorkspaceAdmin(workspaceId);
+  if (!actor || actor.workspaceId !== workspaceId || typeof actor.userId !== "string" || !UUID.test(actor.userId)) {
+    return { response: error(403, "WORKSPACE_FORBIDDEN") };
+  }
+  return { actor };
+}
+
+function refreshState(connection, now) {
+  if (connection.refreshAttemptId) {
+    const started = Date.parse(connection.refreshStartedAt ?? "");
+    return Number.isFinite(started) && started > now - 5 * 60_000 ? "refresh-in-progress" : "refresh-uncertain";
+  }
+  return null;
+}
+
+async function safeRevoke(revokeTokens, tokens) {
+  if (!tokens) return { allRevoked: false };
+  try { return await revokeTokens(tokens); } catch { return { allRevoked: false }; }
+}
+
+/** Durable claim precedes the provider request; uncertain outcomes leave the claim locked. */
+export async function refreshLinearConnectionRoute(request, {
+  settings, authorizeWorkspaceAdmin, loadConnection, claimRefresh,
+  requestRefresh, completeRefresh, rejectRefresh, invalidateUncertainRefresh, revokeTokens, now = Date.now(),
+}) {
+  const authorized = await authorizeMutation(request, settings, authorizeWorkspaceAdmin);
+  if (authorized.response) return authorized.response;
+  if (typeof loadConnection !== "function" || typeof claimRefresh !== "function" ||
+      typeof requestRefresh !== "function" || typeof completeRefresh !== "function" ||
+      typeof rejectRefresh !== "function" || typeof invalidateUncertainRefresh !== "function" ||
+      typeof revokeTokens !== "function") return error(503, "LINEAR_NOT_CONFIGURED");
+  const { actor } = authorized;
+  let connection;
+  try { connection = await loadConnection(actor); } catch { return outcome(503, "unavailable"); }
+  if (!connection || connection.revokedAt) return outcome(404, "not-connected");
+  if (Date.parse(connection.accessExpiresAt) > now + 120_000) return outcome(200, "still-valid");
+  const existing = refreshState(connection, now);
+  if (existing) return outcome(409, existing);
+
+  const attemptId = randomUUID();
+  let claimed;
+  try { claimed = await claimRefresh({ actor, version: connection.version, attemptId }); } catch {
+    return outcome(503, "unavailable");
+  }
+  if (!claimed) {
+    try { connection = await loadConnection(actor); } catch { return outcome(503, "unavailable"); }
+    if (!connection || connection.revokedAt) return outcome(404, "not-connected");
+    if (Date.parse(connection.accessExpiresAt) > now + 120_000) return outcome(200, "still-valid");
+    return outcome(409, refreshState(connection, now) ?? "conflict");
+  }
+
+  const claim = { actor, version: connection.version, attemptId };
+  let tokens;
+  try {
+    tokens = await requestRefresh(connection.refreshToken);
+  } catch (cause) {
+    if (cause?.code === "LINEAR_OAUTH_INVALID_GRANT") {
+      let rejected = false;
+      try { rejected = await rejectRefresh(claim); } catch { /* keep the local connection unusable on RPC failures */ }
+      return outcome(rejected ? 401 : 503, rejected ? "reauth-required" : "unavailable");
+    }
+    // Do not clear the durable claim after a timeout, network failure, or malformed success:
+    // the provider may already have consumed and rotated the old refresh token.
+    return outcome(503, "refresh-uncertain");
+  }
+
+  if (!tokens || typeof tokens.accessToken !== "string" || !tokens.accessToken ||
+      typeof tokens.refreshToken !== "string" || !tokens.refreshToken ||
+      !Number.isSafeInteger(tokens.expiresInSeconds) || tokens.expiresInSeconds <= 0 ||
+      !Array.isArray(tokens.scopes) || tokens.scopes.length !== 1 || tokens.scopes[0] !== "read") {
+    const revocation = await safeRevoke(revokeTokens, tokens);
+    try { await rejectRefresh(claim); } catch { /* remain fail-closed */ }
+    return outcome(401, "reauth-required", revocation.allRevoked ? "confirmed" : "unconfirmed");
+  }
+
+  let completed;
+  try {
+    completed = await completeRefresh({
+      ...claim,
+      connection: { linearWorkspaceId: connection.linearWorkspaceId, linearActorId: connection.linearActorId },
+      tokens,
+      scopes: tokens.scopes,
+      expiresAt: new Date(now + tokens.expiresInSeconds * 1000).toISOString(),
+    });
+  } catch { completed = false; }
+  if (!completed) {
+    // A disconnect or a storage failure may win the CAS after Linear rotates the token.
+    try { await invalidateUncertainRefresh(claim); } catch { /* do not reactivate or retry the claimed token */ }
+    const revocation = await safeRevoke(revokeTokens, tokens);
+    return outcome(503, "refresh-uncertain", revocation.allRevoked ? "confirmed" : "unconfirmed");
+  }
+  return outcome(200, "refreshed");
+}
+
+/** Locally disables first; remote revocation is reported only when Linear returns HTTP 200. */
+export async function disconnectLinearConnectionRoute(request, {
+  settings, authorizeWorkspaceAdmin, loadConnection, revokeLocal, revokeTokens,
+}) {
+  const authorized = await authorizeMutation(request, settings, authorizeWorkspaceAdmin);
+  if (authorized.response) return authorized.response;
+  if (typeof loadConnection !== "function" || typeof revokeLocal !== "function" || typeof revokeTokens !== "function") {
+    return error(503, "LINEAR_NOT_CONFIGURED");
+  }
+  const { actor } = authorized;
+  let connection;
+  try { connection = await loadConnection(actor); } catch { return outcome(503, "unavailable"); }
+  if (!connection) return outcome(200, "disconnected", "unconfirmed");
+
+  if (!connection.revokedAt) {
+    let revoked;
+    try { revoked = await revokeLocal({ actor, version: connection.version }); } catch { revoked = false; }
+    if (!revoked) return outcome(409, "conflict");
+  }
+
+  let result;
+  try { result = await revokeTokens({ accessToken: connection.accessToken, refreshToken: connection.refreshToken }); } catch { result = null; }
+  return outcome(200, "disconnected", result?.allRevoked === true ? "confirmed" : "unconfirmed");
 }
 
 function redirect(settings, result, clear = false) {

@@ -44,10 +44,11 @@ jobs:
           -f supabase/migrations/20261024093000_atlas_linear_oauth_states.sql
           -f tests/sql/linear-oauth-state-migration.sql
           -f supabase/migrations/20261024103000_atlas_linear_oauth_connections.sql
+          -f supabase/migrations/20261024104500_linear_oauth_refresh_gate.sql
           -f tests/sql/linear-oauth-connection-migration.sql
       - name: Verify expiry and atomic concurrent consumption
         run: bash tests/sql/linear-oauth-state-concurrency.sh
-      - name: Verify atomic connection rotation and revocation
+      - name: Verify serialized refresh, connection rotation, and revocation
         run: bash tests/sql/linear-oauth-connection-concurrency.sh
 
   validate:

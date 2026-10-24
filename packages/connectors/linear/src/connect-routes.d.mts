@@ -6,7 +6,7 @@ export interface LinearRouteCookie {
   path: string; maxAge: number;
 }
 export type LinearRouteResult =
-  | { kind: "json"; status: number; error: string; headers: Record<string, string>; cookies: [] }
+  | { kind: "json"; status: number; error?: string; result?: string; providerRevocation?: "confirmed" | "unconfirmed"; headers: Record<string, string>; cookies: [] }
   | { kind: "redirect"; status: 303; location: string; headers: Record<string, string>; cookies: LinearRouteCookie[] };
 export function verifyLinearWorkspaceAdmin(client: unknown, workspaceId: string): Promise<{
   workspaceId: string; userId: string;
@@ -41,4 +41,32 @@ export function callbackLinearOAuthRoute(request: Request, dependencies: {
     state: string; cookieState: string; workspaceId: string; userId: string; stateKey: string; now: number;
   }) => Promise<unknown>;
   now?: number;
+}): Promise<LinearRouteResult>;
+export function refreshLinearConnectionRoute(request: Request, dependencies: {
+  settings: { publicOrigin: string; clientId: string; clientSecret?: string } | null;
+  authorizeWorkspaceAdmin: (workspaceId: string) => Promise<{ workspaceId: string; userId: string } | null>;
+  loadConnection: (actor: { workspaceId: string; userId: string }) => Promise<null | {
+    accessToken: string; refreshToken: string; linearWorkspaceId: string; linearActorId: string;
+    scopes: string[]; accessExpiresAt: string; version: number; revokedAt: string | null;
+    refreshAttemptId: string | null; refreshStartedAt: string | null;
+  }>;
+  claimRefresh: (args: { actor: { workspaceId: string; userId: string }; version: number; attemptId: string }) => Promise<boolean>;
+  requestRefresh: (refreshToken: string) => Promise<{ accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[] }>;
+  completeRefresh: (args: { actor: { workspaceId: string; userId: string }; version: number; attemptId: string;
+    connection: { linearWorkspaceId: string; linearActorId: string };
+    tokens: { accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[] };
+    scopes: string[]; expiresAt: string }) => Promise<false | { version: number }>;
+  rejectRefresh: (args: { actor: { workspaceId: string; userId: string }; version: number; attemptId: string }) => Promise<boolean>;
+  invalidateUncertainRefresh: (args: { actor: { workspaceId: string; userId: string }; version: number; attemptId: string }) => Promise<boolean>;
+  revokeTokens: (tokens: { accessToken: string; refreshToken: string }) => Promise<unknown>;
+  now?: number;
+}): Promise<LinearRouteResult>;
+export function disconnectLinearConnectionRoute(request: Request, dependencies: {
+  settings: { publicOrigin: string; clientId: string } | null;
+  authorizeWorkspaceAdmin: (workspaceId: string) => Promise<{ workspaceId: string; userId: string } | null>;
+  loadConnection: (actor: { workspaceId: string; userId: string }) => Promise<null | {
+    accessToken: string; refreshToken: string; version: number; revokedAt: string | null;
+  }>;
+  revokeLocal: (args: { actor: { workspaceId: string; userId: string }; version: number }) => Promise<boolean>;
+  revokeTokens: (tokens: { accessToken: string; refreshToken: string }) => Promise<{ allRevoked: boolean }>;
 }): Promise<LinearRouteResult>;

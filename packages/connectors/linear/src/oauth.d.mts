@@ -9,7 +9,10 @@ export function exchangeLinearAuthorizationCode(args: {
 }): Promise<{
   accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[];
 }>;
+export function refreshLinearOAuthToken(args: {
+  refreshToken: string; clientId: string; clientSecret?: string; fetchImpl?: typeof fetch;
+}): Promise<{ accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[] }>;
 
 export function revokeLinearOAuthTokens(args: {
   accessToken: string; refreshToken: string; fetchImpl?: typeof fetch;
-}): Promise<void>;
+}): Promise<{ accessRevoked: boolean; refreshRevoked: boolean; allRevoked: boolean }>;

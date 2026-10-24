@@ -5,6 +5,7 @@ import { consumeLinearOAuthState, createLinearOAuthState } from "../../../packag
 import { LINEAR_CALLBACK_PATH, LINEAR_PKCE_COOKIE, LINEAR_STATE_COOKIE,
   verifyLinearStateActor, verifyLinearWorkspaceAdmin } from "../../../packages/connectors/linear/src/connect-routes.mjs";
 import { linearTokenVaultFromEnvironment } from "../../../packages/connectors/linear/src/token-vault.mjs";
+import { loadLinearConnectionForActor } from "../../../packages/connectors/linear/src/connection-store.mjs";
 
 export const linearConnectCookieName = LINEAR_STATE_COOKIE;
 export const linearPkceCookieName = LINEAR_PKCE_COOKIE;
@@ -54,6 +55,18 @@ export async function requireLinearWorkspaceAdminForState(admin: SupabaseClient,
   const client = await createSupabaseServerClient();
   if (!client) return null;
   return verifyLinearStateActor({ client, admin, stateHash });
+}
+
+export async function loadLinearConnectionForCurrentActor(admin: SupabaseClient,
+  actor: { workspaceId: string; userId: string }, vault: ReturnType<typeof linearTokenVault> | null,
+  options: { allowExpired?: boolean; includeRevoked?: boolean } = {}) {
+  const session = await createSupabaseServerClient();
+  if (!session) return null;
+  const connection = await loadLinearConnectionForActor({
+    session, admin, workspaceId: actor.workspaceId, vault,
+    allowExpired: options.allowExpired, includeRevoked: options.includeRevoked,
+  });
+  return connection?.actorUserId === actor.userId ? connection : null;
 }
 
 export function linearStateStore(admin: SupabaseClient) {
