@@ -240,3 +240,83 @@ test("concurrent callbacks have exactly one database-store consumer", async () =
   assert.equal(results.filter((result) => new URL(result.location).searchParams.get("linear") === "callback-disabled").length, 1);
   assert.equal(results.filter((result) => new URL(result.location).searchParams.get("linear") === "invalid-state").length, 1);
 });
+
+test("enabled callback saves only after identity verification and returns a fixed outcome", async () => {
+  const flow = await makeFlow();
+  const deps = callbackDependencies({ store: flow.store });
+  let exchanged = 0;
+  let verified = 0;
+  let saved;
+  const result = await callbackLinearOAuthRoute(callbackRequest({ state: flow.state, verifier: flow.verifierCookie }), {
+    ...deps.dependencies,
+    callbackEnabled: true,
+    prepareConnectionStore: async () => {},
+    revokeTokens: async () => {},
+    exchangeCode: async (args) => {
+      exchanged++;
+      assert.equal(args.code, "one-time-code");
+      assert.equal(args.codeVerifier, flow.verifierCookie);
+      return { accessToken: "test-access", refreshToken: "test-refresh", expiresInSeconds: 3600, scopes: ["read"] };
+    },
+    verifyLinearIdentity: async (accessToken) => {
+      verified++;
+      assert.equal(accessToken, "test-access");
+      return { userId: userA, workspaceId: workspaceB };
+    },
+    saveConnection: async (record) => { saved = record; },
+  });
+  assert.equal(new URL(result.location).searchParams.get("linear"), "connected");
+  assert.equal(exchanged, 1);
+  assert.equal(verified, 1);
+  assert.equal(saved.actor.userId, userA);
+  assert.equal(saved.actor.workspaceId, workspaceA);
+  assert.equal(saved.linearIdentity.workspaceId, workspaceB);
+  assert.equal(saved.scopes.join(","), "read");
+  assert.ok(Date.parse(saved.expiresAt) > now);
+  assert.equal(result.headers["Cache-Control"], "private, no-store");
+});
+
+test("callback refuses broad scopes or maps identity/storage failures to a safe result", async () => {
+  const flow = await makeFlow();
+  const base = callbackDependencies({ store: flow.store }).dependencies;
+  let verified = 0;
+  let revoked = 0;
+  const scopeMismatch = await callbackLinearOAuthRoute(callbackRequest({ state: flow.state, verifier: flow.verifierCookie }), {
+    ...base, callbackEnabled: true, prepareConnectionStore: async () => {}, revokeTokens: async () => { revoked++; },
+    exchangeCode: async () => ({ accessToken: "secret", refreshToken: "secret", expiresInSeconds: 3600, scopes: ["read", "write"] }),
+    verifyLinearIdentity: async () => { verified++; return { userId: userA, workspaceId: workspaceA }; },
+    saveConnection: async () => assert.fail("must not persist unapproved scopes"),
+  });
+  assert.equal(new URL(scopeMismatch.location).searchParams.get("linear"), "unavailable");
+  assert.equal(verified, 0);
+  assert.equal(revoked, 1);
+
+  const nextFlow = await makeFlow();
+  const storageFailure = await callbackLinearOAuthRoute(callbackRequest({ state: nextFlow.state, verifier: nextFlow.verifierCookie }), {
+    ...callbackDependencies({ store: nextFlow.store }).dependencies,
+    callbackEnabled: true, prepareConnectionStore: async () => {},
+    exchangeCode: async () => ({ accessToken: "secret", refreshToken: "secret", expiresInSeconds: 3600, scopes: ["read"] }),
+    verifyLinearIdentity: async () => ({ userId: userA, workspaceId: workspaceA }),
+    saveConnection: async () => { throw new Error("database response with secret"); },
+    revokeTokens: async (tokens) => { assert.equal(tokens.accessToken, "secret"); },
+  });
+  assert.equal(new URL(storageFailure.location).searchParams.get("linear"), "unavailable");
+  assert.doesNotMatch(storageFailure.location, /secret|database/);
+});
+
+
+test("callback checks the persistent table before code exchange and does not exchange when it is unavailable", async () => {
+  const flow = await makeFlow();
+  let exchanged = 0;
+  const result = await callbackLinearOAuthRoute(callbackRequest({ state: flow.state, verifier: flow.verifierCookie }), {
+    ...callbackDependencies({ store: flow.store }).dependencies,
+    callbackEnabled: true,
+    prepareConnectionStore: async () => { throw new Error("table missing"); },
+    exchangeCode: async () => { exchanged++; throw new Error("must not exchange"); },
+    verifyLinearIdentity: async () => assert.fail("identity must not be queried"),
+    saveConnection: async () => assert.fail("must not save"),
+    revokeTokens: async () => {},
+  });
+  assert.equal(new URL(result.location).searchParams.get("linear"), "unavailable");
+  assert.equal(exchanged, 0);
+});

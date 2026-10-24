@@ -103,3 +103,19 @@ export async function exchangeLinearAuthorizationCode({
     scopes: Array.isArray(token.scope) ? token.scope : String(token.scope ?? "").split(/[ ,]+/).filter(Boolean),
   };
 }
+
+
+/** Best-effort revoke for token pairs that could not be safely stored. */
+export async function revokeLinearOAuthTokens({ accessToken, refreshToken, fetchImpl = fetch }) {
+  for (const token of [accessToken, refreshToken]) {
+    if (typeof token !== "string" || !token) continue;
+    try {
+      await fetchImpl("https://api.linear.app/oauth/revoke", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+        body: new URLSearchParams({ token }),
+        cache: "no-store",
+      });
+    } catch { /* Never expose provider responses or credentials to callers. */ }
+  }
+}

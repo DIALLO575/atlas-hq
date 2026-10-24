@@ -37,14 +37,18 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install --yes postgresql-client
-      - name: Apply migration and verify RLS and grants in disposable PostgreSQL
+      - name: Apply OAuth migrations and verify server-only grants in disposable PostgreSQL
         run: >-
           psql -X -v ON_ERROR_STOP=1
           -f tests/sql/linear-oauth-state-fixture.sql
           -f supabase/migrations/20261024093000_atlas_linear_oauth_states.sql
           -f tests/sql/linear-oauth-state-migration.sql
+          -f supabase/migrations/20261024103000_atlas_linear_oauth_connections.sql
+          -f tests/sql/linear-oauth-connection-migration.sql
       - name: Verify expiry and atomic concurrent consumption
         run: bash tests/sql/linear-oauth-state-concurrency.sh
+      - name: Verify atomic connection rotation and revocation
+        run: bash tests/sql/linear-oauth-connection-concurrency.sh
 
   validate:
     runs-on: ubuntu-latest

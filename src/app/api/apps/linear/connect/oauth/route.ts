@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callbackLinearOAuthRoute } from "../../../../../../../packages/connectors/linear/src/connect-routes.mjs";
+import { exchangeLinearAuthorizationCode, revokeLinearOAuthTokens } from "../../../../../../../packages/connectors/linear/src/oauth.mjs";
+import { verifyLinearOAuthIdentity } from "../../../../../../../packages/connectors/linear/src/linear-identity.mjs";
+import { saveLinearConnection } from "../../../../../../../packages/connectors/linear/src/connection-store.mjs";
 import {
-  adminLinearStateClient, consumeRegisteredLinearOAuthState, linearConnectSettings,
+  adminLinearStateClient, assertLinearConnectionStoreReady, consumeRegisteredLinearOAuthState,
+  linearConnectSettings, linearTokenVault,
   requireLinearWorkspaceAdminForState,
 } from "@/lib/linear/connect";
 
@@ -23,20 +27,33 @@ function toNextResponse(result: Awaited<ReturnType<typeof callbackLinearOAuthRou
 }
 
 /**
- * Deliberately unavailable until encrypted durable credential storage is reviewed.
- * This route never exchanges a code or persists Linear tokens.
+ * Disabled by default. Enabling requires explicit server configuration, encryption keys,
+ * and the unapplied server-only connection migration.
  */
 export async function GET(request: NextRequest) {
   const settings = linearConnectSettings();
+  const vault = linearTokenVault();
+  const admin = settings ? adminLinearStateClient(settings) : null;
   return toNextResponse(await callbackLinearOAuthRoute(request, {
     settings,
-    resolveActorForState: async (stateHash) => {
-      const admin = adminLinearStateClient(settings!);
-      return requireLinearWorkspaceAdminForState(admin, stateHash);
-    },
+    callbackEnabled: settings?.callbackEnabled === true && Boolean(vault),
+    clientSecret: settings?.clientSecret,
+    resolveActorForState: async (stateHash) => admin
+      ? requireLinearWorkspaceAdminForState(admin, stateHash) : null,
     consumeState: async ({ state, cookieState, workspaceId, userId, stateKey }) => {
-      const admin = adminLinearStateClient(settings!);
-      return consumeRegisteredLinearOAuthState(admin, { state, cookieState, workspaceId, userId, stateKey });
+      return admin
+        ? consumeRegisteredLinearOAuthState(admin, { state, cookieState, workspaceId, userId, stateKey })
+        : false;
     },
+    prepareConnectionStore: async (actor) => {
+      if (!admin) throw new Error("LINEAR_CONNECTION_STORE_UNAVAILABLE");
+      await assertLinearConnectionStoreReady(admin, actor);
+    },
+    exchangeCode: (args) => exchangeLinearAuthorizationCode(args),
+    revokeTokens: (tokens) => revokeLinearOAuthTokens(tokens),
+    verifyLinearIdentity: (accessToken) => verifyLinearOAuthIdentity(accessToken),
+    saveConnection: (record) => admin && vault
+      ? saveLinearConnection(admin, { ...record, vault })
+      : Promise.reject(new Error("LINEAR_CONNECTION_STORE_UNAVAILABLE")),
   }));
 }

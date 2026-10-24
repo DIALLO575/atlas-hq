@@ -115,7 +115,9 @@ export async function startLinearOAuthRoute(request, {
 }
 
 export async function callbackLinearOAuthRoute(request, {
-  settings, resolveActorForState, consumeState, now = Date.now(),
+  settings, resolveActorForState, consumeState, callbackEnabled = false, clientSecret,
+  prepareConnectionStore, exchangeCode, verifyLinearIdentity, saveConnection, revokeTokens,
+  now = Date.now(),
 }) {
   if (!settings || !trustedOrigin(settings) || typeof settings.stateKey !== "string" ||
       Buffer.byteLength(settings.stateKey) < 32) return error(503, "LINEAR_NOT_CONFIGURED");
@@ -135,8 +137,46 @@ export async function callbackLinearOAuthRoute(request, {
   if (callback.searchParams.has("error") || !callback.searchParams.get("code")) {
     return redirect(settings, "oauth-denied", true);
   }
-  // The handler has no exchange dependency by design: fail closed until token storage is reviewed.
-  return redirect(settings, "callback-disabled", true);
+  if (callbackEnabled !== true || typeof exchangeCode !== "function" ||
+      typeof verifyLinearIdentity !== "function" || typeof saveConnection !== "function" ||
+      typeof prepareConnectionStore !== "function" || typeof revokeTokens !== "function") {
+    return redirect(settings, "callback-disabled", true);
+  }
+  try { await prepareConnectionStore(actor); } catch {
+    return redirect(settings, "unavailable", true);
+  }
+  let tokens;
+  try {
+    tokens = await exchangeCode({
+      code: callback.searchParams.get("code"),
+      clientId: settings.clientId,
+      clientSecret,
+      redirectUri: settings.redirectUri,
+      codeVerifier: verifier,
+    });
+    if (!tokens || tokens.scopes?.length !== 1 || tokens.scopes[0] !== "read") {
+      if (tokens) await revokeTokens(tokens).catch(() => {});
+      return redirect(settings, "unavailable", true);
+    }
+    const linearIdentity = await verifyLinearIdentity(tokens.accessToken);
+    if (!linearIdentity || !UUID.test(linearIdentity.workspaceId) || !UUID.test(linearIdentity.userId)) {
+      await revokeTokens(tokens).catch(() => {});
+      return redirect(settings, "unavailable", true);
+    }
+    await saveConnection({
+      actor,
+      linearIdentity,
+      tokens,
+      scopes: tokens.scopes,
+      expiresAt: new Date(now + tokens.expiresInSeconds * 1000).toISOString(),
+    });
+    return redirect(settings, "connected", true);
+  } catch {
+    // Best-effort revocation prevents an unpersisted token pair from becoming an orphaned grant.
+    if (tokens) await revokeTokens(tokens).catch(() => {});
+    // Provider and storage errors are mapped to a fixed outcome; no response bodies or secrets escape.
+    return redirect(settings, "unavailable", true);
+  }
 }
 
 export function registerOAuthStateWithStore(args) {

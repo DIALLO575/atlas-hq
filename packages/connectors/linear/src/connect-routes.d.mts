@@ -21,7 +21,21 @@ export function startLinearOAuthRoute(request: Request, dependencies: {
   now?: number;
 }): Promise<LinearRouteResult>;
 export function callbackLinearOAuthRoute(request: Request, dependencies: {
-  settings: { publicOrigin: string; stateKey: string } | null;
+  settings: { publicOrigin: string; stateKey: string; clientId: string; redirectUri: string } | null;
+  callbackEnabled?: boolean;
+  clientSecret?: string;
+  prepareConnectionStore?: (actor: { workspaceId: string; userId: string }) => Promise<void>;
+  revokeTokens?: (tokens: { accessToken: string; refreshToken: string }) => Promise<void>;
+  exchangeCode?: (args: {
+    code: string; clientId: string; clientSecret?: string; redirectUri: string; codeVerifier: string;
+  }) => Promise<{ accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[] }>;
+  verifyLinearIdentity?: (accessToken: string) => Promise<{ userId: string; workspaceId: string }>;
+  saveConnection?: (record: {
+    actor: { workspaceId: string; userId: string };
+    linearIdentity: { userId: string; workspaceId: string };
+    tokens: { accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[] };
+    scopes: string[]; expiresAt: string;
+  }) => Promise<unknown>;
   resolveActorForState: (stateHash: string, now: string) => Promise<{ workspaceId: string; userId: string } | null>;
   consumeState: (args: {
     state: string; cookieState: string; workspaceId: string; userId: string; stateKey: string; now: number;

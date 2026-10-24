@@ -9,3 +9,7 @@ export function exchangeLinearAuthorizationCode(args: {
 }): Promise<{
   accessToken: string; refreshToken: string; expiresInSeconds: number; scopes: string[];
 }>;
+
+export function revokeLinearOAuthTokens(args: {
+  accessToken: string; refreshToken: string; fetchImpl?: typeof fetch;
+}): Promise<void>;

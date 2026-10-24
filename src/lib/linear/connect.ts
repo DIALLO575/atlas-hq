@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { consumeLinearOAuthState, createLinearOAuthState } from "../../../packages/connectors/linear/src/oauth-state.mjs";
 import { LINEAR_CALLBACK_PATH, LINEAR_PKCE_COOKIE, LINEAR_STATE_COOKIE,
   verifyLinearStateActor, verifyLinearWorkspaceAdmin } from "../../../packages/connectors/linear/src/connect-routes.mjs";
+import { linearTokenVaultFromEnvironment } from "../../../packages/connectors/linear/src/token-vault.mjs";
 
 export const linearConnectCookieName = LINEAR_STATE_COOKIE;
 export const linearPkceCookieName = LINEAR_PKCE_COOKIE;
@@ -23,10 +24,18 @@ export function linearConnectSettings() {
     if (origin.origin !== publicOrigin.replace(/\/$/, "") || origin.protocol !== "https:" ||
         callback.toString() !== redirectUri || redirectUri !== `${origin.origin}${LINEAR_CALLBACK_PATH}` ||
         callback.username || callback.password || callback.search || callback.hash) return null;
-    return { publicOrigin: origin.origin, url, serviceKey, clientId, redirectUri, stateKey };
+    return {
+      publicOrigin: origin.origin, url, serviceKey, clientId, redirectUri, stateKey,
+      clientSecret: process.env.LINEAR_OAUTH_CLIENT_SECRET,
+      callbackEnabled: process.env.LINEAR_OAUTH_CALLBACK_ENABLED === "true",
+    };
   } catch {
     return null;
   }
+}
+
+export function linearTokenVault() {
+  try { return linearTokenVaultFromEnvironment(); } catch { return null; }
 }
 
 export function adminLinearStateClient(settings: NonNullable<ReturnType<typeof linearConnectSettings>>) {
@@ -86,8 +95,15 @@ export async function consumeRegisteredLinearOAuthState(admin: SupabaseClient, a
 }
 
 export function linearConnectRedirect(settings: NonNullable<ReturnType<typeof linearConnectSettings>>, result: string) {
-  const allowed = new Set(["callback-disabled", "invalid-state", "forbidden", "oauth-denied", "unavailable"]);
+  const allowed = new Set(["callback-disabled", "connected", "invalid-state", "forbidden", "oauth-denied", "unavailable"]);
   const url = new URL("/apps", settings.publicOrigin);
   url.searchParams.set("linear", allowed.has(result) ? result : "unavailable");
   return url;
+}
+
+
+export async function assertLinearConnectionStoreReady(admin: SupabaseClient, actor: { workspaceId: string; userId: string }) {
+  const { error } = await admin.from("atlas_linear_connections")
+    .select("version").eq("workspace_id", actor.workspaceId).eq("user_id", actor.userId).maybeSingle();
+  if (error) throw new Error("LINEAR_CONNECTION_STORE_UNAVAILABLE");
 }
