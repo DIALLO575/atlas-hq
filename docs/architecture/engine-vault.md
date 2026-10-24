@@ -27,9 +27,10 @@ bytea roundtrips.
 
 1. Configure key lifecycle with a trusted KMS or secret provider.
    Never put keys in NEXT_PUBLIC_, Git, logs, sessions or localStorage.
-2. SCHEMA GAP: private.atlas_engine_credentials has key_id and version;
-   private.atlas_engine_outbox is missing both. Review an additive
-   migration before storing any encrypted outbox payload.
+2. SCHEMA FIXED: additive migration 20261024163943_atlas_engine_outbox_envelope_v1
+   has been applied to the connected Supabase project. Both key_id and
+   version are required on private.atlas_engine_outbox and the table is empty.
+   This does NOT implement a key management service or an outbox worker.
 3. Use a trusted worker with private SQL driver or narrow internal
    privileged API: private schema must remain UNEXPOSED to Supabase Data API.
 4. Implement true actor-session verification, resource authorization,
@@ -38,3 +39,12 @@ bytea roundtrips.
 
 Status: a cryptographic primitive tested offline, not a deployed secret
 manager. No real MAUSBOT engine has been connected; writes remain hard-blocked.
+
+
+## Correct PostgreSQL column mapping
+
+- Credential records: key_id, version, nonce, ciphertext, tag.
+- Outbox records: key_id, version, payload_nonce, payload_ciphertext, payload_tag.
+- The code has two separate conversion helpers so neither SQL schema needs
+  to reinterpret binary values or invent key identity. Neither helper is a
+  database writer.

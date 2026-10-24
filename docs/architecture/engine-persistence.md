@@ -79,3 +79,17 @@ instance only, with created_by taken from the verified auth session. Origin
 and JSON checks, the core engine plan validation and database RLS run before
 insert. No URL, token, secret key, arbitrary options or status is accepted.
 This API neither enables a runtime nor creates a mission or a worker.
+
+
+## Migration 20261024163943 — outbox key identity
+
+Applied to the connected ATLAS Supabase project after success on the
+disposable PostgreSQL 17 CI and checking zero existing outbox records.
+The new NOT NULL outbox columns are key_id and version. Both the database
+history and GitHub contain exactly the same SQL under:
+supabase/migrations/20261024163943_atlas_engine_outbox_envelope_v1.sql.
+
+Follow-up verification: column not-null flags are true, outbox row count
+remains zero, and neither anon nor authenticated can select from private
+outbox. The versioned SQL is exercised after foundation migration in CI.
+No MAUSBOT connection, credential, dispatch or queue insertion occurred.

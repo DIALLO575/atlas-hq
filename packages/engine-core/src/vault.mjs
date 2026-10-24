@@ -107,6 +107,29 @@ export function engineEnvelopeFromRow(row) {
 }
 
 /**
+ * Mapping to private.atlas_engine_outbox (which uses payload_* bytea columns).
+ * Stores key identity with each row so rotation does not guess a root key.
+ */
+export function engineEnvelopeToOutboxRow(envelope) {
+  const row = engineEnvelopeToRow(envelope);
+  return Object.freeze({
+    key_id: row.key_id, version: row.version,
+    payload_nonce: row.nonce,
+    payload_ciphertext: row.ciphertext,
+    payload_tag: row.tag,
+  });
+}
+export function engineEnvelopeFromOutboxRow(row) {
+  if (!plain(row)) fail("VAULT_ENVELOPE_INVALID");
+  return engineEnvelopeFromRow({
+    key_id: row.key_id, version: row.version,
+    nonce: row.payload_nonce,
+    ciphertext: row.payload_ciphertext,
+    tag: row.payload_tag,
+  });
+}
+
+/**
  * Keys: { "key-v1": "<canonical 32-byte base64>", ... }.
  * Return value contains ONLY functions and an active key id, never root keys.
  * Retain previous keys during rotation; deleting an old key is irreversible.

@@ -23,3 +23,10 @@ export function engineEnvelopeToRow(envelope: EngineEnvelope): Readonly<{
 export function engineEnvelopeFromRow(row: {
   key_id: string; version: number; nonce: string; ciphertext: string; tag: string;
 }): EngineEnvelope;
+export function engineEnvelopeToOutboxRow(envelope: EngineEnvelope): Readonly<{
+  key_id: string; version: 1; payload_nonce: string; payload_ciphertext: string; payload_tag: string;
+}>;
+export function engineEnvelopeFromOutboxRow(row: {
+  key_id: string; version: number; payload_nonce: string;
+  payload_ciphertext: string; payload_tag: string;
+}): EngineEnvelope;

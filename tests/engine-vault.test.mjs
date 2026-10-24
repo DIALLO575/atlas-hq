@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import {
   EngineVaultError, createEngineVault, engineEnvelopeToRow, engineEnvelopeFromRow,
+  engineEnvelopeToOutboxRow, engineEnvelopeFromOutboxRow,
 } from "../packages/engine-core/src/vault.mjs";
 
 const workspaceId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -112,4 +113,20 @@ test("Invalid master keys, keyring, context and arbitrary envelope types are rej
   ]) assert.throws(() => original.encrypt(bad, "hello"), EngineVaultError);
   assert.throws(() => original.decrypt(creds, { version: 1, keyId: "key-v1" }), EngineVaultError);
   assert.throws(() => engineEnvelopeToRow({ ...original.encrypt(creds, "x"), tag: Buffer.alloc(2) }), EngineVaultError);
+});
+
+test("Outbox schema mapping includes key provenance and authenticates its payload", () => {
+  const envelope = original.encrypt(payload, "{\"message\":\"never public\"}");
+  const row = engineEnvelopeToOutboxRow(envelope);
+  assert.deepEqual(Object.keys(row).sort(), [
+    "key_id", "payload_ciphertext", "payload_nonce", "payload_tag", "version",
+  ]);
+  assert.equal(row.key_id, "key-v1");
+  const recovered = engineEnvelopeFromOutboxRow(row);
+  assert.deepEqual(recovered, envelope);
+  assert.equal(original.decrypt(payload, recovered).toString("utf8"),
+    "{\"message\":\"never public\"}");
+  assert.equal(JSON.stringify(row).includes("never public"), false);
+  assert.throws(() => engineEnvelopeFromOutboxRow({ ...row, version: 100 }),
+    EngineVaultError);
 });
