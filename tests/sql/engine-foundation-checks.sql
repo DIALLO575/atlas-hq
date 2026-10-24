@@ -82,12 +82,12 @@ begin
 end $$;
 
 insert into private.atlas_engine_outbox(id,workspace_id,instance_id,run_id,idempotency_key,
- payload_nonce,payload_ciphertext,payload_tag)
+ key_id,version,payload_nonce,payload_ciphertext,payload_tag)
 values ('ddddddd1-0000-4000-8000-000000000001',
  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
  'aaaaaaaa-0000-4000-8000-000000000001',
  'aaaaaaa1-0000-4000-8000-000000000001',
- 'cccccccc-0000-4000-8000-000000000001',
+ 'cccccccc-0000-4000-8000-000000000001','test-key-1',1,
  decode(repeat('0a',12),'hex'),decode('aabbcc','hex'),decode(repeat('1a',16),'hex'));
 
 do $$
@@ -99,11 +99,11 @@ begin
  exception when insufficient_privilege then null;end;
  begin
   insert into private.atlas_engine_outbox(workspace_id,instance_id,run_id,idempotency_key,
-   payload_nonce,payload_ciphertext,payload_tag)
+   key_id,version,payload_nonce,payload_ciphertext,payload_tag)
   values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'aaaaaaaa-0000-4000-8000-000000000001',
   'aaaaaaa1-0000-4000-8000-000000000001',
-  'cccccccc-0000-4000-8000-000000000001',
+  'cccccccc-0000-4000-8000-000000000001','test-key-1',1,
   decode(repeat('0a',12),'hex'),decode('aabbcc','hex'),decode(repeat('1a',16),'hex'));
   raise exception 'DUPLICATE_IDEMPOTENCY_KEY_ACCEPTED';
  exception when unique_violation then null;end;
@@ -185,3 +185,18 @@ begin
  if seen<>1 then raise exception 'TENANT_B_RUN_RLS_LEAK';end if;
 end $$;
 reset role;
+
+-- Verified additive encryption metadata: new messages must carry a key ID.
+do $$
+begin
+ if exists (
+  select 1 from information_schema.columns
+  where table_schema='private' and table_name='atlas_engine_outbox'
+    and column_name='key_id' and is_nullable='YES'
+ ) then raise exception 'ENGINE_OUTBOX_KEY_ID_NULLABLE'; end if;
+ if (select count(*) from information_schema.columns
+     where table_schema='private' and table_name='atlas_engine_outbox'
+     and column_name in ('key_id','version'))<>2 then
+   raise exception 'ENGINE_OUTBOX_ENVELOPE_COLUMNS_MISSING';
+ end if;
+end $$;

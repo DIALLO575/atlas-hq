@@ -42,6 +42,7 @@ jobs:
           psql -X -v ON_ERROR_STOP=1
           -f tests/sql/engine-foundation-fixture.sql
           -f supabase/migrations/20261024161305_atlas_engine_foundation_preconnection.sql
+          -f supabase/proposals/engine-outbox-envelope-v1.sql
           -f tests/sql/engine-foundation-checks.sql
 
   linear-oauth-postgres:
