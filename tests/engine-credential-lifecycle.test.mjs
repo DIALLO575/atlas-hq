@@ -109,7 +109,7 @@ test("Revocation is auditable, terminal and prevents subsequent key rotation",as
 test("Session and workspace grants fail closed for all operations",async()=>{
  const state=mockService();
  for(const method of ["create","rotate","revoke","inspect"]){
-   const input={scope,session:"browser-provided",secret:Buffer.from("secret")};
+   const input={scope,session:"browser-provided",...(method==="create"?{secret:Buffer.from("secret")}:{})};
    await assert.rejects(state.svc[method](input),
      e=>e instanceof CredentialLifecycleError && e.code==="CREDENTIAL_ACCESS_DENIED");
  }
@@ -142,7 +142,8 @@ test("Audit failure aborts credential insert, rotate and revoke transaction",asy
  const second=mockService({failRotate:true});
  await second.svc.create({scope,session:"trusted-session",secret:Buffer.from("SECRET")});
  second.activateNextKey();
- await assert.rejects(second.svc.rotate({scope,session:"trusted-session"}),/CAS_FAILED/);
+ await assert.rejects(second.svc.rotate({scope,session:"trusted-session"}),
+   e=>e.code==="CREDENTIAL_STORAGE_FAILED");
  assert.equal(second.memory.get(W+"/"+I).key_id,"vault-1");
  assert.equal(second.auditLog.length,1);
 });
