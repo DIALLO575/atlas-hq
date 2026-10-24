@@ -709,3 +709,45 @@
   .atlas-gh-code-explorer .atlas-gh-diff pre { font-size: 10px; }
   .atlas-gh-code-explorer .atlas-gh-diff pre span { padding: 0 10px; }
 }
+
+
+/* GitHub Studio repository preview; no live write actions in this release. */
+.atlas-gh-studio{background:#fff;border:1px solid #eae5f3;border-radius:18px;padding:20px;min-width:0;box-shadow:0 7px 22px #302d660b}
+.atlas-gh-studio-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding-bottom:17px;border-bottom:1px solid #eeebf5}
+.atlas-gh-studio-kicker{font-size:10px;letter-spacing:.12em;color:#8a70bc;font-weight:780;margin:0 0 7px}
+.atlas-gh-studio h2{font-size:21px;line-height:1.2;letter-spacing:-.035em;margin:0;color:#302846}
+.atlas-gh-studio-head p:last-child{font-size:12px;color:#89829f;margin:8px 0 0}
+.atlas-gh-studio-state{font-size:10px;padding:8px 11px;border:1px solid #e3d8fa;color:#7955be;background:#f8f4ff;border-radius:999px;white-space:nowrap}
+.atlas-gh-studio-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr);gap:24px;padding-top:20px}
+.atlas-gh-studio-form{display:flex;flex-direction:column;gap:16px;min-width:0}
+.atlas-gh-studio-form>label:not(.atlas-gh-studio-check){display:flex;flex-direction:column;gap:7px;font-size:11px;color:#47405f;font-weight:730}
+.atlas-gh-studio-form input[type=text],.atlas-gh-studio-form input[name=repositoryName],.atlas-gh-studio-form textarea{width:100%;min-width:0;border:1px solid #e5dfef;border-radius:10px;padding:11px 12px;font:12px var(--font-body);color:#3c3553;background:#fdfcff;outline-offset:2px;box-sizing:border-box}
+.atlas-gh-studio-form textarea{resize:vertical;min-height:72px}
+.atlas-gh-studio-visibility{border:0;padding:0;margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}
+.atlas-gh-studio-visibility legend{font-size:11px;color:#47405f;font-weight:730;margin-bottom:8px}
+.atlas-gh-studio-visibility label{display:grid;grid-template-columns:15px minmax(0,1fr);align-items:start;gap:4px 8px;padding:12px;border:1px solid #e6e0f1;border-radius:11px;cursor:pointer;font-size:12px;font-weight:720;color:#403554}
+.atlas-gh-studio-visibility label:has(input:checked){background:#f5f1ff;border-color:#c6b4ed}
+.atlas-gh-studio-visibility input{margin:2px 0 0;accent-color:#7657cc}
+.atlas-gh-studio-visibility small{grid-column:2;font-size:10px;font-weight:450;color:#8c849f;line-height:1.5}
+.atlas-gh-studio-check{display:flex;align-items:center;gap:8px;font-size:11px;color:#4f4665}
+.atlas-gh-studio-check input{accent-color:#7657cc}
+.atlas-gh-studio-form button{align-self:flex-start;min-height:39px}
+.atlas-gh-studio-form button:disabled{opacity:.5;cursor:not-allowed}
+.atlas-gh-studio-preview{display:flex;flex-direction:column;min-width:0;border:1px solid #eee9f6;background:#faf9fd;border-radius:14px;padding:20px;gap:10px}
+.atlas-gh-studio-preview-symbol{height:48px;width:48px;border-radius:14px;display:grid;place-items:center;color:#7659c0;background:#eee8fb}
+.atlas-gh-studio-preview-symbol svg{width:23px;height:23px}
+.atlas-gh-studio-preview>strong{font-size:17px;letter-spacing:-.025em;overflow-wrap:anywhere;color:#322846}
+.atlas-gh-studio-preview-type{font-size:10px;color:#7658bd;font-weight:690}
+.atlas-gh-studio-preview>p{font-size:11px;color:#8c85a0;overflow-wrap:anywhere;margin:0}
+.atlas-gh-studio-preview-facts{display:flex;flex-direction:column;gap:10px;border-top:1px solid #e8e3f0;border-bottom:1px solid #e8e3f0;padding:14px 0}
+.atlas-gh-studio-preview-facts span{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:#847c97}
+.atlas-gh-studio-preview-facts b{color:#504565;font-weight:700}
+.atlas-gh-studio-ok{background:#ecf8f1;border:1px solid #cfebda;border-radius:11px;padding:11px 13px;color:#367454;font-size:11px;line-height:1.55}
+.atlas-gh-studio-ok strong{display:block;margin-top:6px;color:#23633e}
+.atlas-gh-studio-caution{background:#fff8ed;border:1px solid #f0e1c3;border-radius:10px;padding:11px;color:#945f2b;font-size:11px;line-height:1.6;margin:0}
+.atlas-gh-studio-unavailable{display:flex;gap:10px;align-items:flex-start;border:1px dashed #dbd3ed;padding:13px;border-radius:11px;background:#fff}
+.atlas-gh-studio-unavailable>svg{color:#7967a2;min-width:18px;height:18px}
+.atlas-gh-studio-unavailable strong{font-size:11px;color:#55486a}
+.atlas-gh-studio-unavailable p{font-size:10px;line-height:1.55;color:#9388a2;margin:4px 0 0}
+@media(max-width:790px){.atlas-gh-studio-layout{grid-template-columns:1fr}.atlas-gh-studio-head{flex-direction:column}}
+@media(max-width:450px){.atlas-gh-studio{padding:14px}.atlas-gh-studio-visibility{grid-template-columns:1fr}}
