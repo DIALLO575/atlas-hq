@@ -51,16 +51,17 @@ export function EnginesHub() {
   useEffect(() => {
     if (!workspaceId) return;
     const abort = new AbortController();
-    setLoading(true);
-    setIssue(null);
-    setEngines([]);
-    setAgents([]);
-    setBotId("");
-    setDispatch(null);
-    setJob(null);
-    setEngineOnline(false);
     const url = "/api/engines?workspaceId=" + encodeURIComponent(workspaceId);
-    void (async () => {
+    void Promise.resolve().then(async () => {
+      if (abort.signal.aborted) return;
+      setLoading(true);
+      setIssue(null);
+      setEngines([]);
+      setAgents([]);
+      setBotId("");
+      setDispatch(null);
+      setJob(null);
+      setEngineOnline(false);
       try {
         const catalog = await readResponse(url, { signal: abort.signal });
         if (abort.signal.aborted) return;
@@ -81,7 +82,7 @@ export function EnginesHub() {
       } finally {
         if (!abort.signal.aborted) setLoading(false);
       }
-    })();
+    });
     return () => abort.abort();
   }, [workspaceId, refreshCounter]);
 
