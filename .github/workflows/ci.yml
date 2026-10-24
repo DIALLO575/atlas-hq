@@ -43,6 +43,7 @@ jobs:
           -f tests/sql/engine-foundation-fixture.sql
           -f supabase/migrations/20261024161305_atlas_engine_foundation_preconnection.sql
           -f supabase/migrations/20261024163943_atlas_engine_outbox_envelope_v1.sql
+          -f supabase/proposals/engine-approval-intent-v1.sql
           -f tests/sql/engine-foundation-checks.sql
 
   linear-oauth-postgres:

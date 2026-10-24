@@ -51,11 +51,11 @@ export function engineApprovalIntentDigest(run){
       typeof run.primitive_id!=="string"||!PRIMITIVE.test(run.primitive_id)||
       typeof run.payload_sha256!=="string"||!SHA.test(run.payload_sha256))
     fail("APPROVAL_INTENT_INVALID");
-  return createHash("sha256").update(JSON.stringify([
+  return createHash("sha256").update([
     "atlas-engine-approval-v1",run.workspace_id.toLowerCase(),
     run.instance_id.toLowerCase(),run.id.toLowerCase(),
     run.mission_id.toLowerCase(),run.primitive_id,run.payload_sha256,
-  ])).digest("hex");
+  ].join("\n"),"utf8").digest("hex");
 }
 function authenticated(result){
   if(!rec(result)||result.verified!==true||

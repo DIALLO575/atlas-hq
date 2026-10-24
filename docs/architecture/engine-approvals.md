@@ -24,7 +24,7 @@ was executed. Tests are pure Node mocks of a trusted PostgreSQL transaction.
 
 ## Intent binding and database gap
 
-The SHA-256 intent hash is derived from a canonical tuple:
+The SHA-256 intent hash is derived from a canonical LF-separated tuple:
 
 \`[ATLAS approval v1, workspace_id, instance_id, run_id, mission_id,
 primitive_id, payload_sha256]\`.
@@ -43,8 +43,8 @@ columns and DB-level checks before production wiring.
 
 ## Required before SHA-150 Done
 
-1. Add and test the minimal additive SQL migration on disposable Postgres,
-   then review and apply it to Supabase, preserving existing rows.
+1. Verify the additive SQL in disposable PostgreSQL; only then review and
+   apply it to Supabase after confirming the relevant tables remain empty.
 2. Implement a trusted private SQL adapter: \`SELECT ... FOR UPDATE\` or
    equivalent CAS on run/approval, and COMMIT/ROLLBACK of audit in one
    transaction. Do not expose private tables to PostgREST.

@@ -1,4 +1,6 @@
 -- SHA-132 disposable PostgreSQL 17 fixture. No Supabase production connection.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 create role anon nologin;
 create role authenticated nologin;
 create role service_role nologin bypassrls;

@@ -60,23 +60,23 @@ reset role;
 
 -- Even service_role cannot accidentally invent cross-tenant relation.
 set role service_role;
-insert into public.atlas_engine_runs(id,workspace_id,instance_id,mission_id,requested_by,primitive_id)
+insert into public.atlas_engine_runs(id,workspace_id,instance_id,mission_id,requested_by,primitive_id,payload_sha256)
 values
  ('aaaaaaa1-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'aaaaaaaa-0000-4000-8000-000000000001','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-  '11111111-1111-4111-8111-111111111111','agents.list'),
+  '11111111-1111-4111-8111-111111111111','agents.list',repeat('a',64)),
  ('bbbbbbb2-0000-4000-8000-000000000002','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   'bbbbbbbb-0000-4000-8000-000000000002','ffffffff-ffff-4fff-8fff-ffffffffffff',
-  '22222222-2222-4222-8222-222222222222','agents.list');
+  '22222222-2222-4222-8222-222222222222','agents.list',repeat('b',64));
 
 do $$
 begin
  begin
-   insert into public.atlas_engine_runs(workspace_id,instance_id,mission_id,requested_by,primitive_id)
+   insert into public.atlas_engine_runs(workspace_id,instance_id,mission_id,requested_by,primitive_id,payload_sha256)
    values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
    'bbbbbbbb-0000-4000-8000-000000000002',
    'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-   '11111111-1111-4111-8111-111111111111','agents.list');
+   '11111111-1111-4111-8111-111111111111','agents.list',repeat('a',64));
    raise exception 'CROSS_WORKSPACE_ENGINE_RUN_CREATED';
  exception when foreign_key_violation then null;end;
 end $$;
@@ -110,12 +110,18 @@ begin
 end $$;
 
 -- Same workspace, a DIFFERENT real human approves; offline status still blocks dispatch.
-insert into private.atlas_engine_approvals(workspace_id,instance_id,run_id,requested_by,expires_at)
+insert into private.atlas_engine_approvals(workspace_id,instance_id,run_id,requested_by,expires_at,intent_digest)
 values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
  'aaaaaaaa-0000-4000-8000-000000000001',
  'aaaaaaa1-0000-4000-8000-000000000001',
  '11111111-1111-4111-8111-111111111111',
- now()+interval '1 hour');
+ now()+interval '1 hour',
+ private.atlas_engine_intent_digest(
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'aaaaaaaa-0000-4000-8000-000000000001',
+  'aaaaaaa1-0000-4000-8000-000000000001',
+  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  'agents.list',repeat('a',64)));
 do $$
 begin
  begin
@@ -199,4 +205,37 @@ begin
      and column_name in ('key_id','version'))<>2 then
    raise exception 'ENGINE_OUTBOX_ENVELOPE_COLUMNS_MISSING';
  end if;
+end $$;
+
+-- SHA-150 immutable approval intent tests with empty production-safe fixture.
+do $$
+declare expected text;
+begin
+ select private.atlas_engine_intent_digest(
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'aaaaaaaa-0000-4000-8000-000000000001',
+  'aaaaaaa1-0000-4000-8000-000000000001',
+  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  'agents.list',repeat('a',64)) into expected;
+ if (select intent_digest from private.atlas_engine_approvals
+   where run_id='aaaaaaa1-0000-4000-8000-000000000001')<>expected then
+   raise exception 'ENGINE_INTENT_DIGEST_MISSING';end if;
+ begin
+  update public.atlas_engine_runs set payload_sha256=repeat('e',64)
+   where id='aaaaaaa1-0000-4000-8000-000000000001';
+  raise exception 'ENGINE_RUN_PAYLOAD_MUTATED';
+ exception when insufficient_privilege then null;end;
+ begin
+  update private.atlas_engine_approvals set intent_digest=repeat('f',64)
+   where run_id='aaaaaaa1-0000-4000-8000-000000000001';
+  raise exception 'ENGINE_APPROVAL_DIGEST_REPLACED';
+ exception when insufficient_privilege then null;end;
+ if not (select a.attnotnull from pg_attribute a
+    where a.attrelid='public.atlas_engine_runs'::regclass
+      and a.attname='payload_sha256') then
+    raise exception 'ENGINE_RUN_DIGEST_NULLABLE';end if;
+ if not (select a.attnotnull from pg_attribute a
+    where a.attrelid='private.atlas_engine_approvals'::regclass
+      and a.attname='intent_digest') then
+    raise exception 'ENGINE_APPROVAL_DIGEST_NULLABLE';end if;
 end $$;
