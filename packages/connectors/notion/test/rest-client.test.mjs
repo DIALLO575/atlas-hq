@@ -209,3 +209,39 @@ test("distributed reservation failure blocks provider request without fallback",
   await assert.rejects(client.getPage(ID),error=>
     error.code==="PROVIDER_UNAVAILABLE" && requests===0);
 });
+
+test("transient and success provider outcomes reach the durable circuit hook",async()=>{
+  const outcomes=[];
+  let requests=0;
+  const client=createNotionReadClient({
+    token:"secret",
+    requestBudget:{
+      async beforeRequest(){},
+      observeRateLimit(){},
+      async observeOutcome(outcome){outcomes.push(outcome);},
+    },
+    retryOptions:{wait:async()=>{},random:()=>0},
+    request:async()=>{
+      requests++;
+      return requests===1 ? response({},503) : response({object:"page",id:ID});
+    },
+  });
+  await client.getPage(ID);
+  assert.deepEqual(outcomes,["transient","success"]);
+});
+test("reporting transient failure outage stops retry and fails closed",async()=>{
+  let requests=0;
+  const client=createNotionReadClient({
+    token:"secret",
+    requestBudget:{
+      async beforeRequest(){},
+      observeRateLimit(){},
+      async observeOutcome(){throw Error("secret-bearing diagnostic");},
+    },
+    retryOptions:{wait:async()=>{throw Error("never retry");}},
+    request:async()=>{requests++;return response({},503);},
+  });
+  await assert.rejects(client.getPage(ID),e=>e.code==="PROVIDER_UNAVAILABLE" &&
+    !e.message.includes("secret-bearing"));
+  assert.equal(requests,1);
+});

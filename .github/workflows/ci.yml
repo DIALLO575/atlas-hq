@@ -93,10 +93,16 @@ jobs:
           -f supabase/migrations/20261024161500_atlas_notion_rest_distributed_gate.sql
           -f tests/sql/notion-rest-distributed-budget.sql
           -f tests/sql/notion-rest-budget-concurrency-fixture.sql
+          -f supabase/migrations/20261024163000_atlas_notion_async_jobs.sql
+          -f supabase/migrations/20261024163500_atlas_notion_rest_circuit_breaker.sql
+          -f tests/sql/notion-async-jobs-circuit.sql
+          -f tests/sql/notion-async-concurrency-fixture.sql
       - name: Verify cross-process Notion refresh single-flight
         run: bash tests/sql/notion-refresh-concurrency.sh
       - name: Verify two-process Notion REST admission
         run: bash tests/sql/notion-rest-budget-concurrency.sh
+      - name: Verify cross-worker Notion async leases
+        run: bash tests/sql/notion-async-concurrency.sh
 
   validate:
     runs-on: ubuntu-latest

@@ -6,6 +6,9 @@ export interface NotionBudgetBinding {
 export interface NotionDistributedBudgetStore {
   reserve(binding: NotionBudgetBinding & { maxWaitMs: number }): Promise<number | null>;
   cooldown(binding: NotionBudgetBinding & { seconds: number | null }): Promise<boolean>;
+  reportOutcome(binding: NotionBudgetBinding & {
+    outcome: "success" | "transient";
+  }): Promise<boolean>;
 }
 export function createNotionDistributedBudget(args: {
   binding: NotionBudgetBinding;
@@ -13,4 +16,6 @@ export function createNotionDistributedBudget(args: {
   localBudget: NotionScopedReadBudget;
   maxWaitMs?: number;
   wait?: (ms: number, signal?: AbortSignal) => Promise<void>;
-}): NotionScopedReadBudget;
+}): NotionScopedReadBudget & {
+  observeOutcome(outcome: "success" | "transient"): Promise<void>;
+};

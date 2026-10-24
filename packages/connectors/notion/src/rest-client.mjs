@@ -146,6 +146,10 @@ export function createNotionReadClient({
       if (!response.ok) {
         const status = response.status;
         const seconds = retryAfter(response.headers);
+        if (status >= 500 && requestBudget?.observeOutcome) {
+          try { await requestBudget.observeOutcome("transient"); }
+          catch { throw new NotionReadError("PROVIDER_UNAVAILABLE", 503); }
+        }
         if ((status === 429 || status === 529) && requestBudget) {
           try {
             await requestBudget.observeRateLimit(seconds);
@@ -177,8 +181,14 @@ export function createNotionReadClient({
         continue;
       }
       try {
-        return requireObject(await response.json());
-      } catch {
+        const result = requireObject(await response.json());
+        if (requestBudget?.observeOutcome) {
+          try { await requestBudget.observeOutcome("success"); }
+          catch { throw new NotionReadError("PROVIDER_UNAVAILABLE", 503); }
+        }
+        return result;
+      } catch (error) {
+        if (error instanceof NotionReadError) throw error;
         throw new NotionReadError("INVALID_RESPONSE", 502);
       }
     }

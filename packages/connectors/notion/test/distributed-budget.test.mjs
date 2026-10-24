@@ -15,7 +15,7 @@ function fixture(store) {
     observeRateLimit(seconds) { events.push(["local-cooldown",seconds]); },
   };
   const gate = createNotionDistributedBudget({
-    binding: key, store, localBudget,
+    binding: key, store: {reportOutcome: async()=>true, ...store}, localBudget,
     wait: async ms => {events.push(["wait",ms]);},
   });
   return { gate, events };
@@ -69,4 +69,23 @@ test("full standard UUIDs are valid but truncated UUIDs fail closed",()=>{
     store:{reserve:async()=>0,cooldown:async()=>true},
     localBudget:{beforeRequest:async()=>{},observeRateLimit(){}},
   }),{code:"INVALID_BUDGET_CONFIG"});
+});
+
+test("provider outcome is shared or fails closed before a retry",async()=>{
+  const outcomes=[];
+  const {gate}=fixture({
+    async reserve(){return 0;},async cooldown(){return true;},
+    async reportOutcome(key){outcomes.push(key);return true;},
+  });
+  await gate.observeOutcome("transient");
+  await gate.observeOutcome("success");
+  assert.deepEqual(outcomes.map(x=>x.outcome),["transient","success"]);
+  const unavailable=fixture({
+    async reserve(){return 0;},async cooldown(){return true;},
+    async reportOutcome(){return false;},
+  });
+  await assert.rejects(unavailable.gate.observeOutcome("transient"),
+    {code:"BUDGET_UNAVAILABLE"});
+  await assert.rejects(gate.observeOutcome("bogus"),
+    {code:"INVALID_BUDGET_OUTCOME"});
 });

@@ -20,6 +20,7 @@ export function createNotionDistributedBudget({
 }) {
   if (!valid(binding) || !store || typeof store.reserve !== "function" ||
       typeof store.cooldown !== "function" ||
+      typeof store.reportOutcome !== "function" ||
       !localBudget || typeof localBudget.beforeRequest !== "function" ||
       typeof localBudget.observeRateLimit !== "function" ||
       typeof wait !== "function" ||
@@ -56,6 +57,19 @@ export function createNotionDistributedBudget({
         if (saved !== true) throw new Error("NOTION_BUDGET_DENIED");
       } catch {
         // Do not retry a 429/529 if the cooldown could not be shared.
+        throw new NotionBudgetError("BUDGET_UNAVAILABLE");
+      }
+    },
+    async observeOutcome(outcome) {
+      if (!["success","transient"].includes(outcome)) {
+        throw new NotionBudgetError("INVALID_BUDGET_OUTCOME");
+      }
+      try {
+        if (await store.reportOutcome({ ...key, outcome }) !== true) {
+          throw new Error("NOTION_BUDGET_OUTCOME_REJECTED");
+        }
+      } catch {
+        // Do not optimistic-retry when circuit sharing is unavailable.
         throw new NotionBudgetError("BUDGET_UNAVAILABLE");
       }
     },

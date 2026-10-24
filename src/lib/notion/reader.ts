@@ -87,6 +87,16 @@ export async function loadNotionPersonalConnection({
           if (error) throw new Error("NOTION_BUDGET_STORE_UNAVAILABLE");
           return data === true;
         },
+        async reportOutcome(key) {
+          const { data, error } = await admin.rpc("atlas_notion_report_rest_outcome", {
+            p_connection_id: key.connectionId,
+            p_workspace_id: key.workspaceId, p_user_id: key.userId,
+            p_notion_workspace_id: key.notionWorkspaceId,
+            p_expected_version: key.version, p_outcome: key.outcome,
+          });
+          if (error) throw new Error("NOTION_BUDGET_STORE_UNAVAILABLE");
+          return data === true;
+        },
       },
     });
   };

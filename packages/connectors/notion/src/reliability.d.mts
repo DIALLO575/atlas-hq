@@ -3,7 +3,8 @@ export class NotionBudgetError extends Error {
 }
 export interface NotionScopedReadBudget {
   beforeRequest(signal?: AbortSignal): Promise<void>;
-  observeRateLimit(seconds: number | null): void;
+  observeRateLimit(seconds: number | null): void | Promise<void>;
+  observeOutcome?(outcome: "success" | "transient"): void | Promise<void>;
 }
 export interface NotionRestBudget {
   beforeRequest(scope: { workspaceId: string; connectionId: string },
