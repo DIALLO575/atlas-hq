@@ -27,7 +27,8 @@ test("rejects any missing, unverified or cross-workspace binding before contacti
     { ...authorized, status: "pending-ownership-check" },
     { ...authorized, status: "active" },
     { ...authorized, status: "selection-rejected" },
-    { ...authorized, repositorySelection: "all" },
+    { ...authorized, repositorySelection: "unknown" },
+    { ...authorized, repositorySelection: "all", repositories: [{ id: 7 }] },
     { ...authorized, repositories: [] },
   ];
   for (const stored of invalid) {
@@ -98,6 +99,40 @@ test("reads a PR only after server-verified binding, using scoped installation c
   assert.equal(detail.resource.headSha, "a".repeat(40));
   assert.equal(detail.files[0].path, "auth.ts");
   assert.equal(seen.length, 4);
+});
+
+test("all installation grants are tenant bound and token permissions remain read-only", async () => {
+  const calls = [];
+  const client = await createAuthorizedGitHubReader({
+    tenantId: "workspace-a", installationId: 77,
+    lookup: async ({ tenantId, installationId }) => {
+      assert.equal(tenantId, "workspace-a");
+      assert.equal(installationId, 77);
+      return { ...authorized, repositorySelection: "all", repositories: [] };
+    },
+    appId: "1234", privateKey, now,
+    request: async (url, init) => {
+      calls.push(url);
+      if (url.endsWith("/access_tokens")) {
+        assert.deepEqual(JSON.parse(init.body), { permissions: { pull_requests: "read" } });
+        return json({ token: "ghs-fake", expires_at: "2026-10-23T13:00:00Z",
+          permissions: { pull_requests: "read" } }, 201);
+      }
+      assert.equal(init.headers.Authorization, "Bearer ghs-fake");
+      if (url.includes("/installation/repositories")) {
+        return json({ repository_selection: "all", total_count: 2,
+          repositories: [{ id: 7, full_name: "example/first", private: true },
+            { id: 8, full_name: "example/future", private: true }] });
+      }
+      if (url.includes("/repos/example/future/pulls?")) return json([]);
+      throw new Error("Unexpected request");
+    },
+  });
+  const list = await client.listRepositories();
+  assert.deepEqual(list.repositories.map(x => x.id), [7, 8]);
+  assert.deepEqual((await client.listPullRequests(8)).pullRequests, []);
+  assert.equal(calls.filter(x => x.includes("/access_tokens")).length, 1);
+  await assert.rejects(client.getPullRequest(999, 1), (error) => error.code === "PERMISSION_DENIED");
 });
 
 test("fails closed when persistent authorization storage cannot be read", async () => {
