@@ -4,6 +4,7 @@ import { Icon } from "@/components/icon";
 import { readAtlasWorkflow } from "@/lib/atlas-workflow";
 import { buildChiefReply } from "@/lib/chief/briefing";
 import { ChiefCommandDeck } from "@/components/chief-command-deck";
+import { NotionObservationsPanel } from "@/components/notion-observations-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +22,11 @@ export default async function ChiefPage({
       <Icon name="layers"/><h1>Préparez votre espace Chief</h1>
       <p>Créez un workspace pour obtenir un briefing sur vos missions et validations réelles.</p>
       <Link href="/workspaces">Créer un workspace <Icon name="arrow-right"/></Link>
-    </section> : <ChiefCommandDeck key={data.selected.id}
+    </section> : <><ChiefCommandDeck key={data.selected.id}
       workspace={data.selected}
       workspaces={data.spaces}
       initialReply={buildChiefReply(initialPrompt,data.selected.name,
-        data.missions,data.reviews,data.userId,data.selected.role === "owner" || data.selected.role === "admin")}/>}
+        data.missions,data.reviews,data.userId,data.selected.role === "owner" || data.selected.role === "admin")}/>
+      <NotionObservationsPanel workspaceId={data.selected.id}/></>}
   </main></AppShell>;
 }

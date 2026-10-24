@@ -8,6 +8,7 @@ import { createNotionReadClient, NotionReadError }
 import { NotionRefreshError } from "../../../../../../packages/connectors/notion/src/refresh-token.mjs";
 import { loadNotionPersonalConnection, NotionConnectionAccessError, refreshNotionPersonalConnection }
   from "@/lib/notion/reader";
+import { saveNotionResourceObservation } from "@/lib/notion/observations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,11 +63,13 @@ export async function GET(request: NextRequest) {
         ? client.getBlock(requestedId) : kind === "database"
         ? client.getDatabase(requestedId) : client.getDataSource(requestedId);
       let raw;
+      let verifiedVersion = record.version;
       try {
         raw = await get(client);
       } catch (error) {
         if (!(error instanceof NotionReadError) || error.code !== "AUTH_REQUIRED") throw error;
         const refreshed = await refreshNotionPersonalConnection(loaded);
+        verifiedVersion = refreshed.version;
         raw = await get(createNotionReadClient({ token: refreshed.accessToken }));
       }
       const checkedAt = Date.now();
@@ -81,8 +84,16 @@ export async function GET(request: NextRequest) {
         configuredSurfaces: { rest: true }, connectionBinding: binding,
         resourceRef, providerEvidence: [proof], checkedAt,
       });
+      // Provenance persistence is best effort; a provider GET may succeed even
+      // when the new migration has not been deployed. Never fabricate a write.
+      let persisted = false;
+      try {
+        persisted = await saveNotionResourceObservation(loaded, resourceRef, verifiedVersion);
+      } catch {
+        persisted = false;
+      }
       return reply({
-        ...snapshot, resource: resourceRef,
+        ...snapshot, resource: resourceRef, persisted,
       });
     }
     const checkedAt = Date.now();

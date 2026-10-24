@@ -34,3 +34,8 @@ Références :
 - GET `/api/apps/notion/capabilities?verify=1&resourceKind=page&resourceId=UUID&workspaceId=...&connectionId=...` réalise un GET Notion dans la session serveur et produit la preuve courte. Idem pour `block`, `database`, `data_source`. Un 401 peut déclencher une seule rotation durable avant retry du GET. Les refus 403 et les ressources non partagées/inconnues 404 ne fabriquent pas de preuve.
 - Dans les résultats de recherche du Control Center, le bouton « Vérifier l'accès à cette ressource » compare l'identité de ressource renvoyée et présente un résultat honnête et indépendant de la recherche par titre.
 - **Pas de stockage de preuve durable, pas de migration Supabase** dans ce lot. La fraîcheur en mémoire vaut 60 secondes ; la persistance de provenance (avec purge, RLS et invalidation sur révocation) sera étudiée dans le chantier ultérieur, après validation sandbox.
+
+
+## Lot 3 — provenance durable proposée (PR source seulement)
+
+Voir [notion-resource-observations.md](notion-resource-observations.md) pour la migration RLS/RPC **non appliquée au projet Supabase officiel**, ses tests SQL et sa règle fondamentale : une observation historique n'est jamais une autorisation. Après une preuve serveur Notion, la route peut écrire uniquement IDs/version/temps si la migration est disponible. Les panneaux Chief/Missions lisent les références personnelles sans contenu, sous contrôle d'appartenance ATLAS et avec filtre SQL de connexion active et version correspondante ; en l'absence de référence ou de configuration, ils ne s'affichent pas. Une révocation purge les références de la connexion. Ni les agents, ni les webhooks, ni les écritures Notion ne sont activés.

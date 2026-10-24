@@ -91,11 +91,13 @@ export function NotionResourcesClient({ workspaceId, connectionId }: Props) {
       const expected = item.kind === "page" ? "rest.pages.retrieve"
         : item.kind === "database" ? "rest.databases.retrieve"
         : "rest.data_sources.retrieve";
+      const persisted = "persisted" in body && body.persisted === true;
       const verified = body.capabilities.some(cap => cap &&
         typeof cap === "object" && "id" in cap && cap.id === expected &&
         "available" in cap && cap.available === true);
       setResourceResults(current => ({ ...current, [item.id]: verified
-        ? "Lecture de cette ressource vérifiée auprès de Notion."
+        ? persisted ? "Lecture vérifiée auprès de Notion ; référence enregistrée."
+          : "Lecture vérifiée auprès de Notion ; historique non enregistré."
         : "Aucune preuve de lecture de cette ressource." }));
     } catch {
       setResourceResults(current => ({

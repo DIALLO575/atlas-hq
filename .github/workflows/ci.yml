@@ -90,6 +90,8 @@ jobs:
           -f tests/sql/notion-store-rpc.sql
           -f tests/sql/notion-revoke-rpc.sql
           -f tests/sql/notion-refresh-migration.sql
+          -f supabase/migrations/20261024160100_atlas_notion_resource_observations.sql
+          -f tests/sql/notion-resource-observations.sql
       - name: Verify cross-process Notion refresh single-flight
         run: bash tests/sql/notion-refresh-concurrency.sh
 
