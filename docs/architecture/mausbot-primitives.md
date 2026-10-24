@@ -177,7 +177,7 @@ Source officielle vérifiée :
 - inspection CLI `team apply --dry-run` ou `--check` uniquement,
   en passant une liste d'arguments sans shell et des chemins
   pré-provisionnés dans un worker externe.
-  
+
 Les 7 plans refusent les clés étrangères, fausses autorisations, path
 traversal, commandes destructives implicites et répétitions automatiques.
 Ils ne sont **pas exécutables** : la vérification de propriété des canaux,
