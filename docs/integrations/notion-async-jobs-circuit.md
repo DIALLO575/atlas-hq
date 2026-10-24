@@ -6,6 +6,7 @@ This slice builds on PR #35. The following migrations are **NOT applied** to off
 
 - `20261024163000_atlas_notion_async_jobs.sql`: queue for **Notion async_task status GET only**.
 - `20261024163500_atlas_notion_rest_circuit_breaker.sql`: shared per-workspace transient-response circuit.
+- `20261024165000_atlas_notion_async_retention.sql`: bounded cleanup of terminal async metadata.
 
 **No write queue, no replay of create/update page calls, no access token or page content in the queue.** The persisted queue stores only task IDs, ATLAS/Notion actor and connection scope, credential version, attempts, lease token/time, sanitized error category and timestamps. Provider task result is deliberately discarded.
 
@@ -15,6 +16,7 @@ This slice builds on PR #35. The following migrations are **NOT applied** to off
 - Claim RPC uses `FOR UPDATE SKIP LOCKED`, 30–120 second leases (90 recommended), lease-token CAS on finish and at most eight GET polls by default. Expired leases are reclaimed; exhausted leases become dead letters.
 - Finish RPC marks succeeded, poll_again, transient or permanent, with bounded retry delay and only sanctioned error codes. Wrong/expired leases are rejected.
 - Any OAuth token rotation or connection revocation **deletes queued task pointers** for that connection.
+- Terminal metadata can be purged in batches of 1–1000 after 1–90 days through a service-role-only RPC. The source does not schedule that RPC, and it never selects queued or leased work.
 - `async-task-worker.mjs` is a pure dependency-injected one-job pump, not a deployed or scheduled worker. A production runner will require secret-protected scheduling, current credentials, vault, revalidation and distributed admission for each GET.
 
 ## Shared circuit breaker

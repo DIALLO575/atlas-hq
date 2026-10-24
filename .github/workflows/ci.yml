@@ -131,6 +131,7 @@ jobs:
           -f tests/sql/notion-rest-budget-concurrency-fixture.sql
           -f supabase/migrations/20261024163000_atlas_notion_async_jobs.sql
           -f supabase/migrations/20261024163500_atlas_notion_rest_circuit_breaker.sql
+          -f supabase/migrations/20261024165000_atlas_notion_async_retention.sql
           -f tests/sql/notion-async-jobs-circuit.sql
           -f tests/sql/notion-async-concurrency-fixture.sql
       - name: Verify cross-process Notion refresh single-flight
