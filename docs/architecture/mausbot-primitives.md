@@ -81,3 +81,18 @@ Séquence :
 contrats validés → mappings HTTP testés → isolation multi-tenant et journal
 d'actions Supabase → worker MCP+CLI+SSE → test de MAUSBOT isolé → premier
 raccordement privé → extension progressive vers Hermes.
+
+## Contrats de transport préparés sans connexion (lot suivant)
+
+\`packages/engines/mausbot/src/protocols.mjs\` fournit trois primitives *hors réseau* :
+- \`planMausbotMcpCall\` valide l'action ATLAS, émet un message JSON-RPC 2.0
+  \`tools/call\` vers le nom officiel MCP; n'ouvre aucun stdio lui-même.
+- \`parseMausbotSseBlock\` interprète une frame complète SSE et le curseur
+  / \`resumed\`; le message est projeté sans captures d'écran ni secret. Pas
+  encore de consommation en continu, reprise ni stockage cursor SQL.
+- \`planMausbotCli\` produit un \`argv\` shell-free pour un **worker durable** :
+  doctor, engine list, team apply --dry-run / --check et apply seulement si
+  un appelant lui fournit un accord explicite. L'accord doit encore être
+  relié à une validation humaine persistée côté ATLAS.
+
+Ces contrats ne constituent PAS une connexion MCP, SSE ou CLI opérationnelle.
