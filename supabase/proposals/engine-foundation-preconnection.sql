@@ -5,6 +5,8 @@ create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
 -- Authenticated users must resolve existing private.is_workspace_* RLS helpers.
 grant usage on schema private to authenticated,service_role;
+-- Approval guard must read membership roles; only trusted service_role gets this grant.
+grant select on public.workspace_members to service_role;
 
 create table public.atlas_engine_instances (
  id uuid primary key default gen_random_uuid(),
