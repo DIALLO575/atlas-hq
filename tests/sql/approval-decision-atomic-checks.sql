@@ -1,5 +1,9 @@
 -- SHA-150 disposable PostgreSQL 17 atomic human decision tests.
 \set ON_ERROR_STOP on
+-- Other engine-foundation tests already insert outbox fixtures. Only assert
+-- that approval decisions do NOT create any additional rows.
+create temp table approval_decision_outbox_baseline as
+ select count(*)::integer as n from private.atlas_engine_outbox;
 -- Prior Inbox test revoked the admin role and session. Issue a fresh mock session.
 update public.workspace_members set role='admin'
  where workspace_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -69,7 +73,8 @@ begin
   where run_id='aaaaaaa3-0000-4000-8000-000000000003'
    and event_key='engine.approval.approved')<>1 then
    raise exception 'APPROVAL_AUDIT_MISSING';end if;
- if exists(select 1 from private.atlas_engine_outbox) then
+ if (select count(*) from private.atlas_engine_outbox)<>
+    (select n from pg_temp.approval_decision_outbox_baseline) then
    raise exception 'DECISION_DISPATCHED_WITHOUT_WORKER';end if;
 end $$;
 -- Use second tenant to test audit failure causes COMPLETE rollback.
@@ -133,6 +138,7 @@ update public.workspace_members set role='member' where
  and user_id='33333333-3333-4333-8333-333333333333';
 -- No live dispatch or outbox should have occurred.
 do $$ begin
- if (select count(*) from private.atlas_engine_outbox)<>0 then
+ if (select count(*) from private.atlas_engine_outbox)<>
+    (select n from pg_temp.approval_decision_outbox_baseline) then
   raise exception 'DECISION_CREATED_OUTBOX';end if;
 end $$;
