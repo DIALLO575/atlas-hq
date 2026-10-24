@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const githubFeedback: Record<string, string> = {
   connected: "GitHub est bien connecté à ATLAS. Vous pouvez maintenant consulter les dépôts autorisés.",
-  "select-repositories": "GitHub est installé, mais l’accès à tous les dépôts est incompatible avec ce connecteur. Sur GitHub, ouvrez Settings → Applications → ATLAS HQ Connect → Configure, choisissez « Only select repositories », sélectionnez au moins un dépôt et enregistrez.",
+  "select-repositories": "Ce message provient d’un ancien essai. ATLAS accepte désormais « All repositories » et « Only select repositories ». Relancez « Installer ou reconnecter GitHub » dans l’onglet Connexion.",
   "no-repositories": "L’installation GitHub ne comporte aucun dépôt autorisé. Choisissez au moins un dépôt dans GitHub, puis relancez la connexion.",
   "installation-not-owned": "Le compte GitHub utilisé pour l’autorisation n’est pas le propriétaire de cette installation ATLAS HQ Connect. Reconnectez-vous avec le compte propriétaire.",
   "installation-suspended": "Cette installation GitHub est suspendue. Réactivez-la dans GitHub avant de réessayer.",
