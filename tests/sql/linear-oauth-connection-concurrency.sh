@@ -9,8 +9,8 @@ trap 'rm -f "$first_output" "$second_output"' EXIT
 save_sql="BEGIN; select public.atlas_linear_save_connection(
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-  'test-v2', 'MDAwMDAwMDAwMDAy', 'Y2lwaGVydGV4dFJvdGF0ZWQ', 'MDAwMDAwMDAwMDAwMDAwMDA',
-  'MDAwMDAwMDAwMDAz', 'cmVmcmVzaGNpcGhlclJvdGF0ZWQ', 'MDAwMDAwMDAwMDAwMDAwMDA',
+  'test-v2', 'MDAwMDAwMDAwMDAy', 'Y2lwaGVydGV4dFJvdGF0ZWQ', 'AAAAAAAAAAAAAAAAAAAAAA',
+  'MDAwMDAwMDAwMDAz', 'cmVmcmVzaGNpcGhlclJvdGF0ZWQ', 'AAAAAAAAAAAAAAAAAAAAAA',
   array['read']::text[], now() + interval '1 day', 2
 ); select pg_sleep(2); COMMIT;"
 

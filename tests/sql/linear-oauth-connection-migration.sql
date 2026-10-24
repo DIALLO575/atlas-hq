@@ -55,8 +55,8 @@ begin
   saved := public.atlas_linear_save_connection(
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111',
     'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-    'test-v1', 'MDAwMDAwMDAwMDAw', 'Y2lwaGVydGV4dA', 'MDAwMDAwMDAwMDAwMDAwMDA',
-    'MDAwMDAwMDAwMDAx', 'cmVmcmVzaGNpcGhlcg', 'MDAwMDAwMDAwMDAwMDAwMDA',
+    'test-v1', 'MDAwMDAwMDAwMDAw', 'Y2lwaGVydGV4dA', 'AAAAAAAAAAAAAAAAAAAAAA',
+    'MDAwMDAwMDAwMDAx', 'cmVmcmVzaGNpcGhlcg', 'AAAAAAAAAAAAAAAAAAAAAA',
     array['read']::text[], now() + interval '1 day', null
   );
   if saved <> 1 then raise exception 'First actor connection did not insert'; end if;
@@ -70,8 +70,8 @@ begin
     perform public.atlas_linear_save_connection(
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '22222222-2222-4222-8222-222222222222',
       'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-      'test-v1', 'MDAwMDAwMDAwMDAw', 'Y2lwaGVydGV4dA', 'MDAwMDAwMDAwMDAwMDAwMDA',
-      'MDAwMDAwMDAwMDAx', 'cmVmcmVzaGNpcGhlcg', 'MDAwMDAwMDAwMDAwMDAwMDA',
+      'test-v1', 'MDAwMDAwMDAwMDAw', 'Y2lwaGVydGV4dA', 'AAAAAAAAAAAAAAAAAAAAAA',
+      'MDAwMDAwMDAwMDAx', 'cmVmcmVzaGNpcGhlcg', 'AAAAAAAAAAAAAAAAAAAAAA',
       array['read']::text[], now() + interval '1 day', null
     );
     raise exception 'Cross-workspace actor unexpectedly accepted';
