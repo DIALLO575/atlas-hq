@@ -151,7 +151,7 @@ export function EnginesHub() {
       {wsState.status === "loading" && <p role="status">Chargement des workspaces…</p>}
       {wsState.status === "error" && <p role="alert">Accès aux workspaces indisponible.</p>}
       {wsState.status === "ready" && !activeWorkspace && <p role="status">Aucun workspace accessible.</p>}
-      {issue && <p className="atlas-engine-warning" role="alert">Connexion ou lecture impossible : {issue}. Aucun agent fictif n'est affiché.</p>}
+      {issue && <p className="atlas-engine-warning" role="alert">Connexion ou lecture impossible : {issue}. Aucun agent fictif n’est affiché.</p>}
 
       <div className="atlas-engine-grid">
         {(engines.length ? engines : [
@@ -179,7 +179,7 @@ export function EnginesHub() {
       {activeEngine?.status === "not-configured" && (
         <section className="atlas-engine-panel">
           <h2>Raccorder MAUSBOT</h2>
-          <p>Configurer les variables serveur ATLAS_MAUSBOT_URL, ATLAS_MAUSBOT_TOKEN et ATLAS_MAUSBOT_WORKSPACE_ID pour un workspace isolé. Aucun secret n'est saisi dans le navigateur.</p>
+          <p>Configurer les variables serveur ATLAS_MAUSBOT_URL, ATLAS_MAUSBOT_TOKEN et ATLAS_MAUSBOT_WORKSPACE_ID pour un workspace isolé. Aucun secret n’est saisi dans le navigateur.</p>
         </section>
       )}
 
@@ -198,7 +198,7 @@ export function EnginesHub() {
 
           <section className="atlas-engine-panel">
             <h2>Nouvelle mission</h2>
-            <p>Créer une tâche MAUSBOT puis transmettre l'instruction. L'approbation reste en mode « demander ».</p>
+            <p>Créer une tâche MAUSBOT puis transmettre l’instruction. L’approbation reste en mode « demander ».</p>
             <form className="atlas-engine-form" onSubmit={(event) => void submitMission(event)}>
               <label>Agent
                 <select required value={botId} onChange={(event) => setBotId(event.target.value)} disabled={!engineOnline || agents.length === 0}>
@@ -221,7 +221,7 @@ export function EnginesHub() {
                 <strong>{dispatch.accepted ? "Mission acceptée par MAUSBOT" : dispatch.taskCreated ? "Tâche créée, message non confirmé" : "Mission non transmise"}</strong>
                 {dispatch.threadId && <p>Conversation : <code>{dispatch.threadId}</code></p>}
                 {dispatch.error && <p>Diagnostic : {dispatch.error}. Vérifier le moteur avant toute nouvelle tentative.</p>}
-                {dispatch.accepted && <p>L'envoi a été accepté ; cela ne garantit pas que le travail est terminé.</p>}
+                {dispatch.accepted && <p>L’envoi a été accepté ; cela ne garantit pas que le travail est terminé.</p>}
                 {dispatch.threadId && <button type="button" onClick={() => void inspectJob(dispatch.threadId!)}>Vérifier le job</button>}
                 {job && <p>État : {job.state ?? job.status ?? job.phase ?? "non communiqué"}{job.version !== null ? " · version " + job.version : ""}</p>}
                 {jobIssue && <p>Job : {jobIssue}</p>}
