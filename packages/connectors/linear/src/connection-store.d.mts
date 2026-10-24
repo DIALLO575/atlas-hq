@@ -9,7 +9,7 @@ export function saveLinearConnection(admin: unknown, args: {
 export function loadLinearConnectionForActor(args: {
   session: unknown; admin: unknown; workspaceId: string; vault: {
     decryptTokens(record: EncryptedLinearTokens, binding: LinearTokenBinding): { accessToken: string; refreshToken: string };
-  } | null; allowExpired?: boolean; includeRevoked?: boolean;
+  } | null; allowExpired?: boolean; includeRevoked?: boolean; allowMemberRead?: boolean;
 }): Promise<null | { accessToken: string; refreshToken: string; actorUserId: string; linearWorkspaceId: string; linearActorId: string;
   scopes: string[]; accessExpiresAt: string; version: number; revokedAt: string | null;
   refreshAttemptId: string | null; refreshStartedAt: string | null }>;

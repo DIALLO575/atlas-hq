@@ -1,11 +1,29 @@
 const ENDPOINT = "https://api.linear.app/graphql";
 
 export class LinearApiError extends Error {
-  constructor(code) {
+  constructor(code, { retryAfterSeconds } = {}) {
     super(code);
     this.name = "LinearApiError";
     this.code = code;
+    if (Number.isSafeInteger(retryAfterSeconds) && retryAfterSeconds > 0) {
+      this.retryAfterSeconds = Math.min(retryAfterSeconds, 86_400);
+    }
   }
+}
+
+function retryAfterSeconds(headers, now = Date.now()) {
+  const retryAfter = headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.max(1, Math.ceil(seconds));
+    const date = Date.parse(retryAfter);
+    if (Number.isFinite(date)) return Math.max(1, Math.ceil((date - now) / 1000));
+  }
+  for (const name of ["x-ratelimit-endpoint-requests-reset", "x-ratelimit-requests-reset"]) {
+    const epochMs = Number(headers.get(name));
+    if (Number.isFinite(epochMs) && epochMs > 0) return Math.max(1, Math.ceil((epochMs - now) / 1000));
+  }
+  return undefined;
 }
 
 // Tokenize enough of GraphQL's executable-document grammar to identify every
@@ -143,15 +161,25 @@ export async function linearGraphql({ accessToken, query, operationName, variabl
   }
   if (response.status === 401) throw new LinearApiError("LINEAR_API_UNAUTHORIZED");
   if (response.status === 403) throw new LinearApiError("LINEAR_API_FORBIDDEN");
-  if (!response.ok) throw new LinearApiError("LINEAR_API_UNAVAILABLE");
+  if (response.status === 429) throw new LinearApiError("LINEAR_API_RATE_LIMITED", {
+    retryAfterSeconds: retryAfterSeconds(response.headers),
+  });
   let payload;
   try {
     payload = await response.json();
   } catch {
+    if (!response.ok) throw new LinearApiError("LINEAR_API_UNAVAILABLE");
     throw new LinearApiError("LINEAR_API_INVALID_RESPONSE");
   }
+  if (Array.isArray(payload?.errors) && payload.errors.some((error) => error?.extensions?.code === "RATELIMITED")) {
+    throw new LinearApiError("LINEAR_API_RATE_LIMITED", {
+      retryAfterSeconds: retryAfterSeconds(response.headers),
+    });
+  }
+  if (!response.ok) throw new LinearApiError("LINEAR_API_UNAVAILABLE");
   if (!payload || (Array.isArray(payload.errors) && payload.errors.length)) {
     throw new LinearApiError("LINEAR_API_QUERY_FAILED");
   }
+  if (!payload.data || typeof payload.data !== "object") throw new LinearApiError("LINEAR_API_INVALID_RESPONSE");
   return payload.data;
 }

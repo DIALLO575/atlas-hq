@@ -51,6 +51,17 @@ export async function requireLinearWorkspaceAdmin(workspaceId: string) {
   return verifyLinearWorkspaceAdmin(client, workspaceId);
 }
 
+export async function requireLinearWorkspaceMember(workspaceId: string) {
+  const client = await createSupabaseServerClient();
+  if (!client || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(workspaceId)) return null;
+  const { data: { user }, error: authError } = await client.auth.getUser();
+  if (authError || !user?.id) return null;
+  const { data: membership, error: membershipError } = await client.from("workspace_members")
+    .select("role").eq("workspace_id", workspaceId).eq("user_id", user.id).maybeSingle();
+  if (membershipError || !membership || !["owner", "admin", "member"].includes(membership.role)) return null;
+  return { workspaceId, userId: user.id };
+}
+
 export async function requireLinearWorkspaceAdminForState(admin: SupabaseClient, stateHash: string) {
   const client = await createSupabaseServerClient();
   if (!client) return null;
@@ -59,12 +70,12 @@ export async function requireLinearWorkspaceAdminForState(admin: SupabaseClient,
 
 export async function loadLinearConnectionForCurrentActor(admin: SupabaseClient,
   actor: { workspaceId: string; userId: string }, vault: ReturnType<typeof linearTokenVault> | null,
-  options: { allowExpired?: boolean; includeRevoked?: boolean } = {}) {
+  options: { allowExpired?: boolean; includeRevoked?: boolean; allowMemberRead?: boolean } = {}) {
   const session = await createSupabaseServerClient();
   if (!session) return null;
   const connection = await loadLinearConnectionForActor({
     session, admin, workspaceId: actor.workspaceId, vault,
-    allowExpired: options.allowExpired, includeRevoked: options.includeRevoked,
+    allowExpired: options.allowExpired, includeRevoked: options.includeRevoked, allowMemberRead: options.allowMemberRead,
   });
   return connection?.actorUserId === actor.userId ? connection : null;
 }

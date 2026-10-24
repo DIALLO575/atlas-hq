@@ -57,13 +57,16 @@ export async function saveLinearConnection(admin, { actor, linearIdentity, token
 }
 
 /** The user identity and role are derived from a verified session and live membership. */
-export async function loadLinearConnectionForActor({ session, admin, workspaceId, vault, allowExpired = false, includeRevoked = false }) {
+export async function loadLinearConnectionForActor({
+  session, admin, workspaceId, vault, allowExpired = false, includeRevoked = false, allowMemberRead = false,
+}) {
   if (typeof workspaceId !== "string" || !UUID.test(workspaceId)) return null;
   const { data: { user }, error: authError } = await session.auth.getUser();
   if (authError || !user?.id) return null;
   const { data: membership, error: membershipError } = await session.from("workspace_members")
     .select("role").eq("workspace_id", workspaceId).eq("user_id", user.id).maybeSingle();
-  if (membershipError || !membership || !canManageLinearConnection(membership.role)) return null;
+  if (membershipError || !membership ||
+      (!canManageLinearConnection(membership.role) && !(allowMemberRead && membership.role === "member"))) return null;
   let query = admin.from("atlas_linear_connections")
     .select("workspace_id,user_id,linear_workspace_id,linear_actor_id,token_key_id,access_nonce,access_ciphertext,access_tag,refresh_nonce,refresh_ciphertext,refresh_tag,scopes,access_expires_at,version,revoked_at,refresh_attempt_id,refresh_started_at")
     .eq("workspace_id", workspaceId).eq("user_id", user.id);

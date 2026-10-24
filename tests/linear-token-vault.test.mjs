@@ -117,6 +117,10 @@ test("connection store binds one actor and workspace, uses version CAS, and deni
   assert.deepEqual({ accessToken: loaded.accessToken, refreshToken: loaded.refreshToken }, tokenPair);
   assert.equal(loaded.linearWorkspaceId, linearWorkspaceId);
   assert.equal(await loadLinearConnectionForActor({ session: session(actorUserId, "member"), admin, workspaceId: atlasWorkspaceId, vault }), null);
+  const memberRead = await loadLinearConnectionForActor({
+    session: session(actorUserId, "member"), admin, workspaceId: atlasWorkspaceId, vault, allowMemberRead: true,
+  });
+  assert.deepEqual({ accessToken: memberRead.accessToken, refreshToken: memberRead.refreshToken }, tokenPair);
   assert.equal(await loadLinearConnectionForActor({ session: session(), admin, workspaceId: otherWorkspaceId, vault }), null);
   assert.equal(await loadLinearConnectionForActor({ session: session(otherActorId), admin, workspaceId: atlasWorkspaceId, vault }), null);
   await assert.rejects(saveLinearConnection(admin, { ...input, scopes: ["read", "write"] }), /LINEAR_CONNECTION_INVALID/);
