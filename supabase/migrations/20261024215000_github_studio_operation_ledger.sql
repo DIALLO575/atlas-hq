@@ -239,4 +239,3 @@ revoke all on function public.atlas_gh_studio_finalize_repository(uuid,bigint)
  from public,anon,authenticated,service_role;
 grant execute on function public.atlas_gh_studio_finalize_repository(uuid,bigint)
  to service_role;
-
