@@ -10,7 +10,7 @@ export function exchangeGitHubAppCode(input: {
 export function verifyPersonalInstallation(input: {
   userToken: string; appId: string | number; installationId: number;
   request?: GitHubProviderRequest;
-}): Promise<{ installationId: number; repositoryIds: number[]; accountLogin: string }>;
+}): Promise<{ installationId: number; repositoryIds: number[]; repositorySelection: "selected" | "all"; accountLogin: string }>;
 export function githubUserOAuthUrl(input: {
   clientId: string; redirectUri: string; state: string;
 }): string;
