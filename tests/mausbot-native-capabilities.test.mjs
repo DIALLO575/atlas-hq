@@ -41,10 +41,10 @@ test("Native source-mapped team memory and skill editing use actual HTTP verbs",
  for(const [name,method] of expected){const p=nativePrimitive(name);assert.ok(p,name);assert.equal(p.method,method);assert.equal(p.callable,false)}
 });
 
-test("Offline adapter classifications match exactly eleven native reads and eleven guarded mutation plans",()=>{
+test("Offline adapters and mutation plans stay strictly non-callable across source families",()=>{
  const sum=nativeCoverageSummary();
- assert.equal(sum.mockTestedReads,11);
- assert.equal(sum.validatedMutationPlans,11);
+ assert.equal(sum.mockTestedReads,13);
+ assert.equal(sum.validatedMutationPlans,18);
  assert.equal(sum.callable,0);
  assert.equal(sum.testedLive,0);
  for(const p of MAUSBOT_NATIVE_CAPABILITIES){
