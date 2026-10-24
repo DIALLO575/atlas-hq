@@ -48,7 +48,10 @@ export async function GET(request: NextRequest) {
       // At most ONE rotating token grant, with a durable SQL claim. Never
       // replay a provider write or retry refresh on unknown outcome.
       const refreshed = await refreshNotionPersonalConnection(loaded);
-      const client = createNotionReadClient({ token: refreshed.accessToken });
+      const client = createNotionReadClient({
+        token: refreshed.accessToken,
+        requestBudget: loaded.budgetForVersion(refreshed.version),
+      });
       return json(await execute(client));
     }
   } catch (error) {
@@ -68,7 +71,8 @@ export async function GET(request: NextRequest) {
       const status = error.code === "AUTH_REQUIRED" ? 409
         : error.code === "PERMISSION_DENIED" ? 403
         : error.code === "NOT_FOUND_OR_HIDDEN" ? 404
-        : error.code === "RATE_LIMITED" ? 429 : 502;
+        : error.code === "RATE_LIMITED" ? 429
+        : error.code === "PROVIDER_OVERLOADED" ? 503 : 502;
       return json({ error: "notion-" + error.code.toLowerCase().replaceAll("_", "-") },
         status, error.retryAfterSeconds);
     }
