@@ -9,6 +9,7 @@ import { planMausbotCli } from "./protocols.mjs";
  */
 export const TEAM_CHANNEL_MUTATION_PLANS = Object.freeze([
   "teams.export",
+  "teams.import",
   "teams.organization.install",
   "channels.mark-read",
   "channels.queue.cancel",
@@ -44,6 +45,68 @@ function path(spec, ids) {
 }
 function ensureId(value) { if (!objectId(value)) fail("TEAM_CHANNEL_ID_INVALID"); return value; }
 
+
+const MAUSBOT_COLORS = new Set([
+  "green", "blue", "red", "orange", "purple", "cyan", "pink",
+  "yellow", "teal", "coral", "silver", "chrome",
+]);
+function optionalText(value, max) {
+  return value === undefined || (typeof value === "string" &&
+    value.length <= max && !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value));
+}
+/**
+ * v2 team manifest is intentionally restricted to known member fields.
+ * No arbitrary engine approval, computer configuration, connection, secret,
+ * cwd, grants, runtime, or external URL fields may cross this boundary.
+ */
+function prepareV2TeamManifest(raw) {
+  shape(raw, ["format", "version", "team"], ["format", "version", "team"]);
+  if (raw.format !== "openmaus.team" || raw.version !== 2) fail("TEAM_MANIFEST_VERSION_UNSUPPORTED");
+  const team = raw.team;
+  shape(team, ["name", "description", "members"], ["name", "members"]);
+  if (!text(team.name, 100) || !optionalText(team.description, 2000)) fail("TEAM_MANIFEST_TEAM_INVALID");
+  if (!Array.isArray(team.members) || team.members.length < 1 || team.members.length > 50) {
+    fail("TEAM_MANIFEST_MEMBERS_INVALID");
+  }
+  const unique = new Set();
+  const members = team.members.map((member) => {
+    shape(member, ["key", "name", "title", "description", "soul", "appearance"],
+      ["key", "name", "appearance"]);
+    if (typeof member.key !== "string" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(member.key) ||
+        unique.has(member.key)) fail("TEAM_MANIFEST_MEMBER_KEY_INVALID");
+    unique.add(member.key);
+    if (!text(member.name, 100) || !optionalText(member.title, 200) ||
+        !optionalText(member.description, 4000) ||
+        !optionalText(member.soul, 24000) ||
+        (typeof member.soul === "string" && Buffer.byteLength(member.soul, "utf8") > 24000)) {
+      fail("TEAM_MANIFEST_MEMBER_INVALID");
+    }
+    shape(member.appearance, ["color", "mascotExpression", "mascotBody"], ["color"]);
+    if (!MAUSBOT_COLORS.has(member.appearance.color) ||
+        !optionalText(member.appearance.mascotExpression, 80) ||
+        !optionalText(member.appearance.mascotBody, 40)) fail("TEAM_MANIFEST_APPEARANCE_INVALID");
+    return {
+      key: member.key, name: member.name,
+      ...(member.title !== undefined ? { title: member.title } : {}),
+      ...(member.description !== undefined ? { description: member.description } : {}),
+      ...(member.soul !== undefined ? { soul: member.soul } : {}),
+      appearance: {
+        color: member.appearance.color,
+        ...(member.appearance.mascotExpression !== undefined ? { mascotExpression: member.appearance.mascotExpression } : {}),
+        ...(member.appearance.mascotBody !== undefined ? { mascotBody: member.appearance.mascotBody } : {}),
+      },
+    };
+  });
+  const result = {
+    format: "openmaus.team", version: 2,
+    team: { name: team.name,
+      ...(team.description !== undefined ? { description: team.description } : {}),
+      members },
+  };
+  if (Buffer.byteLength(JSON.stringify(result), "utf8") > 65536) fail("TEAM_MANIFEST_TOO_LARGE");
+  return result;
+}
+
 /**
  * Offline plans carry no approval receipts. They MUST NOT be applied with a
  * browser-provided "approved" boolean. Team exports can contain confidential
@@ -61,6 +124,10 @@ export function planTeamChannelMutation(name, input) {
       // Explicitly exclude backup and package formats: they can carry credentials,
       // private transcripts, memory or grant-related metadata.
       body = { name: input.name.trim(), format: "manifest" };
+      break;
+    case "teams.import":
+      shape(input, ["manifest"], ["manifest"]);
+      body = prepareV2TeamManifest(input.manifest);
       break;
     case "teams.organization.install":
       shape(input, ["packageId"], ["packageId"]);
@@ -98,7 +165,8 @@ export function planTeamChannelMutation(name, input) {
     default: fail("TEAM_CHANNEL_ACTION_NOT_IMPLEMENTED");
   }
   return Object.freeze({
-    primitive: name, method: spec.method, path: path(name, ids),
+    primitive: name, method: spec.method,
+    path: path(name, ids) + (name === "teams.import" ? "?mode=add" : ""),
     ...(body === undefined ? {} : { body: Object.freeze(body) }),
     requiresHumanApproval: true,
     requiresWorkspaceAuthorization: true,

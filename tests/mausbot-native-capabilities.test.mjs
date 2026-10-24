@@ -44,7 +44,7 @@ test("Native source-mapped team memory and skill editing use actual HTTP verbs",
 test("Offline adapters and mutation plans stay strictly non-callable across source families",()=>{
  const sum=nativeCoverageSummary();
  assert.equal(sum.mockTestedReads,13);
- assert.equal(sum.validatedMutationPlans,18);
+ assert.equal(sum.validatedMutationPlans,19);
  assert.equal(sum.callable,0);
  assert.equal(sum.testedLive,0);
  for(const p of MAUSBOT_NATIVE_CAPABILITIES){
@@ -56,7 +56,7 @@ test("Offline adapters and mutation plans stay strictly non-callable across sour
 
 test("Team + channel work is registered as offline-only implementation progress", () => {
   const readIds = ["teams.library.catalog", "teams.organization.catalog"];
-  const plannedIds = ["teams.export", "teams.organization.install", "channels.mark-read",
+  const plannedIds = ["teams.export", "teams.import", "teams.organization.install", "channels.mark-read",
     "channels.queue.cancel", "channels.queue.steer", "channels.members.compact", "channels.tasks.delete"];
   for (const id of readIds) {
     const found = nativePrimitive(id);
@@ -72,7 +72,7 @@ test("Team + channel work is registered as offline-only implementation progress"
   }
   const summary = nativeCoverageSummary();
   assert.equal(summary.mockTestedReads, 13);
-  assert.equal(summary.validatedMutationPlans, 18);
+  assert.equal(summary.validatedMutationPlans, 19);
   assert.equal(summary.total, 128);
   assert.equal(summary.callable, 0);
   assert.equal(summary.testedLive, 0);

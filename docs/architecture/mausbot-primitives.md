@@ -188,3 +188,17 @@ Bilan **128 capacités natives cataloguées** :
 **97 entrées encore cartographiées sans adaptateur**, **0 connectée**.
 Toujours **20 primitives MCP** à part. L'ajout d'une famille ne constitue
 pas une garantie d'exhaustivité de l'API MAUSBOT.
+
+### Ajout validé : plan d'import strict OpenMaus Team v2
+
+`teams.import` est désormais planifié **hors connexion seulement** : format
+`openmaus.team`, version **2**, jusqu'à 50 membres, champs du manifeste
+strictement allowlistés, noms et couleurs valides, 24 Ko d'instructions
+permanentes par agent et payload total limité à 64 Ko. Le plan impose
+`?mode=add`, sans `replace`, `cwd`, secrets, `approvalMode`, outil ou
+ordinateur arbitraire. Seuls les paramètres sûrs du manifeste sont conservés ;
+la vérification finale et l'autorisation humaine sont à faire dans le worker.
+
+Bilan courant : **13 lectures natives mock-testées**, **19 plans natifs de
+mutations validés offline**, **96 contrats natifs encore sans adaptateur**,
+0 live, total stable **128**. Aucune connexion réelle.

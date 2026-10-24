@@ -8,6 +8,7 @@ import {
 
 const cases = [
   ["teams.export", { name: "Launch" }, "/api/teams/export", "POST", { name: "Launch", format: "manifest" }],
+  ["teams.import", { manifest: { format: "openmaus.team", version: 2, team: { name: "Launch", members: [ {key:"lead",name:"Lead",appearance:{color:"blue"}} ] } } }, "/api/teams/import?mode=add", "POST", {format:"openmaus.team",version:2,team:{name:"Launch",members:[{key:"lead",name:"Lead",appearance:{color:"blue"}}]}}],
   ["teams.organization.install", { packageId: "11111111-2222-4333-8444-555555555555" },
     "/api/org-library/add", "POST", { packageId: "11111111-2222-4333-8444-555555555555" }],
   ["channels.mark-read", { channelId: "group-1" }, "/api/groups/group-1/read", "POST", undefined],
@@ -21,8 +22,8 @@ const cases = [
     "/api/groups/group-1/tasks/delete", "POST", { threadIds: ["task-1", "task-2"] }],
 ];
 
-test("Seven source-mapped team/channel actions are offline-only, never mutation-enabled", () => {
-  assert.equal(TEAM_CHANNEL_MUTATION_PLANS.length, 7);
+test("Eight source-mapped team/channel actions are offline-only, never mutation-enabled", () => {
+  assert.equal(TEAM_CHANNEL_MUTATION_PLANS.length, 8);
   for (const [name, input, path, method, body] of cases) {
     assert.equal(nativePrimitive(name)?.method, method);
     const plan = planTeamChannelMutation(name, input);
@@ -144,4 +145,43 @@ test("Manifest entries stay non-callable independently of preview validation", (
     assert.equal(spec.callable, false);
     assert.equal(spec.hostTested, false);
   }
+});
+
+test("Team imports require a sanitized official v2 manifest, never implicit permissions", () => {
+  const manifest = {
+    format: "openmaus.team", version: 2,
+    team: { name: "Launch", members: [
+      { key: "leader", name: "Lead", soul: "Review changes before sending",
+        appearance: { color: "blue", mascotExpression: "happy" } },
+    ] },
+  };
+  const plan = planTeamChannelMutation("teams.import", { manifest });
+  assert.equal(plan.path, "/api/teams/import?mode=add");
+  assert.equal(plan.method, "POST");
+  assert.deepEqual(plan.body, manifest);
+  assert.equal(plan.callable, false);
+  assert.equal(plan.requiresHumanApproval, true);
+  assert.equal(plan.requiresDurableAudit, true);
+  assert.equal(plan.retryPolicy, "never-automatic");
+  const invalid = [
+    { ...manifest, version: 1 },
+    { ...manifest, approvalMode: "full" },
+    { ...manifest, team: { ...manifest.team, cwd: "/host" } },
+    { ...manifest, team: { ...manifest.team, members: [
+      { ...manifest.team.members[0], approval: "full" }] } },
+    { ...manifest, team: { ...manifest.team, members: [
+      { ...manifest.team.members[0], appearance: { color: "unknown" } }] } },
+    { ...manifest, team: { ...manifest.team, members: [
+      manifest.team.members[0], manifest.team.members[0]] } },
+    { ...manifest, team: { ...manifest.team, members: [
+      { ...manifest.team.members[0], soul: "🎯".repeat(7000) }] } },
+  ];
+  for (const item of invalid) {
+    assert.throws(() => planTeamChannelMutation("teams.import", { manifest: item }),
+      TeamChannelContractError);
+  }
+  assert.throws(() => planTeamChannelMutation("teams.import", { manifest, mode: "replace" }),
+    TeamChannelContractError);
+  assert.throws(() => planTeamChannelMutation("teams.import", { manifest, approved: true }),
+    TeamChannelContractError);
 });
