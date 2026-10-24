@@ -53,6 +53,7 @@ update public.atlas_engine_instances set connection_state='connected'
  where id='aaaaaaaa-0000-4000-8000-000000000001';
 create temp table worker_tokens(
  worker text,job uuid,token uuid,epoch bigint,primary key(worker,job));
+grant select,insert on worker_tokens to service_role;
 
 set role service_role;
 do $$
