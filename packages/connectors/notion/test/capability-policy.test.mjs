@@ -116,3 +116,38 @@ test("cannot manufacture evidence for an unimplemented operation", () => {
     operation: "rest.pages.update", connectionBinding: binding, checkedAt: time,
   }), /INVALID_NOTION_EVIDENCE/);
 });
+
+test("page capability is NEVER globally available from a resource-specific proof", async () => {
+  const { notionResourceRef } = await import("../src/resource-reference.mjs");
+  const kind = "page";
+  const id = "44444444-4444-4444-8444-444444444444";
+  const first = notionResourceRef({
+    kind, resourceId: id, connectionBinding: binding,
+    providerResponse: { object: "page", id }, checkedAt: time,
+  });
+  const proof = notionCapabilityEvidence({
+    operation: "rest.pages.retrieve", connectionBinding: binding,
+    resourceRef: first, checkedAt: time,
+  });
+  const shared = { connectionBinding: binding, configuredSurfaces: settings,
+    providerEvidence: [proof], checkedAt: time };
+  assert.equal(get(evaluateNotionCapabilities(shared),
+    "rest.pages.retrieve").available, false);
+  assert.equal(get(evaluateNotionCapabilities({ ...shared, resourceRef: first }),
+    "rest.pages.retrieve").available, true);
+  const another = notionResourceRef({
+    kind, resourceId: "55555555-5555-4555-8555-555555555555",
+    connectionBinding: binding,
+    providerResponse: { object: "page", id: "55555555-5555-4555-8555-555555555555" },
+    checkedAt: time,
+  });
+  assert.equal(get(evaluateNotionCapabilities({ ...shared, resourceRef: another }),
+    "rest.pages.retrieve").available, false);
+  assert.throws(() => notionCapabilityEvidence({
+    operation: "rest.pages.retrieve", connectionBinding: binding, checkedAt: time,
+  }), /NOTION_RESOURCE_EVIDENCE_INVALID/);
+  assert.throws(() => notionCapabilityEvidence({
+    operation: "rest.search.title", connectionBinding: binding,
+    resourceRef: first, checkedAt: time,
+  }), /NOTION_RESOURCE_EVIDENCE_INVALID/);
+});

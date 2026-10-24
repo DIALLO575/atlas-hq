@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateNotionCapabilities, notionCapabilityEvidence }
   from "../../../../../../packages/connectors/notion/src/capability-policy.mjs";
-import { loadNotionPersonalConnection, NotionConnectionAccessError }
+import { notionResourceRef, notionResourceOperation }
+  from "../../../../../../packages/connectors/notion/src/resource-reference.mjs";
+import { createNotionReadClient, NotionReadError }
+  from "../../../../../../packages/connectors/notion/src/rest-client.mjs";
+import { NotionRefreshError } from "../../../../../../packages/connectors/notion/src/refresh-token.mjs";
+import { loadNotionPersonalConnection, NotionConnectionAccessError, refreshNotionPersonalConnection }
   from "@/lib/notion/reader";
 
 export const runtime = "nodejs";
@@ -26,6 +31,15 @@ export async function GET(request: NextRequest) {
   const workspaceId = request.nextUrl.searchParams.get("workspaceId") ?? "";
   const connectionId = request.nextUrl.searchParams.get("connectionId") ?? "";
   const verify = request.nextUrl.searchParams.get("verify") === "1";
+  const requestedKind = request.nextUrl.searchParams.get("resourceKind");
+  const requestedId = request.nextUrl.searchParams.get("resourceId");
+  const wantsResource = requestedKind !== null || requestedId !== null;
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (wantsResource && (!verify || !requestedKind || !requestedId ||
+      !["page", "block", "database", "data_source"].includes(requestedKind) ||
+      !uuid.test(requestedId))) {
+    return reply({ error: "invalid-resource-request" }, 400);
+  }
   try {
     const loaded = await loadNotionPersonalConnection({ workspaceId, connectionId });
     const { actor, record, client } = loaded;
@@ -38,6 +52,39 @@ export async function GET(request: NextRequest) {
       credential: "notion_rest_oauth" as const,
       active: true,
     };
+    // The resource path is an explicit probe against Notion, not an inferred
+    // grant from a search listing or a cached provider object.
+    if (wantsResource && requestedKind && requestedId) {
+      const kind = requestedKind as "page" | "block" | "database" | "data_source";
+      const operation = notionResourceOperation(kind);
+      const get = (client: typeof loaded.client) => kind === "page"
+        ? client.getPage(requestedId) : kind === "block"
+        ? client.getBlock(requestedId) : kind === "database"
+        ? client.getDatabase(requestedId) : client.getDataSource(requestedId);
+      let raw;
+      try {
+        raw = await get(client);
+      } catch (error) {
+        if (!(error instanceof NotionReadError) || error.code !== "AUTH_REQUIRED") throw error;
+        const refreshed = await refreshNotionPersonalConnection(loaded);
+        raw = await get(createNotionReadClient({ token: refreshed.accessToken }));
+      }
+      const checkedAt = Date.now();
+      const resourceRef = notionResourceRef({
+        kind, resourceId: requestedId, connectionBinding: binding,
+        providerResponse: raw, checkedAt,
+      });
+      const proof = notionCapabilityEvidence({
+        operation, connectionBinding: binding, resourceRef, checkedAt,
+      });
+      const snapshot = evaluateNotionCapabilities({
+        configuredSurfaces: { rest: true }, connectionBinding: binding,
+        resourceRef, providerEvidence: [proof], checkedAt,
+      });
+      return reply({
+        ...snapshot, resource: resourceRef,
+      });
+    }
     const checkedAt = Date.now();
     const proof = [];
     const failed = [];
@@ -74,6 +121,18 @@ export async function GET(request: NextRequest) {
       failedOperations: failed, checkedAt,
     }));
   } catch (error) {
+    if (error instanceof NotionRefreshError) {
+      return reply({ error: "notion-reconnection-required" }, 409);
+    }
+    if (error instanceof NotionReadError) {
+      const status = error.code === "INVALID_INPUT" ? 400
+        : error.code === "PERMISSION_DENIED" ? 403
+        : error.code === "NOT_FOUND_OR_HIDDEN" ? 404
+        : error.code === "RATE_LIMITED" ? 429 : 503;
+      return reply({ error: status === 404 ? "notion-resource-unavailable"
+        : status === 403 ? "notion-access-denied"
+        : status === 429 ? "notion-rate-limited" : "notion-request-unavailable" }, status);
+    }
     if (error instanceof NotionConnectionAccessError) {
       const status = error.code === "INVALID_REQUEST" ? 400
         : error.code === "FORBIDDEN" ? 403

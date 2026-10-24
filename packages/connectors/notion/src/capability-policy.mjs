@@ -1,3 +1,4 @@
+import { matchesNotionResourceRef, notionResourceOperation } from "./resource-reference.mjs";
 /**
  * ATLAS x Notion V2 — SHA-135.
  * Build-time implementation != configured integration != ATLAS authorization
@@ -11,6 +12,12 @@ export const NOTION_CAPABILITY_SCHEMA = "atlas.notion.capabilities.v1";
 export const NOTION_REST_API_VERSION = "2026-03-11";
 const UUID = /^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 const MAX_PROOF_AGE_MS = 60_000;
+const resourceKindByOperation = Object.freeze({
+  "rest.pages.retrieve": "page",
+  "rest.blocks.retrieve": "block",
+  "rest.databases.retrieve": "database",
+  "rest.data_sources.retrieve": "data_source",
+});
 const surfaces = new Set(["rest", "webhooks", "mcp", "agents", "workers", "admin"]);
 const credentialBySurface = Object.freeze({
   rest: "notion_rest_oauth", webhooks: "notion_webhook_subscription",
@@ -61,7 +68,15 @@ function validBinding(value) {
     surfaces.has(value.surface) &&
     value.credential === credentialBySurface[value.surface] && value.active === true;
 }
-function matchesEvidence(evidence, binding, id, now) {
+function matchesEvidence(evidence, binding, id, now, resourceRef) {
+  const scopedKind = resourceKindByOperation[id];
+  if (scopedKind) {
+    if (!resourceRef ||
+        !matchesNotionResourceRef(resourceRef, binding, scopedKind, resourceRef.resourceId) ||
+        !matchesNotionResourceRef(evidence?.resourceRef, binding, scopedKind, resourceRef.resourceId) ||
+        evidence.resourceRef.sourceVersion !== resourceRef.sourceVersion ||
+        evidence.resourceRef.observedAt !== evidence.checkedAt) return false;
+  } else if (evidence?.resourceRef) return false;
   return evidence && evidence.source === "notion_live_provider_response" &&
     evidence.operation === id && evidence.surface === binding.surface &&
     evidence.connectionId === binding.connectionId &&
@@ -83,7 +98,7 @@ function matchesEvidence(evidence, binding, id, now) {
 export function evaluateNotionCapabilities({
   configuredSurfaces = {}, connectionBinding = null,
   providerEvidence = [], failedOperations = [], planEligibility = {},
-  checkedAt = Date.now(),
+  resourceRef = null, checkedAt = Date.now(),
 } = {}) {
   if (!Number.isSafeInteger(checkedAt) || checkedAt < 0) throw new Error("INVALID_CHECKED_AT");
   const valid = Boolean(validBinding(connectionBinding));
@@ -92,7 +107,7 @@ export function evaluateNotionCapabilities({
     const bound = valid && connectionBinding.surface === cap.surface &&
       configured && connectionBinding.credential === cap.credential;
     const verified = bound && Array.isArray(providerEvidence) &&
-      providerEvidence.some(proof => matchesEvidence(proof, connectionBinding, cap.id, checkedAt));
+      providerEvidence.some(proof => matchesEvidence(proof, connectionBinding, cap.id, checkedAt, resourceRef));
     const failed = bound && Array.isArray(failedOperations) &&
       failedOperations.includes(cap.id) && !verified;
     const eligible = cap.plan === null ? null :
@@ -121,16 +136,27 @@ export function evaluateNotionCapabilities({
 }
 
 export function notionCapabilityEvidence({
-  operation, connectionBinding, checkedAt = Date.now(),
+  operation, connectionBinding, resourceRef = null, checkedAt = Date.now(),
 }) {
   if (!validBinding(connectionBinding) ||
       !NOTION_CAPABILITY_MANIFEST.some(cap =>
         cap.id === operation && cap.implemented && cap.surface === connectionBinding.surface) ||
       !Number.isSafeInteger(checkedAt)) throw new Error("INVALID_NOTION_EVIDENCE");
+  const scopedKind = resourceKindByOperation[operation];
+  if (scopedKind) {
+    if (!resourceRef || notionResourceOperation(scopedKind) !== operation ||
+        !matchesNotionResourceRef(resourceRef, connectionBinding, scopedKind, resourceRef.resourceId) ||
+        resourceRef.observedAt !== checkedAt) {
+      throw new Error("NOTION_RESOURCE_EVIDENCE_INVALID");
+    }
+  } else if (resourceRef) {
+    throw new Error("NOTION_RESOURCE_EVIDENCE_INVALID");
+  }
   return Object.freeze({
     source: "notion_live_provider_response", operation, surface: connectionBinding.surface,
     workspaceId: connectionBinding.workspaceId, actorId: connectionBinding.actorId,
     connectionId: connectionBinding.connectionId,
     notionWorkspaceId: connectionBinding.notionWorkspaceId, checkedAt,
+    ...(resourceRef ? { resourceRef } : {}),
   });
 }

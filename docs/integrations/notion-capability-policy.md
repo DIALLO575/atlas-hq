@@ -27,3 +27,10 @@ Références :
 - https://developers.notion.com/reference/capabilities
 - https://developers.notion.com/reference/versioning
 - https://github.com/DIALLO575/atlas-hq/blob/main/docs/operations/notion-supabase-main-release-2026-10-24.md
+
+## Ressources et provenance (deuxième lot SHA-135)
+- `resource-reference.mjs` crée un ResourceRef typé (page/block/database/data_source), validé sur `object` et `id` du **GET provider réussi**, qui contient seulement IDs d'isolation, `sourceVersion` (`last_edited_time` si fourni), version API et horodatage ; jamais le payload complet.
+- Les preuves REST pages/blocks/databases/data_sources sont maintenant **scopées à une ressource unique** ; une preuve pour page A ne rend pas le droit `rest.pages.retrieve` globalement disponible et ne peut pas être réutilisée pour page B.
+- GET `/api/apps/notion/capabilities?verify=1&resourceKind=page&resourceId=UUID&workspaceId=...&connectionId=...` réalise un GET Notion dans la session serveur et produit la preuve courte. Idem pour `block`, `database`, `data_source`. Un 401 peut déclencher une seule rotation durable avant retry du GET. Les refus 403 et les ressources non partagées/inconnues 404 ne fabriquent pas de preuve.
+- Dans les résultats de recherche du Control Center, le bouton « Vérifier l'accès à cette ressource » compare l'identité de ressource renvoyée et présente un résultat honnête et indépendant de la recherche par titre.
+- **Pas de stockage de preuve durable, pas de migration Supabase** dans ce lot. La fraîcheur en mémoire vaut 60 secondes ; la persistance de provenance (avec purge, RLS et invalidation sur révocation) sera étudiée dans le chantier ultérieur, après validation sandbox.

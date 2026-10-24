@@ -14,6 +14,7 @@ export function NotionResourcesClient({ workspaceId, connectionId }: Props) {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("La lecture Notion n'a pas encore été vérifiée.");
   const [disconnected, setDisconnected] = useState(false);
+  const [resourceResults, setResourceResults] = useState<Record<string, string>>({});
 
   async function read(kind: "search" | "blocks", resourceId = "", more = false) {
     if (busy || disconnected) return;
@@ -45,6 +46,7 @@ export function NotionResourcesClient({ workspaceId, connectionId }: Props) {
             "kind" in item && typeof item.kind === "string"));
         setItems(previous => more ? [...previous, ...next] : next);
         setBlocks([]);
+        setResourceResults({});
         setCursor(data.hasMore === true && typeof data.nextCursor === "string"
           ? data.nextCursor : null);
         setFeedback(next.length ? "Contenu autorisé reçu directement depuis Notion."
@@ -61,6 +63,46 @@ export function NotionResourcesClient({ workspaceId, connectionId }: Props) {
     } finally { setBusy(false); }
   }
 
+  async function verifyResource(item: Resource) {
+    if (busy || disconnected || !["page", "database", "data_source"].includes(item.kind)) return;
+    setBusy(true);
+    setResourceResults(current => ({ ...current, [item.id]: "Vérification en cours…" }));
+    try {
+      const params = new URLSearchParams({
+        workspaceId, connectionId, verify: "1",
+        resourceKind: item.kind, resourceId: item.id,
+      });
+      const response = await fetch("/api/apps/notion/capabilities?" + params, {
+        credentials: "same-origin", cache: "no-store",
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !body || typeof body !== "object" ||
+          !("resource" in body) || !body.resource || typeof body.resource !== "object" ||
+          !("capabilities" in body) || !Array.isArray(body.capabilities)) {
+        throw new Error("notion-resource-access-unconfirmed");
+      }
+      const resource = body.resource;
+      if (!("kind" in resource) || resource.kind !== item.kind ||
+          !("resourceId" in resource) || typeof resource.resourceId !== "string" ||
+          resource.resourceId.replaceAll("-", "").toLowerCase() !==
+            item.id.replaceAll("-", "").toLowerCase()) {
+        throw new Error("notion-resource-mismatch");
+      }
+      const expected = item.kind === "page" ? "rest.pages.retrieve"
+        : item.kind === "database" ? "rest.databases.retrieve"
+        : "rest.data_sources.retrieve";
+      const verified = body.capabilities.some(cap => cap &&
+        typeof cap === "object" && "id" in cap && cap.id === expected &&
+        "available" in cap && cap.available === true);
+      setResourceResults(current => ({ ...current, [item.id]: verified
+        ? "Lecture de cette ressource vérifiée auprès de Notion."
+        : "Aucune preuve de lecture de cette ressource." }));
+    } catch {
+      setResourceResults(current => ({
+        ...current, [item.id]: "Accès non confirmé (permission, connexion ou réseau).",
+      }));
+    } finally { setBusy(false); }
+  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void read("search");
@@ -79,7 +121,7 @@ export function NotionResourcesClient({ workspaceId, connectionId }: Props) {
         setFeedback("La déconnexion n'a pas été confirmée (" + response.status + ").");
       } else {
         setDisconnected(true);
-        setItems([]); setBlocks([]); setCursor(null);
+        setItems([]); setBlocks([]); setCursor(null); setResourceResults({});
         const status = data && typeof data === "object" &&
           "providerRevocation" in data && data.providerRevocation === "confirmed"
           ? "Révocation confirmée par Notion."
@@ -104,6 +146,10 @@ export function NotionResourcesClient({ workspaceId, connectionId }: Props) {
     <p role="status">{feedback}</p>
     {items.length > 0 && <ul>{items.map(item => <li key={item.id}>
       <strong>{item.title}</strong> — {item.kind}
+      {["page", "database", "data_source"].includes(item.kind) &&
+        <button type="button" disabled={busy || disconnected}
+          onClick={() => void verifyResource(item)}>Vérifier l'accès à cette ressource</button>}
+      {resourceResults[item.id] && <span role="status">{resourceResults[item.id]}</span>}
       {item.kind === "page" && <button type="button" disabled={busy || disconnected}
         onClick={() => void read("blocks", item.id)}>Voir les blocs</button>}
     </li>)}</ul>}

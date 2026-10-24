@@ -1,3 +1,4 @@
+import type { NotionResourceRef } from "./resource-reference.mjs";
 export type NotionCapabilityStatus = "not_implemented" | "built" | "configured" |
   "authorized" | "provider_verified" | "degraded";
 export type NotionSurface = "rest" | "webhooks" | "mcp" | "agents" | "workers" | "admin";
@@ -11,7 +12,7 @@ export interface NotionConnectionBinding {
 export interface NotionEvidence {
   source: string; operation: string; surface: NotionSurface;
   workspaceId: string; actorId: string; connectionId: string;
-  notionWorkspaceId: string; checkedAt: number;
+  notionWorkspaceId: string; checkedAt: number; resourceRef?: NotionResourceRef;
 }
 export interface NotionCapability {
   id: string; surface: NotionSurface; credential: string; operation: string;
@@ -32,11 +33,13 @@ export function evaluateNotionCapabilities(args?: {
   providerEvidence?: ReadonlyArray<NotionEvidence>;
   failedOperations?: ReadonlyArray<string>;
   planEligibility?: Record<string, boolean>;
+  resourceRef?: NotionResourceRef | null;
   checkedAt?: number;
 }): { schema: string; generatedAt: number;
   evidenceScope: string; providerAuthenticationIsNotContentAuthorization: boolean;
   capabilities: ReadonlyArray<NotionCapability> };
 export function notionCapabilityEvidence(args: {
   operation: string; connectionBinding: NotionConnectionBinding;
+  resourceRef?: NotionResourceRef | null;
   checkedAt?: number;
 }): NotionEvidence;
