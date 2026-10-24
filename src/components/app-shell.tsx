@@ -45,6 +45,11 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   const [expanded, setExpanded] = useState(() => cachedExpanded ?? false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [moveControlsOpen, setMoveControlsOpen] = useState(false);
+  // Give instant visual feedback while Next.js loads the next route.
+  // The dock itself remains mounted; only the page content changes.
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+  const isRoutePending = Boolean(navigatingTo && navigatingTo !== pathname);
+
   const {
     dockRef, side: dockSide, dragging: dockDragging, dockStyle,
     handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel,
@@ -95,6 +100,20 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
     setMenuOpen(false);
     setMoveControlsOpen(false);
   };
+  const handleRouteClick = (href: string) => {
+    closeMenu();
+    if (href !== pathname) setNavigatingTo(href);
+  };
+  const prefetchRoute = (href: string) => {
+    if (href !== pathname) router.prefetch(href);
+  };
+  useEffect(() => {
+    if (!isRoutePending) return;
+    // A failed request must not leave the navigation indicator visible forever.
+    const timeout = window.setTimeout(() => setNavigatingTo(null), 12000);
+    return () => window.clearTimeout(timeout);
+  }, [isRoutePending, navigatingTo]);
+
 
   useEffect(() => {
     if (!moveControlsOpen) return;
@@ -120,17 +139,17 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
           <button type="button" className="atlas-mobile-toggle" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen} aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}>
             <Icon name={menuOpen ? "close" : "menu"} />
           </button>
-          <Link className="atlas-wordmark" href="/" onClick={closeMenu} aria-label="Atlas, accueil">
+          <Link className="atlas-wordmark" href="/" onClick={() => handleRouteClick("/")} aria-label="Atlas, accueil">
             <span className="atlas-mark" aria-hidden="true">A</span><span>Atlas</span>
           </Link>
           <span className="atlas-location"><span>/</span>{currentLabel}</span>
         </div>
-        <Link className="atlas-search-trigger" href="/search" aria-label="Recherche globale">
+        <Link className="atlas-search-trigger" href="/search" onClick={() => handleRouteClick("/search")} aria-label="Recherche globale">
           <Icon name="search" /><span>Rechercher une mission, un agent, une app...</span><kbd>⌘ K</kbd>
         </Link>
         <div className="atlas-topbar-end">
-          <Link className="atlas-chief-shortcut" href="/chief"><Icon name="spark" /><span>Chief of Staff</span></Link>
-          <Link className="atlas-notification-link" href="/inbox" aria-label="Ouvrir les demandes à traiter" title="Besoin de vous"><Icon name="inbox" /></Link>
+          <Link className="atlas-chief-shortcut" href="/chief" onClick={() => handleRouteClick("/chief")}><Icon name="spark" /><span>Chief of Staff</span></Link>
+          <Link className="atlas-notification-link" href="/inbox" onClick={() => handleRouteClick("/inbox")} aria-label="Ouvrir les demandes à traiter" title="Besoin de vous"><Icon name="inbox" /></Link>
           <div className="atlas-header-workspace"><WorkspaceSelector /></div>
         </div>
       </header>
@@ -177,7 +196,9 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} title={item.label} aria-label={item.label}
               className={linkClass(item.href)} aria-current={pathname === item.href ? "page" : undefined}
-              onClick={closeMenu}>
+              onClick={() => handleRouteClick(item.href)}
+              onMouseEnter={() => prefetchRoute(item.href)}
+              onFocus={() => prefetchRoute(item.href)}>
               <Icon name={item.icon} /><span className="atlas-dock-label">{item.label}</span>
             </Link>
           ))}
@@ -189,7 +210,9 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
           {utilityItems.map((item) => (
             <Link key={item.href} href={item.href} title={item.label} aria-label={item.label}
               className={linkClass(item.href)} aria-current={pathname === item.href ? "page" : undefined}
-              onClick={closeMenu}>
+              onClick={() => handleRouteClick(item.href)}
+              onMouseEnter={() => prefetchRoute(item.href)}
+              onFocus={() => prefetchRoute(item.href)}>
               <Icon name={item.icon} /><span className="atlas-dock-label">{item.label}</span>
             </Link>
           ))}
@@ -235,12 +258,19 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
         <span className="atlas-dock-dropguide atlas-dock-dropguide-right">Droite</span>
       </div>}
       {menuOpen && <button className="atlas-dock-scrim" type="button" aria-label="Fermer le menu" onClick={closeMenu} />}
+      {isRoutePending && (
+        <div className="atlas-route-transition" role="status" aria-live="polite">
+          <span className="atlas-route-transition-track" aria-hidden="true"><span /></span>
+          <span className="atlas-route-transition-label">Ouverture de {[...navItems, ...utilityItems].find((item) => item.href === navigatingTo)?.label ?? "la page"}…</span>
+        </div>
+      )}
       <div className="atlas-main-frame">{children}</div>
 
       <nav className="mobile-bottom-nav atlas-mobile-bottom" aria-label="Navigation rapide">
         {mobileItems.map((item) => (
           <Link key={item.href} href={item.href} className={"mobile-nav-item" + (pathname === item.href ? " mobile-nav-active" : "")}
-            aria-current={pathname === item.href ? "page" : undefined} onClick={closeMenu}>
+            aria-current={pathname === item.href ? "page" : undefined} onClick={() => handleRouteClick(item.href)}
+            onMouseEnter={() => prefetchRoute(item.href)} onFocus={() => prefetchRoute(item.href)}>
             <Icon name={item.icon} /><span>{item.label}</span>
           </Link>
         ))}

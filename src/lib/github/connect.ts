@@ -150,7 +150,7 @@ export async function persistVerifiedPersonalInstallation(admin: SupabaseClient,
 }
 
 export function connectorRedirect(settings: NonNullable<ReturnType<typeof githubConnectSettings>>, code: string) {
-  const url = new URL("/apps", settings.publicOrigin);
+  const url = new URL("/apps/github", settings.publicOrigin);
   url.searchParams.set("github", code);
   return url;
 }

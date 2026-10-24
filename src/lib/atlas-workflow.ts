@@ -1,5 +1,4 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { listWorkspaces } from "@/app/workspaces/actions";
 import type { Workspace } from "@/lib/workspaces/contract";
 
 export type AtlasMission = {
@@ -19,19 +18,33 @@ export type WorkflowRead = {
 
 export async function readAtlasWorkflow(requestedWorkspaceId?: string): Promise<WorkflowRead> {
   try {
-    const spacesResult = await listWorkspaces();
-    if (spacesResult.status !== "ready") return { status: "error", message: spacesResult.message };
-    const spaces = spacesResult.workspaces;
+    // One authenticated request and one membership lookup, instead of calling
+    // listWorkspaces() (which already checks auth) and then checking auth again.
+    // RLS is still enforced on every workspace-scoped data query below.
+    const supabase = await createSupabaseServerClient();
+    if (!supabase) return { status: "error", message: "Service de données indisponible." };
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { status: "error", message: "Session expirée. Reconnectez-vous." };
+    const { data: memberships, error: membershipsError } = await supabase
+      .from("workspace_members")
+      .select("workspace_id, role, workspaces!inner(id, name)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+    if (membershipsError || !memberships) {
+      return { status: "error", message: "Impossible de charger les workspaces." };
+    }
+    const spaces: Workspace[] = memberships.flatMap((membership) => {
+      const workspace = Array.isArray(membership.workspaces)
+        ? membership.workspaces[0] : membership.workspaces;
+      if (!workspace || !["owner", "admin", "member"].includes(membership.role)) return [];
+      return [{ id: workspace.id, name: workspace.name, role: membership.role as Workspace["role"] }];
+    });
     const selected = requestedWorkspaceId
       ? spaces.find((space) => space.id === requestedWorkspaceId)
       : spaces[0];
     if (requestedWorkspaceId && !selected) {
       return { status: "error", message: "Vous n’avez pas accès à cet espace." };
     }
-    const supabase = await createSupabaseServerClient();
-    if (!supabase) return { status: "error", message: "Service de données indisponible." };
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { status: "error", message: "Session expirée. Reconnectez-vous." };
     if (!selected) return { status: "ready", spaces, selected: null, userId: user.id, missions: [], reviews: [] };
 
     // RLS enforces workspace membership again at the database boundary.
