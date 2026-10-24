@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
       workspaceId: actor.workspaceId,
       installationId: verified.installationId,
       repositoryIds: verified.repositoryIds,
+      repositorySelection: verified.repositorySelection,
     });
     // Do not store the temporary GitHub user token. The REST client subsequently
     // mints a separate, repository-restricted GitHub App installation token.
