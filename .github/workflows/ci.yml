@@ -11,6 +11,39 @@ permissions:
   contents: read
 
 jobs:
+  engine-foundation-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-password
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Validate proposed engine schema ONLY in disposable PostgreSQL
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f tests/sql/engine-foundation-fixture.sql
+          -f supabase/proposals/engine-foundation-preconnection.sql
+          -f tests/sql/engine-foundation-checks.sql
+
   linear-oauth-postgres:
     runs-on: ubuntu-latest
     services:
