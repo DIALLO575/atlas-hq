@@ -17,15 +17,18 @@ Vercel/Netlify ni activation MAUSBOT.
 | Interface Espace Moteurs | Catalogue et écran de préconnexion | Aucun moteur relié |
 | API instances | GET métadonnées, POST réservé owner/admin, création uniquement offline | Disponibilité Web dépend du déploiement |
 | Chiffrement | AES-256-GCM/HKDF-SHA256, clés versionnées, contexte tenant/instance, rotation mock-testée | Pas de vrai KMS ni de pilote d'accès private |
-| Persistance | Deux migrations réelles dans Supabase ATLAS, neuf tables Engines avec RLS | Aucune exécution réelle ni secret opérationnel |
+| Persistance | Trois migrations réelles dans Supabase ATLAS, neuf tables Engines avec RLS | Aucune exécution réelle ni secret opérationnel |
 | Mutations moteur | Blocage HTTP 423 même avec anciens drapeaux env | Déverrouillage interdit avant vérification et approbations durables |
 
-### Les deux migrations Supabase déjà appliquées
+### Les trois migrations Supabase déjà appliquées
 
 - 20261024161305_atlas_engine_foundation_preconnection : 9 tables
   dont 2 dans public (instances, runs) et 7 dans private.
 - 20261024163943_atlas_engine_outbox_envelope_v1 :
   key_id et version NOT NULL sur la file chiffrée.
+- 20261024182928_atlas_engine_approval_intent_v1 : SHA-256 obligatoire
+  sur les runs et approbations ; deux triggers empêchent de modifier
+  la mission/primitive/payload ou de remplacer une empreinte approuvée.
 
 Les SQL versionnés figurent dans supabase/migrations/.
 Ne PAS les rejouer : versions présentes dans l'historique Supabase.
@@ -100,3 +103,21 @@ webhook signé sans scope vérifié et autorisation humaine durable.
 Ce sont des statuts de chantier, pas des erreurs de livraison GitHub.
 Le socle SQL et le code de préconnexion peuvent être sur main alors que
 l'exécution réelle reste strictement interdite.
+
+
+## Avancement SHA-150 — 24 octobre 2026
+
+La troisième migration est appliquée et confirmée en Supabase :
+`public.atlas_engine_runs.payload_sha256` et
+`private.atlas_engine_approvals.intent_digest` sont NOT NULL.
+Deux nouveaux triggers protègent l'intégrité. La CI du SQL jetable
+valide la cohérence SHA-256 avec Node, les modifications interdites,
+les permissions et les migrations précédentes. 0 instance/run/approval.
+
+Le code `packages/engine-core/src/approval-workflow.mjs` vérifie
+la session via callback transactionnel, rôle actuel, reviewer indépendant,
+intention exacte et expiration ; les mocks ne sont **pas** des tests
+Supabase Auth réels. Il reste le driver SQL privé, la vérification en
+live de `auth.sessions`, l'Inbox et les validations concurrentes.
+
+PR de travail : https://github.com/DIALLO575/atlas-hq/pull/38 .
