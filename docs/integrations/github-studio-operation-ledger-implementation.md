@@ -3,7 +3,7 @@
 Date 2026-10-24. **Commit pending review. Migration versioned, CI on disposable PostgreSQL; not applied to official Supabase.**
 
 ## Implementation
-- `supabase/migrations/20261024215000_github_studio_operation_ledger.sql`: two RLS-protected tables, operations + append-only audit. No browser SELECT/INSERT/UPDATE/DELETE grants. No token or response body stored.
+- `supabase/migrations/20261024225515_github_studio_operation_ledger.sql`: two RLS-protected tables, operations + append-only audit. No browser SELECT/INSERT/UPDATE/DELETE grants. No token or response body stored.
 - A unique triple `(workspace_id, actor_id, idempotency_key)` protects repeat requests; a second partial unique index on `(workspace_id, installation_id, lower(repository_name)) WHERE state<>'failed'` additionally protects against re-generated request IDs.
 - `public.atlas_gh_studio_reserve(...)`: service-role-only, validates live stored actor membership and installation binding, inserts intent and audit atomically, returns prior status on exact retries and rejects changed payloads.
 - `public.atlas_gh_studio_advance(...)`: service-role-only CAS with `FOR UPDATE` row lock and strict expected state; audit INSERT shares the same SQL transaction. Selected grants require an explicit allowlisted repository ID for `succeeded`.
