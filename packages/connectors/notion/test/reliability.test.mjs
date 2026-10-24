@@ -72,7 +72,7 @@ test("invalid or token-like scheduling scopes fail closed", async () => {
     ...scope, workspaceId: "Bearer secret",
   }), { code: "INVALID_BUDGET_SCOPE" });
   const budget = createNotionRestBudget();
-  await assert.rejects(budget.beforeRequest({
+  assert.throws(() => budget.beforeRequest({
     ...scope, connectionId: "evil-provider-id",
   }), { code: "INVALID_BUDGET_SCOPE" });
 });
