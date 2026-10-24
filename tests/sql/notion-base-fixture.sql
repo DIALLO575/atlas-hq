@@ -37,3 +37,6 @@ grant select, insert, update, delete on
 grant select, insert, update, delete on
   public.atlas_connections, public.atlas_provider_objects, public.atlas_sync_cursors
   to service_role;
+
+-- Service role is the server-only RPC invoker and needs membership visibility.
+grant select on table public.workspace_members to service_role;

@@ -51,9 +51,9 @@ export default async function NotionPage({
     {!configured &&
       <section aria-label="Configuration Notion">
         <h2>Connexion non activée</h2>
-        <p>L'intégration OAuth Notion nécessite encore sa configuration sécurisée
+        <p>L&apos;intégration OAuth Notion nécessite encore sa configuration sécurisée
           et la validation des migrations sur un environnement de test.
-          Aucune connexion Notion n'est supposée active.</p>
+          Aucune connexion Notion n&apos;est supposée active.</p>
       </section>}
     {membershipError && <p role="alert">Les workspaces ATLAS sont momentanément indisponibles.</p>}
     {configured && connectionsError && <p role="alert">
