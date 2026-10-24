@@ -1,7 +1,11 @@
 # ATLAS HQ — M0 Moteurs : bilan de livraison du 24 octobre 2026
 
-**Note de livraison :** ce document accompagne la PR GitHub #33. Une
-fusion dans main ne veut dire NI déploiement du site NI activation MAUSBOT.
+**Livraison vérifiée :** PR GitHub #33 fusionnée dans main au commit
+ab21fcfbfeb6ef75bc6147cd80b7137ae22be301.
+CI du commit fusionné VERTE : https://github.com/DIALLO575/atlas-hq/actions/runs/40114818208
+(validate, engine-foundation-postgres, linear-oauth-postgres,
+notion-foundation-postgres). La fusion n'implique ni déploiement
+Vercel/Netlify ni activation MAUSBOT.
 
 ## Réalisé et vérifié
 
@@ -79,6 +83,20 @@ webhook signé sans scope vérifié et autorisation humaine durable.
 - Suivi Linear : https://linear.app/shadoron/issue/SHA-104 et
   https://linear.app/shadoron/issue/SHA-132 ;
   certification : https://linear.app/shadoron/issue/SHA-133
-- CI sur la branche ne garantit pas la CI du commit main après fusion.
+- CI du commit de fusion main vérifiée verte (lien plus haut). Les commits
+  de documentation ultérieurs doivent avoir leur propre CI vérifiée.
 - Main, Vercel/Netlify, Supabase SQL et moteur MAUSBOT sont QUATRE
   états indépendants. Ne pas annoncer un déploiement sans preuve d'hôte.
+
+
+## États de suivi Linear au moment de la fusion
+
+- SHA-104 : In Progress — contrat engines, processus parent.
+- SHA-126 à SHA-132 : In Progress — prototypes, catalogues, sécurité
+  et persistance livrés partiellement, mais aucune connectivité live.
+- SHA-133 : Todo — certification et revue GO/NO-GO.
+- SHA-105 : Backlog — connexion réelle d'OpenMausBot, toujours bloquée.
+
+Ce sont des statuts de chantier, pas des erreurs de livraison GitHub.
+Le socle SQL et le code de préconnexion peuvent être sur main alors que
+l'exécution réelle reste strictement interdite.

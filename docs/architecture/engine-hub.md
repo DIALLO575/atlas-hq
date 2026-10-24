@@ -5,9 +5,9 @@
 ATLAS HQ est un Next.js 16 App Router/PWA; les routes applicatives sous src/app
 utilisent Supabase Auth SSR. Les workspaces et workspace_members controlent
 l'appartenance avec RLS. atlas_missions et atlas_mission_reviews gerent de vraies
-missions et decisions; la base a aussi des tables GitHub/Linear. Aucune table
-de registre moteur, execution d'agent ou relation mission↔job n'existait au
-moment de cet audit. Agents & Equipes n'avait qu'un etat vide, Chief avait un
+missions et decisions; la base a aussi des tables GitHub/Linear. Au début de cet audit, aucune table de registre moteur ou relation
+mission↔job n'existait ; elles ont depuis été créées par les deux
+migrations Supabase Engines du 24/10/2026 (voir section persistance). Agents & Equipes n'avait qu'un etat vide, Chief avait un
 assistant guide sans LLM autonome. Mes Apps est un espace d'outils connectes,
 pas un espace de moteurs IA.
 

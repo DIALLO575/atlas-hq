@@ -4,6 +4,33 @@
 
 ATLAS HQ est le cockpit Web/PWA du Personal Operating System. Le projet contient désormais des pages réelles appuyées sur Supabase et un connecteur GitHub en lecture seule, ainsi qu'un cockpit Chief à réponses guidées (sans LLM connecté). **Attention : le dernier code mergé sur main peut ne pas être encore publié sur Vercel.** Voir le [relais des workers](docs/operations/worker-handoff-2026-10-24.md).
 
+## Moteurs IA — M0 dans main, runtime encore désactivé
+
+Le contrat MAUSBOT / Engines, l'Espace Moteurs, les tests et le registre
+d'instances offline ont été fusionnés dans main via
+[PR #33](https://github.com/DIALLO575/atlas-hq/pull/33), commit
+ab21fcfbfeb6ef75bc6147cd80b7137ae22be301. CI du commit fusionné :
+[GitHub Actions](https://github.com/DIALLO575/atlas-hq/actions/runs/40114818208)
+(tous les jobs réussis).
+
+**Deux migrations Supabase Engines sont appliquées** :
+20261024161305 (9 tables avec RLS) et 20261024163943 (clé/version
+d'outbox). La vérification avait 0 instance moteur et 0 exécution.
+
+Le catalogue recense 20 outils MCP mock-testés et 128 entrées natives
+(24 lectures simulées, 42 plans de mutations non exécutables, 5 plans
+binaires sans I/O, 57 contrats source-only). Les deux catalogues
+peuvent se recouper. **Aucun runtime MAUSBOT n'a été connecté et les
+mutations restent bloquées HTTP 423.** Fusion GitHub n'est pas déploiement
+Vercel/Netlify : l'état de production doit être vérifié séparément.
+
+Voir le [bilan de livraison M0](docs/operations/atlas-engine-m0-main-release-2026-10-24.md),
+le [contrat Engines](docs/architecture/engine-hub.md) et la
+[persistance Supabase](docs/architecture/engine-persistence.md).
+Le suivi restant est dans Linear SHA-126 à SHA-133, surtout SHA-132
+(KMS, approbations, worker) et SHA-133 (tests/certification). SHA-105
+connexion réelle demeure bloqué.
+
 ## ATLAS actuel — surfaces et réalité des données
 
 - Accueil, Workspaces, Missions, Agents & Équipes, Mes Apps, Inbox et Chief sont accessibles via le shell Next.js responsive, avec navigation préchargée, barre de progression et squelettes de chargement.
