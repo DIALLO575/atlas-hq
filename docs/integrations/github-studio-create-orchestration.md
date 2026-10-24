@@ -13,6 +13,6 @@ The coordinator is **NOT wired to a Next.js execute route**. It cannot create re
 - A stalled operation is not silently retried.
 
 ## Important
-The real finalization RPC, provider grant verification, authenticated execute endpoint, new GitHub App permissions and human confirmation still need to be implemented and separately reviewed. This coordinator alone is not authorization, a permission grant, or an idempotency persistence layer; the database migration `20261024215000_github_studio_operation_ledger.sql` supplies the latter once deliberately applied.
+The real finalization RPC, provider grant verification, authenticated execute endpoint, new GitHub App permissions and human confirmation still need to be implemented and separately reviewed. This coordinator alone is not authorization, a permission grant, or an idempotency persistence layer; the database migration `20261024225515_github_studio_operation_ledger.sql` supplies the latter once deliberately applied.
 
 Associated Linear tickets: SHA-154 / SHA-155 / SHA-162.

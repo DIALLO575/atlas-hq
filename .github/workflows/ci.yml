@@ -87,7 +87,7 @@ jobs:
           -f tests/sql/github-studio-ledger-fixture.sql
           -f supabase/migrations/20261023210000_atlas_github_installations_rls.sql
           -f supabase/migrations/20261024064800_allow_all_github_installation_repositories.sql
-          -f supabase/migrations/20261024215000_github_studio_operation_ledger.sql
+          -f supabase/migrations/20261024225515_github_studio_operation_ledger.sql
           -f tests/sql/github-studio-ledger-checks.sql
           -f tests/sql/github-studio-finalize-atomic-checks.sql
       - name: Verify concurrent dispatch single winner

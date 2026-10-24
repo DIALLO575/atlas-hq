@@ -96,6 +96,6 @@ test("encrypted ephemeral user token is actor, installation and workspace bound"
  assert.equal(readStudioUserGrant({cookie,workspaceId,actorId,installationId:78,key,now}),null);
  assert.equal(readStudioUserGrant({cookie,workspaceId,actorId:"22222222-2222-4222-8222-222222222222",
   installationId:77,key,now}),null);
- assert.equal(readStudioUserGrant({cookie:cookie.replace(/.$/,"x"),workspaceId,actorId,
+ assert.equal(readStudioUserGrant({cookie:cookie.replace(/^./, cookie[0] === "A" ? "B" : "A"),workspaceId,actorId,
   installationId:77,key,now}),null);
 });
