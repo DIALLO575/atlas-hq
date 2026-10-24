@@ -21,6 +21,11 @@ alter table private.atlas_engine_approvals
  add column intent_digest text not null
  check (intent_digest ~ '^[a-f0-9]{64}$');
 
+-- Service role alone needs to resolve the pgcrypto function inside extensions.
+-- No anon/authenticated schema grants are added.
+grant usage on schema extensions to service_role;
+grant execute on function extensions.digest(bytea,text) to service_role;
+
 -- All fields are fixed-width or have a validated alphabet excluding newlines.
 -- Match JavaScript join('\n') exactly. No raw request payload is stored.
 create function private.atlas_engine_intent_digest(
