@@ -32,6 +32,12 @@ begin
        'public.atlas_gh_studio_reserve(uuid,uuid,bigint,uuid,text,text,text)','EXECUTE')
     or has_function_privilege('anon',
        'public.atlas_gh_studio_advance(uuid,text,text,bigint,text)','EXECUTE')
+    or has_function_privilege('anon',
+       'public.atlas_gh_studio_finalize_repository(uuid,bigint)','EXECUTE')
+    or has_function_privilege('authenticated',
+       'public.atlas_gh_studio_finalize_repository(uuid,bigint)','EXECUTE')
+    or not has_function_privilege('service_role',
+       'public.atlas_gh_studio_finalize_repository(uuid,bigint)','EXECUTE')
  then raise exception 'Audit grants or service-only RPC grants unsafe';end if;
 end $$;
 
@@ -96,15 +102,32 @@ begin
  exception when serialization_failure then null;end;
  next_state := public.atlas_gh_studio_advance(r.operation_id,'dispatching','provider_confirmed',505);
  if next_state <> 'provider_confirmed' then raise exception 'Provider confirmation failed';end if;
+ -- The generic CAS may never finalize, even with a pre-existing grant.
  begin
    perform public.atlas_gh_studio_advance(r.operation_id,'provider_confirmed','succeeded');
-   raise exception 'Succeeded without selected repository grant';
- exception when insufficient_privilege then null;end;
+   raise exception 'Generic advance accepted succeeded';
+ exception when serialization_failure then null;end;
+ -- Wrong provider ID must not add a grant or create a success audit event.
+ begin
+   perform public.atlas_gh_studio_finalize_repository(r.operation_id,506);
+   raise exception 'Mismatched repository ID accepted';
+ exception when serialization_failure then null;end;
+ if exists(select 1 from public.atlas_github_authorized_repositories
+    where installation_id=77 and repository_id in(505,506)) then
+   raise exception 'Unverified repository added before finalization';end if;
 
- insert into public.atlas_github_authorized_repositories(installation_id,repository_id)
- values(77,505);
- next_state := public.atlas_gh_studio_advance(r.operation_id,'provider_confirmed','succeeded');
- if next_state <> 'succeeded' then raise exception 'Reconciliation failed';end if;
+ if public.atlas_gh_studio_finalize_repository(r.operation_id,505) is distinct from true then
+   raise exception 'Atomic finalizer did not succeed';end if;
+ if not exists(select 1 from public.atlas_github_authorized_repositories
+       where installation_id=77 and repository_id=505) then
+   raise exception 'Repository grant not committed with success';end if;
+ if not exists(select 1 from public.atlas_github_studio_operations
+       where id=r.operation_id and state='succeeded' and repository_id=505) then
+   raise exception 'Operation not finalized';end if;
+ begin
+   perform public.atlas_gh_studio_finalize_repository(r.operation_id,505);
+   raise exception 'Repeated finalization accepted';
+ exception when serialization_failure then null;end;
  select count(*) into v_count from public.atlas_github_studio_audit where operation_id=r.operation_id;
  if v_count<>4 then raise exception 'Unexpected audit count: %',v_count;end if;
  if exists(select 1 from public.atlas_github_studio_audit where error_code is not null) then

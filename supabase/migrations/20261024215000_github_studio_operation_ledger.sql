@@ -117,8 +117,7 @@ begin
    not (
       (p_expected_state='prepared' and p_next_state in('dispatching','failed'))
       or (p_expected_state='dispatching' and p_next_state in('provider_confirmed','reconciliation_required'))
-      or (p_expected_state='provider_confirmed' and p_next_state in('succeeded','reconciliation_required'))
-      or (p_expected_state='reconciliation_required' and p_next_state='succeeded')
+      or (p_expected_state='provider_confirmed' and p_next_state='reconciliation_required')
    ) then raise exception 'GH_STUDIO_INVALID_TRANSITION' using errcode='40001';end if;
 
  if not exists(select 1 from public.workspace_members m
@@ -171,3 +170,71 @@ revoke all on function public.atlas_gh_studio_advance(uuid,text,text,bigint,text
  from public,anon,authenticated,service_role;
 grant execute on function public.atlas_gh_studio_advance(uuid,text,text,bigint,text)
  to service_role;
+
+-- SHA-155: this is the ONLY path to mark a creation as succeeded.
+-- Caller must separately verify the newly created repository and its effective
+-- installation grant using a fresh GitHub API read immediately beforehand.
+-- The DB does NOT assert provider verification; service_role is the trust boundary.
+-- The exact numeric provider repository ID MUST already be confirmed on the intent.
+create function public.atlas_gh_studio_finalize_repository(
+ p_operation_id uuid,p_repository_id bigint
+) returns boolean
+ language plpgsql volatile security invoker set search_path='' as $$
+declare v record; v_actor uuid; v_installation record; v_rows integer;
+begin
+ if p_operation_id is null or p_repository_id is null or p_repository_id<=0 then
+   raise exception 'GH_STUDIO_FINALIZE_INVALID' using errcode='22023';
+ end if;
+ -- Serialize with advance(), revocation and any competing finalization.
+ select o.* into v from public.atlas_github_studio_operations o
+ where o.id=p_operation_id for update;
+ if not found or v.state not in('provider_confirmed','reconciliation_required')
+   or v.repository_id is distinct from p_repository_id then
+   raise exception 'GH_STUDIO_FINALIZE_CONFLICT' using errcode='40001';
+ end if;
+
+ select m.user_id into v_actor from public.workspace_members m
+ where m.workspace_id=v.workspace_id and m.user_id=v.actor_id
+   and m.role in('owner','admin') for share;
+ if v_actor is null then
+   raise exception 'GH_STUDIO_FINALIZE_REVOKED' using errcode='42501';
+ end if;
+ select i.installation_id,i.repository_selection into v_installation
+ from public.atlas_github_installations i
+ where i.workspace_id=v.workspace_id and i.installation_id=v.installation_id
+   and i.status='repositories-ready'
+   and i.repository_selection in('selected','all')
+   and i.ownership_verified_at is not null
+   and i.repositories_verified_at is not null
+ for share;
+ if not found then
+   raise exception 'GH_STUDIO_FINALIZE_REVOKED' using errcode='42501';
+ end if;
+
+ -- In selected mode the trusted server must have JUST checked the live
+ -- installation repository grant for this exact ID. The transaction then
+ -- records that verified link and the terminal state together.
+ if v_installation.repository_selection='selected' then
+   insert into public.atlas_github_authorized_repositories(
+     installation_id,repository_id) values(v.installation_id,p_repository_id)
+   on conflict(installation_id,repository_id) do nothing;
+ end if;
+ update public.atlas_github_studio_operations o
+ set state='succeeded',updated_at=clock_timestamp(),error_code=null
+ where o.id=p_operation_id and o.state=v.state
+   and o.repository_id=p_repository_id;
+ get diagnostics v_rows=row_count;
+ if v_rows<>1 then
+   raise exception 'GH_STUDIO_FINALIZE_CONFLICT' using errcode='40001';
+ end if;
+ insert into public.atlas_github_studio_audit(
+  operation_id,workspace_id,actor_id,installation_id,action,state)
+ values(p_operation_id,v.workspace_id,v.actor_id,v.installation_id,
+        'repository.create','succeeded');
+ return true;
+end $$;
+revoke all on function public.atlas_gh_studio_finalize_repository(uuid,bigint)
+ from public,anon,authenticated,service_role;
+grant execute on function public.atlas_gh_studio_finalize_repository(uuid,bigint)
+ to service_role;
+
