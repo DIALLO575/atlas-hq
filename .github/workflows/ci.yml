@@ -37,11 +37,11 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install --yes postgresql-client
-      - name: Validate proposed engine schema ONLY in disposable PostgreSQL
+      - name: Validate applied ATLAS engine migration in disposable PostgreSQL
         run: >-
           psql -X -v ON_ERROR_STOP=1
           -f tests/sql/engine-foundation-fixture.sql
-          -f supabase/proposals/engine-foundation-preconnection.sql
+          -f supabase/migrations/20261024161305_atlas_engine_foundation_preconnection.sql
           -f tests/sql/engine-foundation-checks.sql
 
   linear-oauth-postgres:

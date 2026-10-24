@@ -1,11 +1,11 @@
 # ATLAS Engine persistence — SHA-132 preconnection security proposal
 
-**Status: proposal; NOT deployed, NOT a migration.** The SQL is stored at
-`supabase/proposals/engine-foundation-preconnection.sql`, deliberately outside
-`supabase/migrations/`. No changes have been applied to production project.
-The connected Supabase CLI is not available here; promotion must be done with
-`supabase migration new` in a reviewed local environment, followed by
-`supabase db diff` / advisors and staging verification.
+**Status: migration applied to the connected ATLAS Supabase project on 2026-10-24.**
+The versioned SQL is `supabase/migrations/20261024161305_atlas_engine_foundation_preconnection.sql` and is recorded in the Supabase
+migration history under `20261024161305` (via the connected Supabase migration API).
+After applying, read-only verification confirmed 9 new tables, RLS on all,
+3 guard triggers, 0 engine instances and 0 runs. Production transport remains
+**disconnected**; runtime permissions, vault encryption and worker are not implemented.
 
 ## Schema boundaries
 
@@ -37,19 +37,20 @@ by trigger and have no client UPDATE/DELETE grants.
 ## Verification
 
 GitHub Actions runs a separate **ephemeral PostgreSQL 17** job:
-`tests/sql/engine-foundation-fixture.sql`, the proposal, then
+`tests/sql/engine-foundation-fixture.sql`, the versioned migration, then
 `tests/sql/engine-foundation-checks.sql`. Checks two-tenant RLS visibility,
 forged activation, cross-tenant foreign keys, duplicate idempotency,
 unapproved/offline dispatch rejection, approved dispatch preconditions,
 no access to encrypted secrets, and audit immutability.
 
-**Scope of proof:** SQL against disposable PostgreSQL only. It is NOT a
-real Supabase RLS test with full auth claims, nor a sandbox MAUSBOT test.
+**Scope of proof:** the full SQL test suite runs against disposable PostgreSQL,
+and the live Supabase database was checked read-only for tables, policy grants,
+triggers and empty engine state. No authenticated-user end-to-end or MAUSBOT
+sandbox validation has been performed.
 
 ## Release blockers
 
-1. Verify the SQL under the latest Supabase Auth and RLS schema, and test
-   real migrations on a disposable full Supabase instance.
+1. Test real authenticated-user RLS policies against an isolated full Supabase environment, including revocation.
 2. Implement actor-session-verified human approval workflow with CSRF,
    resource-specific scopes and audit receipts, and prevent self-approval.
 3. Build a trusted credential encrypt/decrypt vault, key rotation and
@@ -61,8 +62,6 @@ real Supabase RLS test with full auth claims, nor a sandbox MAUSBOT test.
 6. Require explicit, reviewed release gating before changing an engine
    instance to connected. None of the existing MAUSBOT primitive execution
    endpoints automatically uses this proposed schema yet.
-7. Verify local tests, staging, production security advisors, code review.
-   Only then generate and apply the migration intentionally.
+7. Review security advisors regularly, implement auth session proof, and test the service code in staging before allowing any engine execution.
 
-**Do not mark SHA-132 Done or open the MAUSBOT transport based solely
-on this draft.** This is the durable SQL foundation, not the worker.
+**Do not mark SHA-132 Done or open the MAUSBOT transport based solely on the applied migration.** This is the durable SQL foundation, not the worker.

@@ -325,7 +325,7 @@ reste exactement zéro.
 ## M0.7 — proposition de persistance Supabase (SHA-132)
 
 Voir `docs/architecture/engine-persistence.md`,
-`supabase/proposals/engine-foundation-preconnection.sql` et
+`supabase/migrations/20261024161305_atlas_engine_foundation_preconnection.sql` et
 `tests/sql/engine-foundation-*.sql`.
 
 Les tables proposées relient obligatoirement workspace, instance,
@@ -341,7 +341,7 @@ workspaces et primitives natives non opérationnelles. Ces plans
 restent toujours `callable=false` et `canEnqueue=false`.
 
 Tests PostgreSQL sur base jetable en CI + tests Node hors réseau.
-**La proposition SQL n'est pas encore une migration Supabase, aucune table
-n'a été ajoutée à l'environnement connecté.** Il reste à développer
+**Migration `20261024161305` appliquée au projet Supabase ATLAS connecté : 9 tables
+créées, RLS active, 0 instance/mission de moteur.** Il reste à développer
 le vault, l'actor-session proof, les transactions du worker, les
 leases à jeton de fencing, RLS Supabase complète et l'E2E sandbox.
