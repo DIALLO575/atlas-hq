@@ -152,19 +152,19 @@ values('ddddddd5-0000-4000-8000-000000000005',
  decode(repeat('0a',12),'hex'),decode('aabbcc','hex'),
  decode(repeat('1a',16),'hex'),4);
 set role service_role;
-do $
+do $$
 declare claim_row record;
 begin
  select * into claim_row from private.atlas_engine_worker_claim(
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','last-attempt',45);
  if claim_row.outbox_id<>'ddddddd5-0000-4000-8000-000000000005' then
    raise exception 'LAST_ATTEMPT_NOT_CLAIMED';end if;
-end $;
+end $$;
 reset role;
 update private.atlas_engine_outbox set lease_until=clock_timestamp()-interval '1 second'
  where id='ddddddd5-0000-4000-8000-000000000005';
 set role service_role;
-do $
+do $$
 begin
  if private.atlas_engine_worker_reap_exhausted(
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',25)<>1 then
@@ -176,7 +176,7 @@ begin
   where id='ddddddd5-0000-4000-8000-000000000005'
     and (state<>'dead-letter' or lease_token is not null)) then
   raise exception 'EXHAUSTED_LEASE_NOT_DEAD_LETTER';end if;
-end $;
+end $$;
 reset role;
 
 -- No MAUSBOT connection or network occurred; restore the fake engine offline.
