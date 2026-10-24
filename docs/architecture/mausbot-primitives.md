@@ -320,3 +320,28 @@ Bilan M0 : 128 natives = 24 lectures metadata mock-testées + 42 plans
 de mutation offline + 5 plans binaires + 57 autres capacités source-only.
 Le nombre de primitives natives autorisées ou testées sur MAUSBOT réel
 reste exactement zéro.
+
+
+## M0.7 — proposition de persistance Supabase (SHA-132)
+
+Voir `docs/architecture/engine-persistence.md`,
+`supabase/proposals/engine-foundation-preconnection.sql` et
+`tests/sql/engine-foundation-*.sql`.
+
+Les tables proposées relient obligatoirement workspace, instance,
+mission, demandeur et agent logique ; séparent les statuts affichables
+en RLS des clés, de l'outbox chiffrée, des approbations et des journaux
+privés. L'outbox ne peut passer en `leased` sans approbation humaine
+explicite, non expirée, run autorisé et instance connectée.
+
+Les nouvelles fonctions `planEngineRegistration` et
+`planEngineRunDraft` dans `packages/engine-core/src/persistence-contracts.mjs`
+rejettent URLs, tokens, instructions brutes, faux droits, autres
+workspaces et primitives natives non opérationnelles. Ces plans
+restent toujours `callable=false` et `canEnqueue=false`.
+
+Tests PostgreSQL sur base jetable en CI + tests Node hors réseau.
+**La proposition SQL n'est pas encore une migration Supabase, aucune table
+n'a été ajoutée à l'environnement connecté.** Il reste à développer
+le vault, l'actor-session proof, les transactions du worker, les
+leases à jeton de fencing, RLS Supabase complète et l'E2E sandbox.
