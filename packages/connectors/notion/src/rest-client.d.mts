@@ -5,6 +5,10 @@ export class NotionReadError extends Error {
 export function createNotionReadClient(args: {
   token: string; request?: typeof fetch; timeoutMs?: number;
 }): {
+  getPage(id: string, options?: { signal?: AbortSignal }): Promise<Record<string, unknown>>;
+  getBlock(id: string, options?: { signal?: AbortSignal }): Promise<Record<string, unknown>>;
+  getDatabase(id: string, options?: { signal?: AbortSignal }): Promise<Record<string, unknown>>;
+  getDataSource(id: string, options?: { signal?: AbortSignal }): Promise<Record<string, unknown>>;
   listBlockChildren(id: string, options?: {
     startCursor?: string | null; size?: number; signal?: AbortSignal;
   }): Promise<{ results: Array<Record<string, unknown>>;
