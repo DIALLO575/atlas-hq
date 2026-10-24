@@ -134,11 +134,13 @@ export function AppsDirectory({ githubConfigured = false }: { githubConfigured?:
                       <p className="atlas-app-tile-description">{app.description}</p>
                       <div className="atlas-app-tile-meta"><span>{app.category}</span>{app.recommended && <span className="atlas-app-recommend-dot" title="Recommandée">✦</span>}</div>
                       <div className="atlas-app-tile-footer">
-                        <span className="atlas-app-connection-state"><i />{app.slug === "github" ? githubConfigured ? "Control Center" : "À configurer" : app.slug === "linear" ? "Pilotage" : "À venir"}</span>
+                        <span className="atlas-app-connection-state"><i />{app.slug === "github" ? githubConfigured ? "Control Center" : "À configurer" : app.slug === "linear" ? "Pilotage" : app.slug === "notion" ? "Configuration" : "À venir"}</span>
                         {app.slug === "github" ?
                           <Link className="atlas-app-details" href="/apps/github" prefetch={true} aria-label="Ouvrir GitHub Control Center">Piloter <Icon name="arrow-up-right" /></Link> :
                           app.slug === "linear" ?
                           <Link className="atlas-app-details" href="/apps/linear" prefetch={true} aria-label="Ouvrir le pilotage Linear">Piloter <Icon name="arrow-up-right" /></Link> :
+                          app.slug === "notion" ?
+                          <Link className="atlas-app-details" href="/apps/notion" prefetch={true} aria-label="Ouvrir Notion Control Center">Piloter <Icon name="arrow-up-right" /></Link> :
                           <button className="atlas-app-details" type="button" onClick={() => setSelected(selected?.slug === app.slug ? null : app)}
                             aria-label={"Voir les détails de " + app.name} aria-expanded={selected?.slug === app.slug}>
                             Détails <Icon name="arrow-up-right" />
