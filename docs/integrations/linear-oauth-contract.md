@@ -73,3 +73,22 @@ Sources: [Linear OAuth 2.0 authentication](https://linear.app/developers/oauth-2
 - Linear's GraphQL `RATELIMITED` response (including HTTP 400 with `extensions.code`) and HTTP 429 map to a safe 429 response. A valid upstream `Retry-After` or documented rate-limit reset header is converted to bounded seconds and returned as `Retry-After`; the server does not automatically retry. HTTP 401, other provider errors, partial GraphQL errors, malformed payloads and identity mismatch fail closed without returning provider bodies or bearer tokens.
 - Behavioral fixtures cover teams/projects/issues, cursor/page bounds, missing or removed membership, actor and workspace mismatch, refresh-before-read, wrong Linear organization/actor, malformed payload, 401, GraphQL `RATELIMITED`, and retry delay propagation. No real Linear or Supabase API was contacted.
 - Current official sources checked: [GraphQL getting started and error handling](https://linear.app/developers/graphql), [pagination](https://linear.app/developers/pagination), [rate limiting](https://linear.app/developers/rate-limiting), and [Linear's current GraphQL schema](https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql). The slice is tested against fixtures only; schema drift and a real tenant's permissions remain unverified.
+
+
+## Delivery status and remaining work (2026-10-24, PR #31)
+
+### Verified on the current PR head
+
+- PR #31 is open and remains a draft at commit `6d21a2a50bce26747378438a16b3388234033d16` on `fix/linear-graphql-readonly`. CI run [#375](https://github.com/DIALLO575/atlas-hq/actions/runs/40090407426) passed on this head: all repository tests, TypeScript, ESLint, GitHub Actions build, whitespace, dependency audit, secret scan, and the disposable PostgreSQL migration/concurrency job.
+- The server routes for OAuth start/callback/refresh/disconnect and the encrypted actor-scoped token store are present. The callback remains disabled by default. The three SQL migrations are committed in the PR and were applied only to the disposable PostgreSQL CI fixture; none has been applied to an official Supabase project.
+- The Linear control center is wired to the status and read routes. It shows connection status and reads teams, projects, and issues with bounded pagination. These are code and fixture/CI results; no live Linear account was connected and no authenticated Linear API request was made.
+
+### Remaining work before Linear is usable
+
+1. Review and merge this draft PR only after the owner’s release decision; no production release is implied by the green CI.
+2. Provision Linear OAuth client settings and the versioned encryption keyring in an approved server-side secret manager, set the fixed callback URI, and apply the migrations only to the selected sandbox after explicit operational approval. Keep the callback feature flag off until these checks and a security review pass.
+3. Run an end-to-end sandbox OAuth connection, verify viewer and organization binding, read teams/projects/issues, then test refresh, disconnect, membership removal, and cleanup. Record the evidence and limits; do not use production credentials for this proof.
+4. Extend the read surface to cycles, statuses, comments, and relations only where the official schema and product scope support them. Keep writes disabled until a separate approval/preview/idempotency/audit design is accepted.
+5. Update freshness/provenance and recovery states in Mes Apps after the sandbox proof. The wider connector event/sync/observability milestone remains SHA-109 and stays after the app connectors, as the project roadmap specifies.
+
+A successful CI build or PostgreSQL fixture is not a live OAuth or live Linear proof. No production migration, callback activation, Linear connection, merge, or production deployment is claimed here.
