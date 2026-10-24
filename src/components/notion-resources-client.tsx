@@ -1,5 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
+import { NotionCapabilitiesClient } from "./notion-capabilities-client";
 
 type Resource = { id: string; kind: string; title: string; editedAt: string | null };
 type Block = { id: string; type: string; text: string; hasChildren: boolean };
@@ -90,6 +91,7 @@ export function NotionResourcesClient({ workspaceId, connectionId }: Props) {
     } finally { setBusy(false); }
   }
   return <section aria-label="Ressources Notion autorisées">
+    {!disconnected && <NotionCapabilitiesClient workspaceId={workspaceId} connectionId={connectionId}/>}
     <form onSubmit={submit}>
       <label htmlFor={"notion-search-" + connectionId}>Rechercher des pages par titre</label>
       <input id={"notion-search-" + connectionId} type="search"

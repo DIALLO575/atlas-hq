@@ -15,7 +15,11 @@ export const NOTION_IMPLEMENTED_CAPABILITIES = Object.freeze({
 });
 export function effectiveNotionCapabilities({ connected = false, grants = [] } = {}) {
   const allowed = new Set(Array.isArray(grants) ? grants : []);
+  // Legacy adapter only: browser/client-provided flags, grants or connected
+  // cannot prove an actual Notion provider permission. Do NOT issue rights.
+  // Use server-only evaluateNotionCapabilities() for verified evidence.
+  void connected;
+  void allowed;
   return Object.fromEntries(Object.entries(NOTION_IMPLEMENTED_CAPABILITIES)
-    .map(([name, definition]) => [name, Boolean(connected &&
-      definition.implemented && allowed.has(definition.requiresGrant))]));
+    .map(([name]) => [name, false]));
 }
