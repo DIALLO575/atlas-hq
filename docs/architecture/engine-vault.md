@@ -48,3 +48,12 @@ manager. No real MAUSBOT engine has been connected; writes remain hard-blocked.
 - The code has two separate conversion helpers so neither SQL schema needs
   to reinterpret binary values or invent key identity. Neither helper is a
   database writer.
+
+
+## SHA-149 lifecycle (new offline integration boundary)
+
+A server-side credential lifecycle now provides transaction-injected
+create/rotate/revoke/inspect contracts, separate from public HTTP routes.
+See \`docs/architecture/engine-credential-lifecycle.md\` for the security
+assumptions and production blockers. KMS and a private database adapter
+are still NOT connected.
