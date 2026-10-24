@@ -1,0 +1,16 @@
+{
+  "name": "@atlas-hq/connector-linear",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./oauth": "./src/oauth.mjs",
+    "./oauth-state": "./src/oauth-state.mjs",
+    "./connect-routes": "./src/connect-routes.mjs",
+    "./workspace-access": "./src/workspace-access.mjs",
+    "./graphql-client": "./src/graphql-client.mjs",
+    "./linear-read": "./src/linear-read.mjs",
+    "./token-vault": "./src/token-vault.mjs",
+    "./connection-store": "./src/connection-store.mjs",
+    "./linear-identity": "./src/linear-identity.mjs"
+  }
+}

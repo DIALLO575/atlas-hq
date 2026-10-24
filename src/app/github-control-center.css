@@ -42,6 +42,21 @@
 .atlas-gh-loading,.atlas-gh-notice{margin:0;display:flex;align-items:center;gap:8px;padding:12px 15px;border-radius:12px;border:1px solid #e5def6;background:#fbf8ff;color:#7a65a8;font-size:11px;}
 .atlas-gh-loading svg,.atlas-gh-notice svg{height:15px;width:15px;}
 .atlas-gh-notice[role=alert]{border-color:#eed9dc;color:#a34c63;background:#fff8f9;}
+.linear-control-center{display:flex;flex-direction:column;gap:14px;}
+.linear-panel{min-width:0;background:#fff;border:1px solid #eae9f3;border-radius:17px;padding:16px;box-shadow:0 5px 22px #2d27550a;}
+.linear-panel>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.linear-panel h2{font-size:14px;font-weight:760;color:#292640;letter-spacing:-.025em;margin:0;}
+.linear-panel header p,.linear-panel>p{font-size:10px;margin:5px 0 0;color:#9595aa;}
+.linear-connect-form{display:flex;flex-direction:column;align-items:flex-start;gap:8px;}
+.linear-connect-form p{font-size:10px;color:#89869c;margin:0;}
+.linear-resources{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;}
+.linear-resources .linear-panel:last-child{grid-column:1/-1;}
+.linear-list{display:flex;flex-direction:column;list-style:none;padding:0;margin:0;}
+.linear-list li{display:flex;flex-direction:column;gap:4px;padding:10px 2px;border-top:1px solid #f0edf5;min-width:0;}
+.linear-list strong{font-size:11px;color:#37314b;font-weight:710;overflow-wrap:anywhere;}
+.linear-list span,.linear-incomplete{font-size:10px;color:#89869c;overflow-wrap:anywhere;}
+.linear-incomplete{padding:8px;border-radius:9px;background:#fbf8ff;color:#7865a0;}
+@media(max-width:700px){.linear-resources{grid-template-columns:minmax(0,1fr);}.linear-resources .linear-panel:last-child{grid-column:auto;}.linear-panel>header{align-items:flex-start;flex-direction:column;}}
 .atlas-gh-notice button,.atlas-gh-notice a{margin-left:auto;color:#7452d2;font-size:10px;border:0;background:transparent;cursor:pointer;text-decoration:underline;}
 .atlas-gh-content{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(270px,.75fr);gap:13px;align-items:start;}
 .atlas-gh-primary,.atlas-gh-detail-panel,.atlas-gh-panel{min-width:0;background:#fff;border:1px solid #eae9f3;border-radius:17px;padding:16px;box-shadow:0 5px 22px #2d27550a;}
@@ -170,3 +185,348 @@
 @media(max-width:1100px){.atlas-gh-content-v2{grid-template-columns:1fr}}
 @media(max-width:760px){.atlas-gh-setup{flex-wrap:wrap;padding:12px}.atlas-gh-content-v2 .atlas-gh-primary,.atlas-gh-content-v2 .atlas-gh-detail-panel{padding:12px}.atlas-gh-settings .atlas-gh-permissions{grid-template-columns:1fr}}
 @media(max-width:450px){.atlas-gh-stat strong{font-size:18px}.atlas-gh-install-controls{flex-wrap:wrap}}
+
+
+/* Linear — calm, spacious workspace surfaces, aligned with the Atlas home system. */
+.linear-control-center {
+  gap: 22px;
+}
+.linear-control-center .atlas-gh-crumbs {
+  font-size: 12px;
+}
+.linear-control-center .atlas-gh-hero {
+  padding: 5px 0 8px;
+  gap: 24px;
+}
+.linear-control-center .atlas-gh-identity {
+  gap: 17px;
+}
+.linear-control-center .atlas-gh-mark {
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #fff 15%, #f8f6ff 100%);
+  box-shadow: 0 7px 26px rgba(39, 32, 91, .07);
+}
+.linear-control-center .atlas-gh-identity .atlas-overline {
+  margin-bottom: 7px;
+  font-size: 10px;
+  letter-spacing: .14em;
+}
+.linear-control-center .atlas-gh-identity h1 {
+  font-size: clamp(28px, 3vw, 36px);
+  letter-spacing: -.05em;
+}
+.linear-control-center .atlas-gh-identity p:last-child {
+  max-width: 58ch;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #77778f;
+}
+.linear-control-center .atlas-gh-workspace-pick {
+  gap: 8px;
+  font-size: 11px;
+}
+.linear-control-center .atlas-gh-workspace-pick select {
+  min-width: 190px;
+  max-width: 290px;
+  height: 44px;
+  padding-inline: 14px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+.linear-control-center .atlas-gh-connection-strip {
+  min-height: 68px;
+  gap: 16px;
+  padding: 13px 18px;
+  border-radius: 17px;
+  box-shadow: 0 5px 20px rgba(39, 32, 91, .035);
+}
+.linear-control-center .atlas-gh-connection-label {
+  gap: 11px;
+}
+.linear-control-center .atlas-gh-connection-label strong {
+  font-size: 13px;
+}
+.linear-control-center .atlas-gh-connection-label > span:last-child {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.linear-control-center .atlas-gh-state-dot {
+  width: 9px;
+  height: 9px;
+}
+.linear-control-center .atlas-gh-install-controls {
+  gap: 9px;
+}
+.linear-control-center .atlas-gh-refresh,
+.linear-control-center .atlas-gh-minor-action {
+  min-height: 40px;
+  height: auto;
+  padding: 0 14px;
+  border-radius: 11px;
+  font-size: 12px;
+}
+.linear-control-center .linear-connect-form {
+  gap: 11px;
+  padding: 0 2px;
+}
+.linear-control-center .linear-connect-form .app-action {
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+.linear-control-center .linear-connect-form p {
+  max-width: 62ch;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.linear-control-center .atlas-gh-notice {
+  padding: 14px 17px;
+  border-radius: 13px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.linear-control-center .linear-resources {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 17px;
+}
+.linear-control-center .linear-resources .linear-panel:last-child {
+  grid-column: auto;
+}
+.linear-control-center .linear-panel {
+  min-height: 100%;
+  padding: 22px;
+  border-radius: 19px;
+  box-shadow: 0 7px 25px rgba(39, 32, 91, .035);
+}
+.linear-control-center .linear-panel > header {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 17px;
+}
+.linear-control-center .linear-panel h2 {
+  font-size: 17px;
+  letter-spacing: -.03em;
+}
+.linear-control-center .linear-panel header p,
+.linear-control-center .linear-panel > p {
+  margin-top: 7px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.linear-control-center .linear-panel > header button {
+  min-height: 40px;
+  height: auto;
+  padding-inline: 13px;
+  font-size: 12px;
+}
+.linear-control-center .linear-list li {
+  gap: 6px;
+  padding: 15px 2px;
+}
+.linear-control-center .linear-list strong {
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+.linear-control-center .linear-list span {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #77778f;
+}
+.linear-control-center .linear-incomplete {
+  margin: 13px 0 0;
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.linear-control-center .linear-connect-form button:focus-visible,
+.linear-control-center button:focus-visible,
+.linear-control-center select:focus-visible {
+  outline: 3px solid rgba(118, 83, 220, .32);
+  outline-offset: 3px;
+}
+.linear-control-center button:not(:disabled) {
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.linear-control-center button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+@media (max-width: 1120px) {
+  .linear-control-center .linear-resources {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .linear-control-center .linear-resources .linear-panel:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .linear-control-center {
+    gap: 17px;
+  }
+  .linear-control-center .atlas-gh-hero {
+    align-items: stretch;
+    gap: 16px;
+  }
+  .linear-control-center .atlas-gh-mark {
+    width: 54px;
+    height: 54px;
+  }
+  .linear-control-center .atlas-gh-identity p:last-child {
+    font-size: 13px;
+  }
+  .linear-control-center .atlas-gh-workspace-pick select {
+    width: 100%;
+    max-width: none;
+  }
+  .linear-control-center .atlas-gh-connection-strip {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 14px;
+  }
+  .linear-control-center .atlas-gh-install-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .linear-control-center .linear-resources {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+  }
+  .linear-control-center .linear-resources .linear-panel:last-child {
+    grid-column: auto;
+  }
+  .linear-control-center .linear-panel {
+    min-height: 0;
+    padding: 19px;
+  }
+  .linear-control-center .linear-panel > header {
+    align-items: flex-start;
+  }
+}
+@media (max-width: 440px) {
+  .linear-control-center,
+  .linear-control-center * {
+    box-sizing: border-box;
+  }
+  .linear-control-center .atlas-gh-identity {
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .linear-control-center .atlas-gh-mark {
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
+  }
+  .linear-control-center .atlas-gh-mark .atlas-brand-image {
+    width: 35px;
+    height: 35px;
+  }
+  .linear-control-center .atlas-gh-identity h1 {
+    font-size: 27px;
+  }
+  .linear-control-center .atlas-gh-identity p:last-child {
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  .linear-control-center .atlas-gh-workspace-pick {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+  .linear-control-center .atlas-gh-workspace-pick select {
+    min-width: 0;
+    min-height: 46px;
+  }
+  .linear-control-center .atlas-gh-connection-label {
+    align-items: flex-start;
+    gap: 9px;
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .linear-control-center .atlas-gh-connection-label > span:last-child {
+    width: auto;
+    flex-basis: 100%;
+    padding-left: 20px;
+  }
+  .linear-control-center .linear-panel {
+    padding: 16px;
+  }
+  .linear-control-center .linear-panel > header {
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+  .linear-control-center .atlas-gh-install-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .linear-control-center .atlas-gh-install-controls button,
+  .linear-control-center .linear-panel > header button,
+  .linear-control-center .linear-panel > button,
+  .linear-control-center .linear-connect-form .app-action {
+    width: 100%;
+    min-height: 46px;
+    white-space: normal;
+    text-align: center;
+  }
+  .linear-control-center .linear-connect-form .app-action {
+    position: static;
+    justify-content: center;
+  }
+  .linear-control-center .linear-connect-form p {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .linear-control-center .linear-list li {
+    padding: 13px 0;
+  }
+  .linear-control-center .linear-list strong,
+  .linear-control-center .linear-list span {
+    overflow-wrap: anywhere;
+  }
+}
+@media (max-width: 360px) {
+  .linear-control-center {
+    gap: 14px;
+  }
+  .linear-control-center .atlas-gh-hero {
+    gap: 12px;
+  }
+  .linear-control-center .atlas-gh-mark {
+    width: 42px;
+    height: 42px;
+  }
+  .linear-control-center .atlas-gh-mark .atlas-brand-image {
+    width: 31px;
+    height: 31px;
+  }
+  .linear-control-center .atlas-gh-identity {
+    gap: 10px;
+  }
+  .linear-control-center .atlas-gh-identity h1 {
+    font-size: 25px;
+  }
+  .linear-control-center .atlas-gh-identity p:last-child {
+    font-size: 11px;
+  }
+  .linear-control-center .atlas-gh-connection-strip {
+    padding: 12px;
+  }
+  .linear-control-center .linear-panel {
+    padding: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .linear-control-center button:not(:disabled) {
+    transition: none;
+  }
+}

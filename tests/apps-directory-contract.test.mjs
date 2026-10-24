@@ -35,6 +35,8 @@ test("Mes Apps is a proper working discovery interface, not fictitious integrati
   assert.doesNotMatch(page, /<GitHubWorkspacePicker|force-dynamic|supabase\.auth\.getUser/);
   assert.doesNotMatch(directory, /githubSlot|hasVerifiedGitHub/);
   assert.match(directory, /app.slug === "github"/);
+  assert.match(directory, /href="\/apps\/linear"/);
+  assert.match(directory, /app.slug === "linear"/);
   assert.match(page, /Vos applications, au même endroit/);
   assert.match(page, /href="#apps-catalog"/);
   assert.match(directory, /useState/);
@@ -70,4 +72,13 @@ test("all enabled navigation targets have real destinations and not fake OAuth f
   assert.match(page, /href="#apps-catalog"/);
   assert.doesNotMatch(directory, /href="\/agents"|href="\/missions"|href="\/inbox"/);
   assert.doesNotMatch(directory, /href="https?:\/\/.*oauth|fetch\(["']\/api\/connect/);
+});
+
+test("Linear connection status is scoped to the verified actor and does not read credentials", async () => {
+  const route = await read("../src/app/api/apps/linear/connection/route.ts");
+  assert.match(route, /requireLinearWorkspaceMember\(workspaceId\)/);
+  assert.match(route, /\.eq\("workspace_id", actor\.workspaceId\)\.eq\("user_id", actor\.userId\)/);
+  assert.match(route, /\.select\("revoked_at"\)/);
+  assert.match(route, /!connection\.revoked_at/);
+  assert.doesNotMatch(route, /access_token|refresh_token|ciphertext/i);
 });

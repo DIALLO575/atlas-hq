@@ -11,6 +11,46 @@ permissions:
   contents: read
 
 jobs:
+  linear-oauth-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-password
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Apply OAuth migrations and verify server-only grants in disposable PostgreSQL
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f tests/sql/linear-oauth-state-fixture.sql
+          -f supabase/migrations/20261024114533_atlas_linear_oauth_states.sql
+          -f tests/sql/linear-oauth-state-migration.sql
+          -f supabase/migrations/20261024114556_atlas_linear_oauth_connections.sql
+          -f supabase/migrations/20261024114631_linear_oauth_refresh_gate.sql
+          -f tests/sql/linear-oauth-connection-migration.sql
+      - name: Verify expiry and atomic concurrent consumption
+        run: bash tests/sql/linear-oauth-state-concurrency.sh
+      - name: Verify serialized refresh, connection rotation, and revocation
+        run: bash tests/sql/linear-oauth-connection-concurrency.sh
+
   validate:
     runs-on: ubuntu-latest
     steps:

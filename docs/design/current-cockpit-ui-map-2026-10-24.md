@@ -1,0 +1,14 @@
+# ATLAS HQ cockpit — current design map from source
+
+Inspection base: `c161c7b819ed64d8a57e8b3b7212d2b9be9c57c7` (`main`). This note describes the checked-in implementation; it does not propose a redesign. Line references are relative to that base and can shift as files change.
+
+| Area | Current implementation | Evidence | Limits seen in code |
+|---|---|---|---|
+| Persistent cockpit shell | `PersistentAtlasShell` wraps every authenticated dashboard route once; route-level shell wrappers then render page content only. | `src/components/persistent-atlas-shell.tsx:1-17`; `src/components/app-shell.tsx:11-50`; `src/app/layout.tsx:1-38` | Login routes bypass the persistent cockpit shell. |
+| Dock / navigation rail | Dock has collapsed and expanded states, route navigation, utility links, account controls, persisted placement and a mobile drawer/scrim. | `src/components/app-shell.tsx:11-27,42-115`; `src/components/use-floating-dock.ts:11-20,56-140`; `src/app/atlas-redesign.css:82-125,231-280`; `src/app/smart-dock.css`; `src/app/dock-studio.css` | The mobile layout hides the header workspace switch at 1080 px and moves dock navigation into a drawer at 760 px. |
+| Workspaces | Dashboard filters by role and name, summarizes accessible/managed/member spaces, and creates a workspace. | `src/components/workspaces-dashboard.tsx:37-175`; `src/app/workspaces/page.tsx`; `src/app/workspaces-redesign.css:38-120` | Data uses the existing Supabase membership model; Linear workspace linking has not been implemented. |
+| Mes Apps | Directory supports category/search/favorites and detail panels; GitHub alone links to a real control center. | `src/components/apps-directory.tsx:18-180`; `src/lib/app-catalog.ts`; `src/app/apps-redesign.css:316-395`; `src/app/apps/github/page.tsx` | Other provider cards are catalog entries and do not imply an active account. No Linear freshness or sync indicator exists. |
+| Responsive behavior | Dock becomes a drawer on narrow screens; workspaces and apps change column count across CSS breakpoints, with apps becoming one column below 380 px. | `src/app/atlas-redesign.css:231-298`; `src/app/workspaces-redesign.css:91-120`; `src/app/apps-redesign.css:389-395` | No automated browser/viewport evidence was collected in this code review. |
+| Theme | The current cockpit explicitly forces `color-scheme: light` and uses light lavender surfaces. `globals.css` contains system dark tokens for older/standalone surfaces; login has a separate theme sheet. | `src/app/atlas-redesign.css:1-36`; `src/app/globals.css:1-9,27-29`; `src/app/layout.tsx:1-13`; `src/app/login/duo.css` | No dark-theme rendering claim is made for the new cockpit, and no visual browser check was run. |
+
+The page composition and component map above are source observations only. No screenshot, browser session, or visual redesign was part of this task.
