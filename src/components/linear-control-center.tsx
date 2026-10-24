@@ -7,7 +7,7 @@ type Workspace = { id: string; name: string; role: "owner" | "admin" | "member" 
 type Resource = "teams" | "projects" | "issues";
 type Item = Record<string, unknown>;
 type Page = { items: Item[]; pageInfo: { hasNextPage: boolean; endCursor: string | null }; incomplete: boolean };
-type Status = { configured: boolean; callbackEnabled: boolean; connected: boolean; accessExpiresAt: string | null };
+type Status = { configured: boolean; callbackEnabled: boolean; connected: boolean };
 const feedbackMessages: Record<string, string> = {
   "callback-disabled": "Le retour OAuth Linear est désactivé. La connexion ne peut pas être finalisée pour le moment.",
   connected: "Linear a confirmé la connexion.",

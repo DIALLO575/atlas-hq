@@ -21,17 +21,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const admin = adminLinearStateClient(settings);
-    // This is a status-only query for the verified current actor. Selecting ciphertext
-    // or decrypting credentials is unnecessary for rendering the connection state.
+    // This status-only query uses only the verified actor's row. Credentials are neither
+    // selected nor decrypted for rendering the connection state.
     const { data: connection, error } = await admin.from("atlas_linear_connections")
-      .select("access_expires_at,revoked_at")
+      .select("revoked_at")
       .eq("workspace_id", actor.workspaceId).eq("user_id", actor.userId).maybeSingle();
     if (error) throw new Error("LINEAR_CONNECTION_STORE_UNAVAILABLE");
     return NextResponse.json({
       configured: true,
       callbackEnabled: settings.callbackEnabled,
-      connected: Boolean(connection && !connection.revokedAt),
-      accessExpiresAt: connection?.accessExpiresAt ?? null,
+      connected: Boolean(connection && !connection.revoked_at),
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
     return NextResponse.json({ error: "linear-status-unavailable" }, {
