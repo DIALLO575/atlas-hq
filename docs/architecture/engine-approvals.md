@@ -43,8 +43,8 @@ columns and DB-level checks before production wiring.
 
 ## Required before SHA-150 Done
 
-1. Verify the additive SQL in disposable PostgreSQL; only then review and
-   apply it to Supabase after confirming the relevant tables remain empty.
+1. New schema is applied and tested on disposable PostgreSQL; now test
+   it under real Supabase Auth sessions and simultaneous reviewers.
 2. Implement a trusted private SQL adapter: \`SELECT ... FOR UPDATE\` or
    equivalent CAS on run/approval, and COMMIT/ROLLBACK of audit in one
    transaction. Do not expose private tables to PostgREST.
