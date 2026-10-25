@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-const root=new URL("../../../",import.meta.url);
+const root=new URL("../../../../",import.meta.url);
 const ui=readFileSync(new URL("src/components/notion-resources-client.tsx",root),"utf8");
 const page=readFileSync(new URL("src/app/apps/notion/page.tsx",root),"utf8");
 const css=readFileSync(new URL("src/app/apps/notion/notion-console.css",root),"utf8");
