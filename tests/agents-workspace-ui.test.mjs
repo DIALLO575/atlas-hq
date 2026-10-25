@@ -35,8 +35,9 @@ test("Team drill-down retains workspace and private conversation checks, never i
   assert.match(ui, /view=inventory/);
   assert.match(ui, /data\.source !== "live-read-only"/);
   assert.match(ui, /MAUSBOT_INVENTORY_INVALID/);
-  assert.match(ui, /channels\.messages\.list/);
-  assert.match(ui, /conversations\.messages\.list/);
+  const updates = readFileSync(new URL("../src/app/api/engines/mausbot/updates/route.ts", import.meta.url), "utf8");
+  assert.match(updates, /channels\.messages\.list/);
+  assert.match(updates, /conversations\.messages\.list/);
   assert.match(ui, /cache: "no-store"/);
   assert.match(ui, /credentials: "same-origin"/);
   assert.match(ui, /canReadMessages/);
@@ -62,12 +63,40 @@ test("Real agent and Chief avatars render through the authenticated workspace-on
   assert.match(bridge, /requireEngineWorkspace\(workspaceId\)/);
   assert.match(bridge, /executeMausbotPrimitive\(config, "agents.list"\)/);
   assert.match(bridge, /fetchMausbotAvatar\(config, path\)/);
-  assert.match(bridge, /Cache-Control": "private, no-store"/);
+  assert.match(bridge, /Cache-Control": "private, max-age=300, must-revalidate"/);
+  assert.match(bridge, /"Vary": "Cookie"/);
   assert.match(bridge, /nosniff/);
   assert.match(library, /redirect: "manual"/);
   assert.match(ui, /AgentPortrait agent=\{teamChief\?\.agent\}/);
   assert.match(ui, /AgentPortrait agent=\{agent\}/);
   assert.match(ui, /AgentPortrait agent=\{selectedAgent/);
-  assert.match(ui, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.match(ui, /onError=\{\(\) => setFailedSource\(source\)\}/);
   assert.doesNotMatch(ui, /mausbot\.shadoron\.com/);
+});
+
+test("Messages use workspace-scoped memory cache and deltas, not persistent browser storage",()=>{
+  const updates=readFileSync(new URL("../src/app/api/engines/mausbot/updates/route.ts",import.meta.url),"utf8");
+  assert.match(updates,/requireEngineWorkspace\(workspaceId,true\)/);
+  assert.match(updates,/executeMausbotPrimitive/);
+  assert.match(updates,/mausbotMessageDelta/);
+  assert.match(ui,/threadCache = useRef\(new Map/);
+  assert.match(ui,/rememberMausbotThread\(threadCache.current,key,next\)/);
+  assert.match(ui,/lastMausbotMessageId/);
+  assert.match(ui,/mergeMausbotMessages/);
+  assert.match(ui,/document.visibilityState === "hidden"/);
+  assert.match(ui,/navigator.onLine === false/);
+  assert.match(ui,/activeMessageKey.current !== key/);
+  assert.doesNotMatch(ui,/localStorage|sessionStorage|indexedDB/);
+  assert.doesNotMatch(updates,/revalidate|unstable_cache|cache: "force-cache"/);
+});
+test("Conversation can take full viewport while only message list scrolls on mobile",()=>{
+  assert.match(ui,/fullscreenChat/);
+  assert.match(ui,/aria-pressed=\{fullscreenChat\}/);
+  assert.match(ui,/minimize/);
+  assert.match(ui,/maximize/);
+  assert.match(ui,/document.body.style.overflow = "hidden"/);
+  assert.match(css,/is-chat-fullscreen/);
+  assert.match(css,/height:100dvh/);
+  assert.match(css,/overscroll-behavior:contain/);
+  assert.match(css,/env\(safe-area-inset-bottom\)/);
 });

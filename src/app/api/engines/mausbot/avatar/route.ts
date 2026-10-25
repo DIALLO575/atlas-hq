@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": mime,
-        "Cache-Control": "private, no-store",
+        "Cache-Control": "private, max-age=300, must-revalidate",
+        "Vary": "Cookie",
         "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "default-src 'none'; sandbox",
       },
