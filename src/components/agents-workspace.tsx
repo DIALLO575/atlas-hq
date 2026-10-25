@@ -60,7 +60,7 @@ function threadsFor(entity: Agent | Team | null): Task[] {
 }
 
 function cachedThreadMessages(
-  cache: Map<string,{messages:Message[];updatedAt:number}>,key:string,now:number,
+  cache: Map<string,{messages:Message[];updatedAt:number}>,key:string,now = Date.now(),
 ): Message[] {
   const entry = cache.get(key);
   if (entry && now - entry.updatedAt >= MAUSBOT_THREAD_CACHE_TTL_MS) {
@@ -204,7 +204,7 @@ export function AgentsWorkspace() {
     setThreadId(tasks.find(task => task.active)?.threadId ?? tasks[0]?.threadId ?? "");
     const chosenTaskId = tasks.find(task => task.active)?.threadId ?? tasks[0]?.threadId ?? "";
     const key = next && chosenTaskId ? [workspaceId,next.kind,next.id,chosenTaskId].join("|") : "";
-    setMessages(cachedThreadMessages(threadCache.current,key,Date.now()));
+    setMessages(cachedThreadMessages(threadCache.current,key));
     setMessagesIssue("");
     setMessagesBusy(false);
     if (next?.kind === "agent" && window.matchMedia("(max-width:700px)").matches) {
@@ -223,7 +223,7 @@ export function AgentsWorkspace() {
       reading = true;
       if (!threadCache.current.has(key)) setMessagesBusy(true);
       try {
-        const cached = cachedThreadMessages(threadCache.current,key,Date.now());
+        const cached = cachedThreadMessages(threadCache.current,key);
         const cursor = lastMausbotMessageId(cached);
         const params = new URLSearchParams({workspaceId,kind:selectedKind,
           targetId:selectedId,taskId:threadId});
@@ -428,7 +428,7 @@ export function AgentsWorkspace() {
               const id = event.target.value;
               setThreadId(id);
               const key = selection ? [workspaceId,selection.kind,selection.id,id].join("|") : "";
-              setMessages(cachedThreadMessages(threadCache.current,key,Date.now()));
+              setMessages(cachedThreadMessages(threadCache.current,key));
               setMessagesIssue("");
             }}>
               {currentThreads.map(task => <option value={task.threadId} key={task.threadId}>
