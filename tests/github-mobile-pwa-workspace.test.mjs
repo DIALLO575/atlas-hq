@@ -69,7 +69,7 @@ test("PWA navigation does not add GitHub mutations or weaken existing permission
   const actions = await read("../src/components/github-actions-control-center.tsx");
   assert.match(page, /<GitHubStudioRepositoryWizard key=/);
   assert.match(page, /<GitHubActionsControlCenter key=/);
-  assert.match(studio,/repositories\\/execute/);
+  assert.match(studio,/repositories\/execute/);
  assert.match(studio,/x-studio-approval/);
  assert.match(studio,/confirmed:true/);
   assert.doesNotMatch(actions, /\/rerun|method:"POST"/);
