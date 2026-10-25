@@ -10,3 +10,6 @@
 .agent-request-panel code { overflow-wrap: anywhere; }
 .agent-request-panel [role="alert"] { margin-top: 1rem; }
 .agent-request-panel :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.agent-request-panel .team-member-fields { margin-block: 1rem; padding: 1rem; border: 1px solid var(--border, #b8bec8); border-radius: .75rem; }
+.agent-request-panel [role="group"] { display: flex; flex-wrap: wrap; gap: .5rem; }
+.agent-request-panel [aria-pressed="true"] { font-weight: 700; outline: 2px solid currentColor; outline-offset: 1px; }

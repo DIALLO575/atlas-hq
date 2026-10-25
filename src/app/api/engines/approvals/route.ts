@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { normalizeTeamRequestManifest, type TeamRequestManifest } from "../../../../../packages/engines/mausbot/src/team-request.mjs";
 import { engineFailure, engineSuccess, requireEngineWorkspace } from "@/lib/engines/access";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -20,7 +21,8 @@ export async function GET(request: NextRequest) {
   if (error || !Array.isArray(data)) return engineFailure("APPROVAL_INBOX_UNAVAILABLE", 503);
   const visible = data.slice(0, 50);
   let summaries: Record<string, {name:string;title:string;description:string}> = {};
-  if (visible.some(item => item.primitive_id === "agents.create")) {
+  const teamSummaries: Record<string, TeamRequestManifest["team"]> = {};
+  if (visible.some(item => ["agents.create", "teams.import"].includes(item.primitive_id))) {
     const details = await supabase.rpc("atlas_engine_pending_agent_profiles", { p_workspace_id: workspaceId });
     if (details.error || !Array.isArray(details.data)) return engineFailure("APPROVAL_DETAILS_UNAVAILABLE", 503);
     const rows = details.data as Array<{run_id?: unknown; request_summary?: unknown}>;
@@ -28,12 +30,16 @@ export async function GET(request: NextRequest) {
       const summary = row.request_summary;
       if (typeof row.run_id !== "string" || !summary || typeof summary !== "object" || Array.isArray(summary)) return [];
       const profile = summary as Record<string, unknown>;
+      if (profile.format === "openmaus.team") {
+        try { teamSummaries[row.run_id] = normalizeTeamRequestManifest(profile).team; } catch { /* Missing/invalid details remain non-approvable. */ }
+        return [];
+      }
       if (typeof profile.name !== "string" || typeof profile.title !== "string" || typeof profile.description !== "string") return [];
       return [[row.run_id, { name: profile.name.slice(0,100), title: profile.title.slice(0,200), description: profile.description.slice(0,1000) }]];
     }));
   }
   return engineSuccess({
-    approvals: visible.map(item => ({...item, agentProfile: summaries[item.run_id] ?? null})),
+    approvals: visible.map(item => ({...item, agentProfile: summaries[item.run_id] ?? null, teamProfile: teamSummaries[item.run_id] ?? null})),
     readOnly: true,
     canApprove: false,
     canDispatch: false,
