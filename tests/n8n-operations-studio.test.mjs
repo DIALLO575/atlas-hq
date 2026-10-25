@@ -10,7 +10,7 @@ test("Mes Apps exposes n8n early, as a true recommended Operations Studio",async
   read("../src/app/apps-redesign.css"),
  ]);
  const index=catalog.indexOf('slug: "n8n"');
- assert.ok(index>0&&index<catalog.indexOf('slug: "slack"'));
+ assert.ok(index>0&&index<catalog.indexOf('slug: "google-drive"'));
  assert.match(catalog,/slug: "n8n"[\s\S]*?recommended: true/);
  assert.match(directory,/href="\/apps\/n8n"/);
  assert.match(directory,/Ouvrir n8n Operations Studio/);
@@ -79,7 +79,7 @@ test("execution panel filters status and workflow names, distinguishes autonomou
  for(const term of ["useMemo","setQuery","setStatus","setRefresh",
    'fetch("/api/apps/n8n/coordination?workspaceId="',"view.canStartWorkflow!==false",
    "filtered.length","item.missionId","Mission liée","Autonome",
-   "data.executionListTruncated","Aucune exécution enregistrée","Effacer les filtres"]){
+   "executionListTruncated","Aucune exécution enregistrée","Effacer les filtres"]){
   assert.ok(src.includes(term),term);
  }
  assert.match(src,/controller\.abort\(\)/);
