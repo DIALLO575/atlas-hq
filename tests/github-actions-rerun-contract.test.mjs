@@ -1,0 +1,41 @@
+import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+import test from "node:test";
+const read=(p)=>readFile(new URL(p,import.meta.url),"utf8");
+test("Rerun BFF is POST-only, owner-admin, origin-checked and single-dispatch audited",async()=>{
+ const api=await read("../src/app/api/apps/github/actions/rerun/route.ts");
+ assert.match(api,/export async function POST/);
+ assert.match(api,/ATLAS_GITHUB_ACTIONS_RERUN_ENABLED/);
+ assert.match(api,/ATLAS_PUBLIC_ORIGIN/);
+ assert.match(api,/idempotency-key/);
+ assert.match(api,/supabase.auth.getUser/);
+ assert.match(api,/\["owner","admin"\]/);
+ assert.match(api,/atlas_github_authorized_repositories/);
+ assert.match(api,/atlas_gh_actions_reserve/);
+ assert.match(api,/atlas_gh_actions_advance/);
+ assert.match(api,/writer.verifyFailedJob/);
+ assert.match(api,/writer.dispatchJob/);
+ assert.match(api,/reconciliation_required/);
+ assert.match(api,/CONFIRMATION_MISMATCH/);
+ assert.doesNotMatch(api,/export async function GET|NEXT_PUBLIC_.*SERVICE_ROLE/);
+});
+test("Read-only reader retains actions:read even if GitHub App has writes",async()=>{
+ const readApi=await read("../src/app/api/apps/github/actions/route.ts");
+ const reader=await read("../packages/connectors/github/src/github-actions-client.mjs");
+ assert.match(reader,/permissions:\{actions:"read"\}/);
+ assert.match(readApi,/canRerun/);
+ assert.doesNotMatch(readApi,/export async function POST|dispatchJob/);
+});
+test("UI requires exact job name, explicit user click and never reruns all jobs",async()=>{
+ const ui=await read("../src/components/github-actions-control-center.tsx");
+ const css=await read("../src/app/github-command-deck.css");
+ assert.match(ui,/confirmJob/);
+ assert.match(ui,/typedJobName!==job.name/);
+ assert.match(ui,/confirmed:true/);
+ assert.match(ui,/idempotency-key/);
+ assert.match(ui,/fetch\("\/api\/apps\/github\/actions\/rerun"/);
+ assert.match(ui,/Confirmer la relance/);
+ assert.match(ui,/Résultat incertain/);
+ assert.doesNotMatch(ui,/rerun-failed-jobs/);
+ assert.match(css,/atlas-gh-actions-rerun-confirm/);
+});

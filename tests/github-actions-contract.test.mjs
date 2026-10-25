@@ -15,7 +15,7 @@ test("GitHub Actions API checks Supabase membership, repository grant and provid
  assert.match(route,/Cache-Control":"no-store"/);
  assert.doesNotMatch(route,/export async function POST|rerun|dispatches/);
 });
-test("GitHub Actions UI renders real workflow data and never offers actions:write yet",async()=>{
+test("GitHub Actions UI renders real workflow data and supervised job rerun with confirmation",async()=>{
  const ui=await load("../src/components/github-actions-control-center.tsx");
  const page=await load("../src/components/github-control-center.tsx");
  const css=await load("../src/app/github-control-center.css");
@@ -25,8 +25,8 @@ test("GitHub Actions UI renders real workflow data and never offers actions:writ
  assert.match(ui,/fetch\("\/api\/apps\/github\/actions/);
  assert.match(ui,/failedSteps/);
  assert.match(ui,/Consulter les logs GitHub/);
- assert.match(ui,/Lecture seule/);
- assert.doesNotMatch(ui,/method:"POST"|\/rerun|\/dispatches/);
+ assert.match(ui,/Confirmer la relance/);
+ assert.match(ui,/confirmRerun/);
  assert.match(css,/\.atlas-gh-actions-content\{display:grid/);
  assert.match(css,/@media\(max-width:600px\)/);
 });

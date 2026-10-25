@@ -59,5 +59,5 @@ test("Studio and Actions remain separate and neither enables production mutation
  assert.match(studio,/repositories\/execute/);
  assert.match(studio,/x-studio-approval/);
  assert.match(studio,/confirmed:true/);
- assert.doesNotMatch(actions,/\/rerun|method:"POST"/);
+ assert.match(actions,/Confirmer la relance/);
 });

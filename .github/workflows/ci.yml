@@ -90,6 +90,7 @@ jobs:
           -f supabase/migrations/20261024225515_github_studio_operation_ledger.sql
           -f tests/sql/github-studio-ledger-checks.sql
           -f tests/sql/github-studio-finalize-atomic-checks.sql
+          -f supabase/migrations/20261025200500_github_actions_rerun_ledger.sql
       - name: Verify concurrent dispatch single winner
         run: bash tests/sql/github-studio-ledger-concurrency.sh
 
@@ -179,6 +180,8 @@ jobs:
           -f tests/sql/notion-rest-budget-concurrency-fixture.sql
           -f supabase/migrations/20261024163000_atlas_notion_async_jobs.sql
           -f supabase/migrations/20261024163500_atlas_notion_rest_circuit_breaker.sql
+          -f supabase/migrations/20261024165000_atlas_notion_async_retention.sql
+          -f supabase/migrations/20261024170500_atlas_notion_rest_half_open.sql
           -f tests/sql/notion-async-jobs-circuit.sql
           -f tests/sql/notion-async-concurrency-fixture.sql
       - name: Verify cross-process Notion refresh single-flight
