@@ -70,7 +70,7 @@ test("Real agent and Chief avatars render through the authenticated workspace-on
   assert.match(ui, /AgentPortrait agent=\{teamChief\?\.agent\}/);
   assert.match(ui, /AgentPortrait agent=\{agent\}/);
   assert.match(ui, /AgentPortrait agent=\{selectedAgent/);
-  assert.match(ui, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.match(ui, /onError=\{\(\) => setFailedSource\(source\)\}/);
   assert.doesNotMatch(ui, /mausbot\.shadoron\.com/);
 });
 

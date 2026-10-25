@@ -32,14 +32,13 @@ function chiefFor(team: Team, agents: Agent[]) {
 function AgentPortrait({ agent, workspaceId, className = "", fallback = "bot" }: {
   agent: Agent | null | undefined; workspaceId: string; className?: string; fallback?: "bot" | "layers";
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSource, setFailedSource] = useState<string | null>(null);
   const source = agent?.hasAvatar && workspaceId
     ? "/api/engines/mausbot/avatar?workspaceId=" + encodeURIComponent(workspaceId) +
       "&botId=" + encodeURIComponent(agent.id) : null;
-  useEffect(() => setFailed(false), [source]);
   return <span className={className + " atlas-agent-portrait"}>
-    {source && !failed ? <Image key={source} src={source} alt="" width={64} height={64}
-      unoptimized onError={() => setFailed(true)} />
+    {source && failedSource !== source ? <Image key={source} src={source} alt="" width={64} height={64}
+      unoptimized onError={() => setFailedSource(source)} />
       : <Icon name={fallback} />}
   </span>;
 }
@@ -58,6 +57,17 @@ function threadsFor(entity: Agent | Team | null): Task[] {
     byId.set(entity.activeTaskId, { threadId: entity.activeTaskId, title: "Fil actif", activity: null, active: true });
   }
   return [...byId.values()];
+}
+
+function cachedThreadMessages(
+  cache: Map<string,{messages:Message[];updatedAt:number}>,key:string,now:number,
+): Message[] {
+  const entry = cache.get(key);
+  if (entry && now - entry.updatedAt >= MAUSBOT_THREAD_CACHE_TTL_MS) {
+    cache.delete(key);
+    return [];
+  }
+  return entry?.messages ?? [];
 }
 
 export function AgentsWorkspace() {
@@ -83,10 +93,7 @@ export function AgentsWorkspace() {
   const activeMessageKey = useRef("");
   const scrollRef = useRef<HTMLOListElement>(null);
 
-  useEffect(() => {
-    threadCache.current.clear();
-    setFullscreenChat(false);
-  }, [workspaceId]);
+  useEffect(() => { threadCache.current.clear(); }, [workspaceId]);
 
   useEffect(() => {
     if (!fullscreenChat) return;
@@ -162,18 +169,11 @@ export function AgentsWorkspace() {
   const activeWorkspace = spaces.status === "ready" ? spaces.workspaces.find(space => space.id === workspaceId) : null;
   const canReadMessages = activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
   const canSend = inventory?.canWrite === true && activeWorkspace?.role === "owner" && !!selected && !!threadId;
-  const messageKey = workspaceId && selection && threadId
-    ? [workspaceId,selection.kind,selection.id,threadId].join("|") : "";
-  activeMessageKey.current = messageKey;
-
-  function restoreCachedMessages(key: string) {
-    const entry = threadCache.current.get(key);
-    if (entry && Date.now() - entry.updatedAt >= MAUSBOT_THREAD_CACHE_TTL_MS) {
-      threadCache.current.delete(key);
-      return [];
-    }
-    return entry?.messages ?? [];
-  }
+  const selectedKind = selection?.kind ?? null;
+  const selectedId = selection?.id ?? null;
+  const messageKey = workspaceId && selectedKind && selectedId && threadId
+    ? [workspaceId,selectedKind,selectedId,threadId].join("|") : "";
+  useEffect(() => { activeMessageKey.current = messageKey; }, [messageKey]);
 
   async function sendMessage() {
     if (!canSend || sending || !draft.trim() || !selection || !threadId) return;
@@ -204,7 +204,7 @@ export function AgentsWorkspace() {
     setThreadId(tasks.find(task => task.active)?.threadId ?? tasks[0]?.threadId ?? "");
     const chosenTaskId = tasks.find(task => task.active)?.threadId ?? tasks[0]?.threadId ?? "";
     const key = next && chosenTaskId ? [workspaceId,next.kind,next.id,chosenTaskId].join("|") : "";
-    setMessages(restoreCachedMessages(key));
+    setMessages(cachedThreadMessages(threadCache.current,key,Date.now()));
     setMessagesIssue("");
     setMessagesBusy(false);
     if (next?.kind === "agent" && window.matchMedia("(max-width:700px)").matches) {
@@ -213,23 +213,20 @@ export function AgentsWorkspace() {
   }
 
   useEffect(() => {
-    if (!workspaceId || !selection || !threadId || !canReadMessages || !messageKey) return;
+    if (!workspaceId || !selectedKind || !selectedId || !threadId || !canReadMessages || !messageKey) return;
     const abort = new AbortController();
     let reading = false;
     const key = messageKey;
-    const cached = restoreCachedMessages(key);
-    setMessages(cached);
-    setMessagesIssue("");
     const load = async () => {
       if (reading || abort.signal.aborted || document.visibilityState === "hidden" ||
           navigator.onLine === false) return;
       reading = true;
       if (!threadCache.current.has(key)) setMessagesBusy(true);
       try {
-        const previous = threadCache.current.get(key);
-        const cursor = previous ? lastMausbotMessageId(previous.messages) : null;
-        const params = new URLSearchParams({workspaceId,kind:selection.kind,
-          targetId:selection.id,taskId:threadId});
+        const cached = cachedThreadMessages(threadCache.current,key,Date.now());
+        const cursor = lastMausbotMessageId(cached);
+        const params = new URLSearchParams({workspaceId,kind:selectedKind,
+          targetId:selectedId,taskId:threadId});
         if (cursor) params.set("afterId",cursor);
         const response = await fetch("/api/engines/mausbot/updates?" + params.toString(), {
           credentials:"same-origin",cache:"no-store",signal:abort.signal,
@@ -266,7 +263,7 @@ export function AgentsWorkspace() {
       document.removeEventListener("visibilitychange",onVisible);
       window.removeEventListener("online",onVisible);
     };
-  }, [workspaceId,selection?.kind,selection?.id,threadId,canReadMessages,messagesRevision,messageKey]);
+  }, [workspaceId,selectedKind,selectedId,threadId,canReadMessages,messagesRevision,messageKey]);
 
   useEffect(() => {
     if (!scrollRef.current || messagesBusy) return;
@@ -300,7 +297,7 @@ export function AgentsWorkspace() {
         </div>
         <div className="atlas-people-toolbar-actions">
           {spaces.status === "ready" && <label>Workspace
-            <select value={workspaceId} onChange={event => { setQuery(""); setOpenTeamId(null); setWorkspaceId(event.target.value); }}>
+            <select value={workspaceId} onChange={event => { setQuery(""); setFullscreenChat(false); setOpenTeamId(null); setWorkspaceId(event.target.value); }}>
               {spaces.workspaces.map(space => <option key={space.id} value={space.id}>{space.name}</option>)}
             </select>
           </label>}
@@ -431,7 +428,7 @@ export function AgentsWorkspace() {
               const id = event.target.value;
               setThreadId(id);
               const key = selection ? [workspaceId,selection.kind,selection.id,id].join("|") : "";
-              setMessages(restoreCachedMessages(key));
+              setMessages(cachedThreadMessages(threadCache.current,key,Date.now()));
               setMessagesIssue("");
             }}>
               {currentThreads.map(task => <option value={task.threadId} key={task.threadId}>
