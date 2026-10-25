@@ -1,4 +1,4 @@
-export type MausbotMessage = {id: string | null; at: string | null; role: string | null; kind: string | null; text: string; [key:string]:unknown};
+export type MausbotMessage = {id?: string | null; at?: string | null; role?: string | null; kind?: string | null; text?: string};
 export declare const MAUSBOT_MESSAGE_WINDOW: number;
 export declare const MAUSBOT_MESSAGE_CACHE_LIMIT: number;
 export declare const MAUSBOT_THREAD_CACHE_LIMIT: number;

@@ -35,8 +35,9 @@ test("Team drill-down retains workspace and private conversation checks, never i
   assert.match(ui, /view=inventory/);
   assert.match(ui, /data\.source !== "live-read-only"/);
   assert.match(ui, /MAUSBOT_INVENTORY_INVALID/);
-  assert.match(ui, /channels\.messages\.list/);
-  assert.match(ui, /conversations\.messages\.list/);
+  const updates = readFileSync(new URL("../src/app/api/engines/mausbot/updates/route.ts", import.meta.url), "utf8");
+  assert.match(updates, /channels\.messages\.list/);
+  assert.match(updates, /conversations\.messages\.list/);
   assert.match(ui, /cache: "no-store"/);
   assert.match(ui, /credentials: "same-origin"/);
   assert.match(ui, /canReadMessages/);

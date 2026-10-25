@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import type { WorkspaceResult } from "@/lib/workspaces/contract";
-import { mergeMausbotMessages, lastMausbotMessageId, rememberMausbotThread, MAUSBOT_THREAD_CACHE_TTL_MS } from "../../../packages/engines/mausbot/src/message-updates.mjs";
+import { mergeMausbotMessages, lastMausbotMessageId, rememberMausbotThread, MAUSBOT_THREAD_CACHE_TTL_MS } from "../../packages/engines/mausbot/src/message-updates.mjs";
 
 type Task = { threadId: string; title: string | null; activity: string | null; active: boolean };
 type Agent = { id: string; name: string; title?: string | null; section?: string | null; chiefOfStaff?: boolean; hasAvatar?: boolean; activeTaskId: string | null; tasks: Task[] };
@@ -36,6 +36,7 @@ function AgentPortrait({ agent, workspaceId, className = "", fallback = "bot" }:
   const source = agent?.hasAvatar && workspaceId
     ? "/api/engines/mausbot/avatar?workspaceId=" + encodeURIComponent(workspaceId) +
       "&botId=" + encodeURIComponent(agent.id) : null;
+  useEffect(() => setFailed(false), [source]);
   return <span className={className + " atlas-agent-portrait"}>
     {source && !failed ? <Image key={source} src={source} alt="" width={64} height={64}
       unoptimized onError={() => setFailed(true)} />
