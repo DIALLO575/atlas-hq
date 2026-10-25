@@ -94,3 +94,10 @@ VELMO. Il n'est pas utilisé pour ATLAS. Cette vérification n'a changé ni lu
 aucune table ou utilisateur. Aucun DDL, réglage ou test Auth n'a été exécuté.
 La création d'une branche Supabase pouvant entraîner des frais, il faudra d'abord
 obtenir un devis et l'accord correspondant; aucune branche n'a été créée.
+
+Le devis Supabase en lecture seule du 25 octobre 2026 pour une branche dans
+l'organisation du projet ATLAS indique `0,01344 par heure` (type branch,
+facturation horaire). Ce résultat est une estimation retournée par le fournisseur,
+pas une facture ni la création d'une ressource. Sa devise et ses conditions
+restent à confirmer dans Supabase avant création. Aucune branche n'a été créée;
+attendre l'accord explicite sur les frais.
