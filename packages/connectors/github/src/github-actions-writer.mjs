@@ -71,8 +71,14 @@ export async function createGitHubActionsWriter({
        Date.parse(run.created_at)<now()-30*24*3600*1000)deny("RUN_CHANGED_OR_UNSAFE");
     const job=await read(request,`${API}/repos/${fullName}/actions/jobs/${jobId}`,token);
     if(job?.id!==jobId||job.run_id!==runId||
-       job.run_attempt!==attempt||job.status!=="completed"||
+       (job.run_attempt!==undefined&&job.run_attempt!==attempt)||job.status!=="completed"||
        !["failure","timed_out"].includes(job.conclusion))deny("JOB_CHANGED_OR_UNSAFE");
+    // The singular job endpoint need not expose run_attempt. Prove membership
+    // in the exact attempt rather than trusting a field it may not contain.
+    const listing=await read(request,
+      `${API}/repos/${fullName}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`,token);
+    if(!Array.isArray(listing?.jobs)||!listing.jobs.some((entry)=>entry?.id===jobId))
+      deny("JOB_CHANGED_OR_UNSAFE");
     return Object.freeze({
       repositoryId,installationId,runId,jobId,attempt,sha:sha.toLowerCase(),
       fullName,runName:String(run.name??"").slice(0,120),jobName:String(job.name??"").slice(0,120),

@@ -29,6 +29,9 @@ function fixture(overrides={}){
     id:444,run_id:222,run_attempt:overrides.attempt??2,status:"completed",
     conclusion:overrides.conclusion??"failure",name:"build",
   });
+  if(url.endsWith("/actions/runs/222/attempts/2/jobs?per_page=100"))return json({
+    total_count:1,jobs:[{id:444}],
+  });
   if(url.endsWith("/actions/jobs/444/rerun")){
     assert.equal(opts.method,"POST");
     assert.deepEqual(JSON.parse(opts.body),{enable_debug_logging:false,enable_debugger:false});
@@ -48,7 +51,7 @@ test("writer only obtains a single-repository actions:write installation token",
  const target=await writer.verifyFailedJob(input);
  assert.equal(target.jobName,"build");
  assert.equal(target.fullName,"octocat/atlas-test");
- assert.equal(f.calls.length,4);
+ assert.equal(f.calls.length,5);
  assert.ok(f.calls.every(c=>c.opts.cache==="no-store"&&c.opts.redirect==="error"));
  assert.ok(f.calls.every(c=>!c.url.endsWith("/rerun")));
 });
@@ -59,7 +62,7 @@ test("explicitly dispatches one job, never a whole workflow",async()=>{
  const result=await w.dispatchJob(target);
  assert.deepEqual(result,{accepted:true,jobId:444,runId:222});
  assert.equal(f.calls.filter(c=>c.url.endsWith("/rerun")).length,1);
- assert.equal(f.calls.length,5);
+ assert.equal(f.calls.length,6);
 });
 test("rejects broader repository token and permissions not equal write",async()=>{
  const f=fixture({permission:"read"});
