@@ -22,3 +22,10 @@ export function mausbotJob(config: MausbotConfig, threadId: unknown, deps?: Maus
 }>;
 
 export function mausbotRequest(config: MausbotConfig, path: string, deps?: MausbotDeps & {method?: string; body?: unknown; timeoutMs?: number}): Promise<any>;
+
+export function resolveMausbotInstanceConfig(env: NodeJS.ProcessEnv, scope: {
+  workspaceId: string; instanceId: string;
+}): (MausbotConfig & Readonly<{
+  workspaceId: string; instanceId: string; credentialVersion: string;
+  source: "server-env"; canDispatch: false;
+}>) | null;
