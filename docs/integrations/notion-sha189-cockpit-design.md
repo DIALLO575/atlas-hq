@@ -1,6 +1,8 @@
+> **Mise à jour post-fusion — 25 octobre 2026 :** [PR #72](https://github.com/DIALLO575/atlas-hq/pull/72) **fusionnée dans `main`** au commit [`3bec14be978a37989d2fb1e36a3018990d96b452`](https://github.com/DIALLO575/atlas-hq/commit/3bec14be978a37989d2fb1e36a3018990d96b452). **CI GitHub de PR : 5/5 jobs réussis** (run [40210335758](https://github.com/DIALLO575/atlas-hq/actions/runs/40210335758)) ; 596/596 tests applicatifs, TypeScript/lint/build et audit production à zéro vulnérabilité à la revue locale. La version est **intégrée dans `main`, mais son déploiement Vercel n'est pas confirmé** (contrôle Vercel rouge, lien de limitation de build) ; **aucun test OAuth ATLAS/Notion réel**. Pas de GO connexion ou production fournisseur. Le texte plus ancien de ce document décrivait le stade *candidat non fusionné* au début de la journée.
+
 # SHA-189 — ATLAS HQ Notion V2 : design avant déploiement
 
-**Code candidat seulement.** Le cockpit présente les primitives SHA-183/184/186/187/188 dans une interface responsive, sans données fictives. Aucun OAuth Notion via ATLAS, aucune mise en production.
+**Code fusionné dans `main` mais non vérifié en production.** Le cockpit présente les primitives SHA-183/184/186/187/188 dans une interface responsive, sans données fictives. Aucun OAuth Notion via ATLAS, aucune mise en production.
 
 ## Expérience utilisateur
 1. Sans connexion : état d'accueil honnête, types de contenus pris en charge et lien vers la gestion des autorisations. Aucun aperçu fictif ni statut « connecté » déduit des seules variables d'environnement.
