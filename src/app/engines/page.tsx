@@ -11,7 +11,7 @@ export default function EnginesPage() {
         <header className="atlas-engine-page-head">
           <div className="atlas-engine-page-copy">
             <p className="atlas-engine-kicker"><Icon name="layers" /> ATLAS / ENGINE HUB</p>
-            <h1>L'espace de vos <span>moteurs IA.</span></h1>
+            <h1>L&apos;espace de vos <span>moteurs IA.</span></h1>
             <p className="atlas-engine-page-lead">
               Un seul cockpit pour découvrir les moteurs, vérifier leurs capacités et suivre leur connexion.
               Chaque accès reste gouverné par les permissions ATLAS.
