@@ -43,12 +43,12 @@ export function N8nControlCenter({ workspaces, initialWorkspaceId, workspaceLoad
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!workspaceId) { setSnapshot(null); return; }
     const controller = new AbortController();
     void Promise.resolve().then(async () => {
       if (controller.signal.aborted) return;
       setSnapshot(null);
       setIssue(null);
+      if (!workspaceId) { setLoading(false); return; }
       setLoading(true);
       try {
         const response = await fetch("/api/apps/n8n/status?workspaceId=" + encodeURIComponent(workspaceId), {
