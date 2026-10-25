@@ -1,3 +1,5 @@
+> **État courant : [bilan consolidé Notion du 25 octobre](notion-consolidation-2026-10-25.md).** Le contenu ci-dessous est un historique antérieur à l’OAuth enregistré, au correctif UUID et à l’interface minimaliste ; ses statuts ne décrivent plus l’état courant.
+
 ## Bilan final GitHub — 25 octobre 2026
 
 **Fusion confirmée, code non laissé en attente :** `main b4da3a7f3871bb5b50c6b03ca6f92b018f6a3d2e`. Toutes les PR Notion de fonctionnalités livrées ont été mergées : #32, #36, #72, #73, #80, #82. Aucune PR Notion actuellement ouverte. #34 et #35 ne sont pas des oublis : elles ont été fermées individuellement et consolidées dans #36.

@@ -16,7 +16,7 @@ test("Notion route has its own appbar, Atlas exit and local CSS, no new global P
  assert.match(css,/\.nt-page \.nt-phone-appbar/);
  assert.equal(manifest.display,"standalone");
 });
-test("Notion native phone UI has four working touch navigation screens",()=>{
+test("Notion primary sections and contextual screens remain reachable on phone",()=>{
  assert.match(ui,/type NotionPhoneScreen="library"\|"reader"\|"views"\|"access"/);
  assert.match(ui,/const \[mobileScreen,setMobileScreen\]=useState<NotionPhoneScreen>\("library"\)/);
  assert.match(ui,/aria-label="Navigation Notion mobile"/);
@@ -63,7 +63,7 @@ test("source and native view screens do not fake unknown Notion data",()=>{
 test("permissions and OAuth remain unchanged while app navigation remains keyboard accessible",()=>{
  assert.match(page,/const configured = Boolean\(settings\?\.callbackEnabled && notionTokenVault\(\)\)/);
  assert.match(ui,/loadNotionPersonalConnection|NotionCapabilitiesClient/);
- assert.match(ui,/aria-current=\{mobileScreen/);
+ assert.match(ui,/aria-current=\{workSection/);
  assert.match(ui,/nt-phone-manage-link/);
  assert.match(ui,/aria-label="Retour à Mes Apps ATLAS"|Navigation Notion mobile/);
 });
