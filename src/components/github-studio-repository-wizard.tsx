@@ -34,7 +34,6 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
   const [preview,setPreview]=useState<PreviewResult|null>(null);
   const [approval,setApproval]=useState<Approval|null>(null);
   const [created,setCreated]=useState<CreationResult|null>(null);
-  const [oauthStatus,setOauthStatus]=useState<string|null>(null);
   const [typedName,setTypedName]=useState("");
   const [consent,setConsent]=useState(false);
   const [problem,setProblem]=useState<string|null>(null);
@@ -42,7 +41,6 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
   const requestRef=useRef<AbortController|null>(null);
   const approvalKey=useRef<string|null>(null);
   useEffect(()=>()=>requestRef.current?.abort(),[]);
-  useEffect(()=>{const status=new URLSearchParams(window.location.search).get("studioAuth");if(status)setOauthStatus(status);},[]);
   // The server approval receipt expires after five minutes. Never leave
   // an expired approval displayed as valid if the user stays on this view.
   useEffect(()=>{
@@ -184,7 +182,6 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
 
     <div className="atlas-gh-studio-layout">
       <div className="atlas-gh-studio-workspace">
-        {oauthStatus && <p className="atlas-gh-studio-ok" role="status">{oauthStatus==="authorized" ? "Compte GitHub autorisé. Vérifiez votre dépôt puis confirmez." : "Autorisation GitHub non confirmée. Réessayez."}</p>}
         <div className="atlas-gh-studio-panel-title"><span className="atlas-gh-studio-panel-icon"><Icon name="layers"/></span>
           <div><h3>Configuration</h3><p>Personnalisez votre dépôt GitHub.</p></div>
           <span className="atlas-gh-studio-index">01 / 03</span></div>
