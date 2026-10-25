@@ -4,6 +4,7 @@ import { NotionCapabilitiesClient } from "./notion-capabilities-client";
 
 type Connection = { id: string; workspaceId: string; label: string };
 type ResourceFilter="all"|"page"|"database"|"data_source";
+type NotionPhoneScreen="library"|"reader"|"views"|"access";
 const resourceFilters:{id:ResourceFilter;label:string}[]=[
   {id:"all",label:"Tout"},{id:"page",label:"Pages"},
   {id:"database",label:"Bases"},{id:"data_source",label:"Sources"},
@@ -176,6 +177,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
   const binding = { workspaceId, connectionId };
   const [query, setQuery] = useState("");
   const [resourceFilter,setResourceFilter]=useState<ResourceFilter>("all");
+  const [mobileScreen,setMobileScreen]=useState<NotionPhoneScreen>("library");
   const [documentMode,setDocumentMode]=useState<"document"|"markdown">("document");
   const [resources, setResources] = useState<Resource[]>([]);
   const [resourceCursor, setResourceCursor] = useState<string | null>(null);
@@ -233,6 +235,16 @@ function NotionExplorer({ connection }: { connection: Connection }) {
     return () => controller.abort();
   }, [workspaceId, connectionId]);
 
+  function navigateMobile(screen:NotionPhoneScreen) {
+    setMobileScreen(screen);
+    if(typeof window!=="undefined" &&
+       window.matchMedia("(max-width:760px)").matches) {
+      document.getElementById("notion-explorer")?.scrollIntoView({
+        block:"start",behavior:"instant",
+      });
+    }
+  }
+
   async function search(more = false) {
     if (busy || disconnected) return;
     setBusy("search");
@@ -243,6 +255,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       setResources(previous => more ? [...previous, ...entries] : entries);
       setResourceCursor(data.hasMore === true && typeof data.nextCursor === "string" ? data.nextCursor : null);
       if (!more) {
+        navigateMobile("library");
         setSelected(null); setViews([]); setCurrentView(null); setPreview(null); setSourceRefs([]); setSourceColumns([]); setSourceRows([]); setSourceCursor(null); setSourceLimited(false); setMarkdownPreview(null); setDocumentMode("document"); setBlocks([]); setDocumentPartial(false); setDocumentCursor(null);
       }
       setMessage(entries.length ? "Résultats autorisés chargés depuis Notion."
@@ -253,7 +266,8 @@ function NotionExplorer({ connection }: { connection: Connection }) {
 
   async function choose(item: Resource) {
     if (busy || disconnected) return;
-    setSelected(item); setViews([]); setViewCursor(null); setCurrentView(null);
+    setSelected(item);navigateMobile("reader");
+    setViews([]); setViewCursor(null); setCurrentView(null);
     setSourceRefs([]);setSourceColumns([]);setSourceRows([]);
     setSourceCursor(null);setSourceLimited(false);
     setPreview(null); setMarkdownPreview(null); setDocumentMode("document"); setBlocks([]); setDocumentPartial(false); setDocumentCursor(null); setPermission("");
@@ -412,7 +426,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
 
   async function showView(item: NativeView) {
     if (busy || disconnected || !selected || selected.kind==="page") return;
-    setCurrentView(item); setPreview(null); setBusy("preview");
+    setCurrentView(item);navigateMobile("views");setPreview(null);setBusy("preview");
     try {
       const data = await readEndpoint("views", { ...binding, mode: "preview", viewId: item.id,
         sourceKind:selected.kind,resourceId:selected.id });
@@ -455,7 +469,8 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       });
       if (!response.ok) throw new Error(providerMessage(response.status));
       const data = await response.json() as { providerRevocation?: string };
-      setDisconnected(true); setSelected(null); setResources([]); setViews([]); setPreview(null);
+      setDisconnected(true);navigateMobile("library");
+      setSelected(null); setResources([]); setViews([]); setPreview(null);
       setMessage(data.providerRevocation === "confirmed"
         ? "Déconnecté d'ATLAS. Révocation confirmée par Notion."
         : "Accès ATLAS coupé. Révocation distante non confirmée : suivi nécessaire.");
@@ -463,7 +478,19 @@ function NotionExplorer({ connection }: { connection: Connection }) {
     finally { setBusy(""); }
   }
 
-  return <div className="nt-console">
+  return <div className={"nt-console nt-phone-"+mobileScreen} id="notion-explorer">
+    <div className="nt-phone-viewtop">
+      <div className="nt-phone-viewtitle">
+        <span className="nt-phone-eyebrow">NOTION · LECTURE SEULE</span>
+        <strong>{mobileScreen==="library"?"Bibliothèque":
+          mobileScreen==="reader"?"Lecture":
+          mobileScreen==="views"?"Vues enregistrées":"Accès & droits"}</strong>
+      </div>
+      {mobileScreen!=="library" && <button type="button"
+        className="nt-phone-back" onClick={()=>navigateMobile("library")}>
+        <span aria-hidden="true">‹</span> Explorer
+      </button>}
+    </div>
     <div className="nt-console-top">
       <div><span className="nt-kicker">EXPLORATEUR NOTION · ESPACE PERSONNEL</span>
         <h2>Vos documents et vos bases, au même endroit.</h2>
@@ -518,6 +545,14 @@ function NotionExplorer({ connection }: { connection: Connection }) {
         </div>
       </aside>
       <section className="nt-stage" aria-label="Lecteur Notion et aperçus des ressources">
+        {mobileScreen==="views" && (!selected || selected.kind==="page") &&
+          <div className="nt-phone-views-empty" role="status">
+            <div className="nt-phone-empty-icon" aria-hidden="true">▦</div>
+            <h3>Choisissez une base Notion</h3>
+            <p>Les vues enregistrées proviennent des bases et sources autorisées.</p>
+            <button type="button" className="nt-button nt-button-dark"
+              onClick={()=>navigateMobile("library")}>Explorer la bibliothèque</button>
+          </div>}
         {!selected ? <div className="nt-stage-empty">
           <div className="nt-stage-symbol" aria-hidden="true">N</div>
           <span className="nt-kicker">VOS DONNÉES RESTENT DANS NOTION</span>
@@ -650,6 +685,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
               <small>Les formules affichent leur résultat, pas leur expression.
                 Les fichiers et données personnelles ne sont pas transférés.</small>
             </section>}
+            <div className="nt-view-content">
             <div className="nt-view-section-head">
               <div><span className="nt-kicker">ORGANISATION PAR NOTION</span>
                 <h4>Vues enregistrées</h4>
@@ -707,6 +743,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
                 </>}
               <small>ATLAS ne reproduit ni la mise en page complète, ni les interactions Notion.</small>
             </div>}
+            </div>
           </>}
         </>}
       </section>
@@ -725,12 +762,51 @@ function NotionExplorer({ connection }: { connection: Connection }) {
           {!disconnected && <NotionCapabilitiesClient workspaceId={workspaceId} connectionId={connectionId}/>}
         </details>
         <div className="nt-inspector-foot">
+          <a className="nt-phone-manage-link" href="#notion-connections">
+            Gérer les connexions du workspace ↗
+          </a>
           <p>Les pages non partagées ne sont pas accessibles. Aucune écriture Notion, aucun agent ni synchronisation automatique.</p>
           <button type="button" className="nt-danger-link" onClick={() => void disconnect()}
             disabled={Boolean(busy) || disconnected}>Déconnecter Notion</button>
         </div>
       </aside>
     </div>
+    <nav className="nt-phone-dock" aria-label="Navigation Notion mobile">
+      <button type="button" className={mobileScreen==="library"?"is-active":""}
+        aria-current={mobileScreen==="library"?"page":undefined}
+        onClick={()=>navigateMobile("library")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/>
+          <path d="M3 10h18M9 10v10"/></svg><span>Explorer</span>
+      </button>
+      <button type="button" className={mobileScreen==="reader"?"is-active":""}
+        aria-current={mobileScreen==="reader"?"page":undefined}
+        onClick={()=>navigateMobile("reader")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+          <path d="M14 3v5h5M9 12h6M9 16h6"/></svg><span>Lecture</span>
+      </button>
+      <button type="button" className={mobileScreen==="views"?"is-active":""}
+        aria-current={mobileScreen==="views"?"page":undefined}
+        onClick={()=>navigateMobile("views")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Vues</span>
+      </button>
+      <button type="button" className={mobileScreen==="access"?"is-active":""}
+        aria-current={mobileScreen==="access"?"page":undefined}
+        onClick={()=>navigateMobile("access")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/>
+          <path d="m9 12 2 2 4-4"/></svg><span>Accès</span>
+      </button>
+    </nav>
   </div>;
 }
 

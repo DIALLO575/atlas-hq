@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notionConnectSettings, notionTokenVault } from "@/lib/notion/connect";
 import "./notion-console.css";
+import "./notion-mobile-workspace.css";
 
 export const dynamic = "force-dynamic";
 const feedback: Record<string,string> = {
@@ -45,6 +46,20 @@ export default async function NotionPage({
     label: c.account_label || "Espace Notion",
   }));
   return <AppShell><main className="main-content nt-page" id="main-content">
+    <nav className="nt-phone-appbar" aria-label="Navigation Notion">
+      <Link href="/apps" className="nt-phone-atlas-back"
+        aria-label="Retour à Mes Apps ATLAS">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      </Link>
+      <span className="nt-phone-brand-mark" aria-hidden="true">N</span>
+      <div className="nt-phone-app-name"><strong>Notion</strong>
+        <small>dans ATLAS · Lecture seule</small></div>
+      <a className="nt-phone-app-settings" href="#notion-connections">
+        Connexion
+      </a>
+    </nav>
     <nav className="atlas-gh-crumbs" aria-label="Fil d’Ariane">
       <Link href="/apps">Mes Apps</Link><span aria-hidden="true">/</span>
       <strong>Notion</strong>

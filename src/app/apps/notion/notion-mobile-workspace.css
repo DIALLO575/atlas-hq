@@ -1,0 +1,281 @@
+/* Notion inside ATLAS: own neutral brand surface, never the global ATLAS PWA.
+   Notion's recognisable visual language is white, charcoal and warm grays. */
+.nt-page{
+  --nt-ink:#191919;--nt-muted:#787774;--nt-line:#e9e9e7;
+  --nt-soft:#f7f7f5;--nt-green:#37352f;--nt-ring:#343434;
+  color:#191919;
+}
+.nt-phone-appbar,.nt-phone-dock,.nt-phone-viewtop,
+.nt-phone-manage-link,.nt-phone-views-empty{display:none}
+.nt-page .nt-hero{background:#191919;border:1px solid #191919;box-shadow:none}
+.nt-page .nt-hero:after{border-color:#ffffff17;box-shadow:0 0 0 55px #ffffff04,0 0 0 110px #ffffff04}
+.nt-page .nt-hero-mark{color:#191919;background:#fff;border-color:#fff}
+.nt-page .nt-hero .nt-kicker{color:#b1b1af}
+.nt-page .nt-hero-copy>p{color:#d7d7d5}
+.nt-page .nt-hero-tags span{color:#f5f5f4;border-color:#ffffff2e}
+.nt-page .nt-hero-badge{background:#292929;border-color:#ffffff28;color:#f4f4f4}
+.nt-page .nt-hero-dot{background:#e9e9e7}
+.nt-page .nt-summary>div,.nt-page .nt-preview,.nt-page .nt-sources,
+.nt-page .nt-inspector-card,.nt-page .nt-hub,.nt-page .nt-empty-hub{
+  border-color:#e9e9e7;background:#fff;box-shadow:0 3px 19px #19191908;
+}
+.nt-page .nt-summary strong,.nt-page .nt-console-top h2,.nt-page .nt-stage-title h3,
+.nt-page .nt-page-reader-head h4,.nt-page .nt-stage-empty h3{color:#191919}
+.nt-page .nt-console-top{background:#fff}
+.nt-page .nt-console-modes span,.nt-page .nt-stage-feature-list span,
+.nt-page .nt-empty-features span{background:#f7f7f5;border-color:#e9e9e7;color:#37352f}
+.nt-page .nt-button-dark,.nt-page .nt-filter-active,
+.nt-page .nt-filter-chip.nt-filter-active{background:#191919!important;border-color:#191919!important;color:#fff!important}
+.nt-page .nt-button-quiet,.nt-page .nt-filter-chip:not(.nt-filter-active){color:#37352f;background:#fff;border-color:#e9e9e7}
+.nt-page .nt-button-quiet:hover,.nt-page .nt-filter-chip:hover:not(.nt-filter-active){background:#f1f1ef}
+.nt-page .nt-status{color:#37352f;background:#f7f7f5;border-color:#e9e9e7}
+.nt-page .nt-status:before{background:#787774;box-shadow:0 0 0 3px #e9e9e7}
+.nt-page .nt-status-loading:before{background:#37352f}
+.nt-page .nt-hub-switch{background:#fff;border-color:#e9e9e7}
+.nt-page .nt-library,.nt-page .nt-inspector{background:#f7f7f5;border-color:#e9e9e7}
+.nt-page .nt-browser{border-color:#e9e9e7}
+.nt-page .nt-resource.nt-selected{background:#e9e9e7;border-color:#dadad7;box-shadow:inset 3px 0 0 #191919}
+.nt-page .nt-resource:hover{background:#efefed}
+.nt-page .nt-resource-type-tag,.nt-page .nt-readonly-token,
+.nt-page .nt-document-stats span,.nt-page .nt-value-pill,
+.nt-page .nt-view-badges small,.nt-page .nt-media-symbol,
+.nt-page .nt-view-glyph,.nt-page .nt-view-count,
+.nt-page .nt-load-more{background:#f1f1ef;color:#37352f;border-color:#e9e9e7}
+.nt-page .nt-document-tabs{background:#f1f1ef;border-color:#e9e9e7}
+.nt-page .nt-document-tab{color:#787774}
+.nt-page .nt-document-tab.nt-tab-active{background:#fff;color:#191919}
+.nt-page .nt-stage-feature-list span{color:#37352f}
+.nt-page .nt-resource-type-tag,.nt-page .nt-readonly-token{font-weight:720}
+.nt-page .nt-rich-block-media{background:#fff;border-color:#e9e9e7;border-left-color:#787774}
+.nt-page .nt-rich-table,.nt-page .nt-source-table-scroll{border-color:#e9e9e7}
+.nt-page .nt-source-table th,.nt-page .nt-rich-table th{background:#f7f7f5;color:#37352f}
+.nt-page .nt-source-item{color:#37352f;border-color:#e9e9e7}
+.nt-page .nt-source-item:hover,.nt-page .nt-view-tile:hover{background:#fafaf9;border-color:#b4b4b0}
+.nt-page .nt-view-tile.nt-active-view{background:#f1f1ef;border-color:#a9a9a5}
+.nt-page .nt-source-table a,.nt-page .nt-rich-media a{color:#37352f}
+.nt-page .nt-markdown-panel,.nt-page .nt-reader-empty{background:#f7f7f5}
+.nt-page .nt-md-code{background:#37352f;color:#fff}
+.nt-page .nt-search-row:focus-within{border-color:#37352f;box-shadow:0 0 0 3px #19191917}
+.nt-page :is(.nt-button,.nt-filter-chip,.nt-document-tab,.nt-resource,.nt-view-tile,
+.nt-source-item,.nt-load-more,.nt-source-table-scroll):focus-visible{
+  outline:3px solid #37352f;outline-offset:3px;
+}
+
+/* App-like independent phone screen, modelled on Atlas GitHub PWA structure. */
+@media (max-width:760px){
+  .atlas-shell .nt-page,.nt-page{
+    position:fixed!important;inset:0!important;z-index:11000;
+    width:100%!important;max-width:none!important;height:100vh;height:100dvh;
+    min-height:0!important;margin:0!important;
+    padding:0 0 calc(90px + env(safe-area-inset-bottom,0px))!important;
+    overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+    background:#fff;color:#191919;
+  }
+  .nt-page .atlas-gh-crumbs,.nt-page>.nt-hero,
+  .nt-page>.nt-summary,.nt-page>.nt-footer-note{display:none!important}
+  .nt-page .nt-phone-appbar{
+    position:sticky;top:0;z-index:15;display:flex;
+    align-items:center;gap:10px;min-height:64px;
+    padding:calc(9px + env(safe-area-inset-top,0px))
+      max(14px,env(safe-area-inset-right,0px)) 9px
+      max(14px,env(safe-area-inset-left,0px));
+    border-bottom:1px solid #343434;background:#191919;color:#fff;
+  }
+  .nt-phone-atlas-back{
+    width:40px;height:43px;flex:0 0 40px;
+    display:grid;place-items:center;border:1px solid #494949;
+    border-radius:11px;color:#fff!important;background:#292929;
+  }
+  .nt-phone-atlas-back svg{width:21px;height:21px}
+  .nt-phone-brand-mark{
+    flex:0 0 35px;width:35px;height:35px;display:grid;place-items:center;
+    border:1px solid #fff;border-radius:7px;background:#fff;
+    color:#191919;font:bold 27px/1 Georgia,serif;transform:rotate(-2deg);
+  }
+  .nt-phone-app-name{display:flex;flex:1;min-width:0;flex-direction:column;gap:1px}
+  .nt-phone-app-name strong{font-size:15px;letter-spacing:-.025em}
+  .nt-phone-app-name small{font-size:10px;color:#d1d1d0}
+  .nt-phone-app-settings{
+    flex:none;display:grid;place-items:center;min-height:40px;
+    padding:0 10px;color:#fff!important;border:1px solid #494949;
+    border-radius:10px;font-weight:650;font-size:11px;background:#292929;
+  }
+  .nt-page .nt-banner{margin:10px 14px;border-radius:9px}
+  .nt-page .nt-hub{
+    display:block;overflow:visible;margin:0;min-height:calc(100dvh - 155px);
+    padding:0;border:0;border-radius:0;box-shadow:none;background:#fff;
+  }
+  .nt-page .nt-hub-switch{
+    display:flex;align-items:center;min-height:58px;gap:12px;padding:11px 17px;
+    border-bottom:1px solid #e9e9e7;background:#f7f7f5;
+  }
+  .nt-page .nt-hub-switch strong{
+    display:block;font-size:12px;overflow-wrap:anywhere;
+  }
+  .nt-page .nt-hub-switch select{
+    max-width:143px;min-height:40px;background:#fff;color:#191919;
+  }
+  .nt-page .nt-console{background:#fff;min-height:calc(100dvh - 216px)}
+  .nt-page .nt-console-top{display:none!important}
+  .nt-page .nt-phone-viewtop{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:17px 18px 11px;gap:12px;background:#fff;
+  }
+  .nt-phone-viewtitle{display:flex;min-width:0;flex-direction:column;gap:5px}
+  .nt-phone-eyebrow{font-size:9px;letter-spacing:.12em;font-weight:760;color:#787774}
+  .nt-phone-viewtitle strong{font-size:22px;line-height:1.15;color:#191919}
+  .nt-phone-back{
+    min-width:92px;min-height:42px;display:flex;align-items:center;justify-content:center;
+    gap:5px;padding:5px 10px;border:1px solid #e9e9e7;border-radius:10px;
+    background:#f7f7f5;color:#37352f;font-weight:650;font-size:11px;
+    cursor:pointer;
+  }
+  .nt-phone-back span{font-size:22px;line-height:1}
+  .nt-page .nt-console>.nt-status{
+    min-height:38px;padding:9px 12px;margin:6px 17px 13px;
+    background:#f7f7f5;border-radius:9px;font-size:11px;
+  }
+  .nt-page .nt-browser{display:block;min-height:0;border:0;background:#fff}
+  .nt-page .nt-library,.nt-page .nt-stage,.nt-page .nt-inspector{
+    display:none!important;width:100%;min-width:0;min-height:0;
+    margin:0;padding:12px 17px 24px;border:0!important;background:#fff;
+    box-shadow:none;
+  }
+  .nt-page .nt-phone-library .nt-library{display:block!important}
+  .nt-page .nt-phone-reader .nt-stage,
+  .nt-page .nt-phone-views .nt-stage{display:block!important}
+  .nt-page .nt-phone-access .nt-inspector{display:block!important}
+  .nt-page .nt-pane-heading{font-size:13px;margin-bottom:7px}
+  .nt-page .nt-pane-heading span:last-child{background:#f1f1ef;color:#37352f}
+  .nt-page .nt-library-hint{margin:5px 0 14px;font-size:11px}
+  .nt-page .nt-search label{font-size:11px;color:#787774}
+  .nt-page .nt-search-row{min-height:48px;border-radius:11px}
+  .nt-page .nt-search-row input{min-height:48px;font-size:16px;padding:10px 12px}
+  .nt-page .nt-search-row button{min-width:48px;font-size:22px}
+  .nt-page .nt-resource-filters{margin-top:16px;gap:8px}
+  .nt-page .nt-filter-chip{min-height:42px;padding:10px 13px;border-radius:11px;font-size:11px}
+  .nt-page .nt-resource-list{
+    display:flex;flex-direction:column;gap:5px;margin-top:12px;
+  }
+  .nt-page .nt-resource{
+    display:flex;width:100%;min-height:68px;border:1px solid #f1f1ef;
+    border-radius:12px;background:#fff;padding:13px;
+  }
+  .nt-page .nt-item-icon{
+    display:grid;place-items:center;min-width:40px;min-height:40px;
+    border:1px solid #e9e9e7;border-radius:9px;color:#37352f;background:#f7f7f5;
+  }
+  .nt-page .nt-resource strong{font-size:13px}
+  .nt-page .nt-resource small{font-size:11px}
+  .nt-page .nt-stage-empty{margin:25px auto;text-align:center;max-width:430px}
+  .nt-page .nt-stage-title{display:flex;gap:10px;align-items:start}
+  .nt-page .nt-stage-title h3{font-size:clamp(21px,5.5vw,30px);line-height:1.2}
+  .nt-page .nt-stage-title .nt-button{min-height:40px;font-size:11px}
+  .nt-page .nt-preview,.nt-page .nt-sources{
+    margin:14px 0;padding:16px 13px;border:1px solid #e9e9e7;
+    border-radius:12px;background:#fff;box-shadow:none;
+  }
+  .nt-page .nt-document-tabs{margin:17px 0 0;gap:4px}
+  .nt-page .nt-document-tab{min-height:44px;font-size:12px}
+  .nt-page .nt-document-preview{min-width:0;overflow-wrap:anywhere}
+  .nt-page .nt-rich-block{padding:11px 9px}
+  .nt-page .nt-rich-media img,.nt-page .nt-rich-media video{width:100%;max-height:65dvh;object-fit:contain}
+  .nt-page .nt-rich-media audio{width:100%}
+  .nt-page .nt-markdown-panel{max-height:none}
+  .nt-page .nt-source-table-scroll{max-width:100%;overflow:auto;-webkit-overflow-scrolling:touch}
+  .nt-page .nt-source-table{min-width:540px}
+  .nt-page .nt-view-content{display:none}
+  .nt-page .nt-phone-views .nt-view-content{display:block}
+  .nt-page .nt-phone-views .nt-sources{display:none}
+  .nt-page .nt-phone-views .nt-stage>.nt-preview{display:none}
+  .nt-page .nt-phone-views .nt-stage-empty{display:none}
+  .nt-page .nt-phone-views .nt-view-section-head{margin-top:5px}
+  .nt-page .nt-views{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .nt-page .nt-view-tile{min-height:133px;padding:13px;border-radius:12px}
+  .nt-page .nt-view-tile strong{overflow-wrap:anywhere}
+  .nt-page .nt-phone-views-empty{
+    display:block;margin:22px 0;padding:28px 16px;
+    border:1px dashed #dededb;border-radius:14px;text-align:center;
+    background:#f7f7f5;
+  }
+  .nt-page .nt-phone-views-empty h3{margin:9px 0;font-size:19px}
+  .nt-page .nt-phone-views-empty p{font-size:12px;color:#787774;line-height:1.7}
+  .nt-phone-empty-icon{font-size:29px;color:#37352f}
+  .nt-page .nt-inspector-card{padding:17px;border-radius:12px;margin:12px 0;background:#f7f7f5}
+  .nt-page .nt-inspector-details{border:1px solid #e9e9e7;padding:13px;border-radius:11px}
+  .nt-page .nt-inspector-foot{margin-top:16px}
+  .nt-page .nt-phone-manage-link{
+    display:flex;align-items:center;justify-content:center;min-height:47px;
+    margin:0 0 17px;padding:10px;background:#191919;color:#fff;
+    border-radius:11px;text-decoration:none;font-weight:700;font-size:12px;
+  }
+  .nt-page .nt-setup{
+    margin:14px 16px 20px;padding:20px 15px;border:1px solid #e9e9e7;
+    border-radius:13px;background:#fff;
+    scroll-margin-top:calc(75px + env(safe-area-inset-top,0px));
+  }
+  .nt-page .nt-setup h2{font-size:21px}
+  .nt-page .nt-workspaces{min-width:0}
+  .nt-page .nt-workspace{gap:10px;flex-wrap:wrap}
+  .nt-page .nt-workspace form{width:100%}
+  .nt-page .nt-workspace form button{min-height:44px;width:100%}
+  .nt-page .nt-empty-hub{
+    display:flex;flex-direction:column;gap:14px;margin:18px 16px;
+    padding:28px 18px 20px;border:1px solid #e9e9e7;
+    border-radius:14px;background:#fff;box-shadow:none;
+  }
+  .nt-page .nt-empty-art{display:none}
+  .nt-page .nt-empty-hub h2{font-size:22px}
+  .nt-page .nt-empty-hub p{font-size:12px;line-height:1.7}
+  .nt-page .nt-empty-features{gap:6px}
+  .nt-page .nt-phone-dock{
+    display:grid!important;position:fixed;z-index:11015;
+    bottom:0;left:0;right:0;grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:4px;min-height:69px;
+    padding:7px max(8px,env(safe-area-inset-right,0px))
+      calc(7px + env(safe-area-inset-bottom,0px))
+      max(8px,env(safe-area-inset-left,0px));
+    border-top:1px solid #e2e2df;background:#fff;
+    box-shadow:0 -7px 28px #19191913;
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  }
+  .nt-page .nt-phone-dock button{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:5px;min-height:50px;padding:5px 2px;
+    border:1px solid transparent;border-radius:10px;
+    background:transparent;color:#787774;
+    font:700 10px/1.1 var(--font-body);cursor:pointer;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .nt-page .nt-phone-dock button svg{width:21px;height:21px}
+  .nt-page .nt-phone-dock button.is-active{
+    background:#f1f1ef;color:#191919;border-color:#e9e9e7;
+  }
+  .nt-page .nt-phone-dock button:focus-visible,
+  .nt-page .nt-phone-atlas-back:focus-visible,
+  .nt-page .nt-phone-app-settings:focus-visible,
+  .nt-page .nt-phone-back:focus-visible{
+    outline:3px solid #191919;outline-offset:-3px;
+  }
+}
+@media (max-width:390px){
+  .nt-page .nt-phone-appbar{gap:7px}
+  .nt-page .nt-phone-app-name small{font-size:9px}
+  .nt-page .nt-phone-app-settings{padding:0 7px;font-size:10px}
+  .nt-page .nt-views{grid-template-columns:1fr 1fr}
+  .nt-page .nt-filter-chip{padding:9px 10px}
+}
+@media (max-width:760px) and (max-height:560px){
+  .nt-page .nt-phone-appbar{min-height:55px}
+  .nt-page .nt-phone-dock{min-height:59px}
+}
+@supports selector(:has(*)){
+  @media (max-width:760px){
+    .nt-page:has(input:focus) .nt-phone-dock{display:none!important}
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .nt-page .nt-phone-dock button,.nt-page .nt-resource,
+  .nt-page .nt-view-tile{animation:none!important;transition:none!important}
+}
