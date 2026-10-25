@@ -59,7 +59,7 @@ test("n8n live I/O release gate cannot be enabled by arbitrary env and MAUSBOT s
  assert.equal(mausbotReleasePermission({ATLAS_MAUSBOT_RELEASE_STAGE:"enabled"},"execute").allowed,false);
 });
 
-test("preflight requires trusted server authentication plus transactional repository, no open defaults",()=>{
+test("preflight requires trusted server authentication plus transactional repository, no open defaults",async()=>{
  for(const invalid of [{},{authenticate:async()=>({verified:true,actorId:A,sessionId:S})},
    {authenticate:"truthy",repository:{transaction:async()=>{}}}]){
   assert.throws(()=>createN8nRuntimePreflight(invalid),error("N8N_PREFLIGHT_DEPENDENCIES_INVALID"));

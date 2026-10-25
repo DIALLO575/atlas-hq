@@ -1,7 +1,7 @@
 -- SHA-176 PostgreSQL 17 DISPOSABLE only; never run fixture statements in prod.
 \set ON_ERROR_STOP on
 set role service_role;
-do $
+do $$
 declare
   w uuid := 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   n uuid := 'aaaaaaaa-0000-4000-8000-000000000001';
@@ -43,5 +43,5 @@ begin
  -- This DB test changes only disposable fixture rows; it does NOT mean the
  -- actual MAUSBOT HTTP 423 release gate opens.
  update public.atlas_engine_instances set connection_state='offline' where id=m;
-end $;
+end $$;
 reset role;
