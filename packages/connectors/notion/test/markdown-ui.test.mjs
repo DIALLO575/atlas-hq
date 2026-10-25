@@ -5,6 +5,6 @@ const s=readFileSync(new URL("../../../../src/components/notion-resources-client
 test("Notion Markdown preview is manually triggered and text only",()=>{
  assert.match(s,/onClick=\{\(\)=>void showMarkdown\(\)\}/);
  assert.match(s,/setMarkdownPreview/);
- assert.match(s,/markdownPreview.lines.map/);
+ assert.match(s,/markdownPreview\?\.lines\.map/);
  assert.doesNotMatch(s,/dangerouslySetInnerHTML|innerHTML\s*=/);
 });
