@@ -144,8 +144,8 @@ function execution(data) {
     startedAt: safeTime(data.startedAt), stoppedAt: safeTime(data.stoppedAt),
   });
 }
-function list(data, projector, inputCursor) {
-  if (!isRecord(data) || !Array.isArray(data.data) || data.data.length > MAX_PAGE) {
+function list(data, projector, inputCursor, requestedLimit) {
+  if (!isRecord(data) || !Array.isArray(data.data) || data.data.length > requestedLimit) {
     fail("N8N_RESPONSE_INVALID");
   }
   const nextCursor = data.nextCursor;
@@ -250,7 +250,7 @@ export async function testN8nConnection(config, deps = {}) {
 export async function listN8nWorkflows(config, options = {}, deps = {}) {
   const { limit, cursor } = checkPage(options);
   const result = await request(config, "workflows", { limit, cursor }, deps);
-  return list(result, workflow, cursor);
+  return list(result, workflow, cursor, limit);
 }
 export async function getN8nWorkflowMetadata(config, workflowId, deps = {}) {
   const id = inputId(workflowId);
@@ -262,7 +262,7 @@ export async function listN8nExecutions(config, workflowId, options = {}, deps =
   const id = inputId(workflowId);
   const { limit, cursor } = checkPage(options);
   const result = await request(config, "executions", { workflowId: id, limit, cursor, includeData: false }, deps);
-  const page = list(result, execution, cursor);
+  const page = list(result, execution, cursor, limit);
   if (page.data.some((item) => item.workflowId !== id)) fail("N8N_SCOPE_MISMATCH");
   return page;
 }
