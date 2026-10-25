@@ -71,9 +71,46 @@ Fichier source de vérité : `packages/engines/mausbot/schema/journal-edition.v1
 - `ATLAS_MAUSBOT_JOURNAL_DEMO=true` sert la fixture, **jamais** si `VERCEL_ENV` ou `NODE_ENV` = production.
 - Le repli Markdown (`parseJournalMarkdown`) reste disponible pour n8n/outils mais n'est plus utilisé par la route.
 
+## Service journal étendu : futur `journal-mcp` (spécifié, NON créé)
+Contrats versionnés : `packages/engines/mausbot/schema/journal-mcp.v1.schema.json` (entrée/sortie JSON Schema de chaque outil,
+`additionalProperties: false`, erreurs `{ok:false, code, status, errors[]}`). Réservé au journal ; aucun autre workflow.
+
+| Outil | Entrée | Sortie / règles |
+|---|---|---|
+| `publish_edition` | `{edition}` au contrat v1 strict | 200 `{ok, edition_id, items, checks}` ; **422** `CONTRACT_INVALID` + liste `errors` ; 401 producteur non autorisé. Upsert idempotent, audit `publish` |
+| `get_edition` | `{edition: "latest" \| id}` | édition v1 complète ou 404 |
+| `search_items` | `topic?`, `from?`/`to?` (date), `q?` (mot-clé titre/résumé), `source_name?`, `limit` ≤ 50 | liste légère `{edition_id, id, topic, title, source_name, source_url, published_at}` |
+| `set_item_state` | `{edition_id, item_id, state: read\|done\|reopen}` | `reopen` → `new` ; écrit `feed_item_state` + audit `state` |
+| `correct_item` | `{edition_id, item_id, reason, changes:{title?, summary?, topic?, cover?}}` | audit `correct` avec `before`/`after` ; renvoie `audit_id` |
+| `edition_status` | `{edition: "latest" \| id}` | `{complete, counts{items, withoutCover}, checks[]}` |
+
+**Producteurs autorisés :** `morgans`, `grok-bot`, chacun avec **sa propre clé** (secret d'en-tête distinct, stocké dans les
+identifiants n8n/MCP, jamais dans le dépôt). La clé détermine le producteur : un `producer` du corps différent de celui de la clé
+→ 401. Révocation d'un producteur sans toucher l'autre. Lecture (`get_edition`, `search_items`, `edition_status`) et
+`set_item_state`/`correct_item` : propriétaire du workspace uniquement.
+
+### Contrôles qualité automatiques
+Fonction pure `checkEdition(edition, {previousItems, expectedBy, receivedAt})` (`packages/engines/mausbot/src/journal-quality.mjs`),
+réutilisable par n8n (nœud Code), le futur MCP et les tests. Résultats écrits dans `journal_edition_checks` :
+- `contract_invalid` (error) — écart au contrat v1 ;
+- `missing_source` (error) — source principale absente ou URL invalide ;
+- `duplicate_in_edition` (warning) — même URL normalisée ou même titre normalisé dans l'édition ;
+- `duplicate_across_editions` (info) — déjà publié dans une édition précédente ;
+- `missing_cover` (warning) — article sans image ;
+- `edition_late` (warning si arrivée tardive ; **error** via `checkEditionMissing()` si aucune édition à l'heure attendue —
+  à brancher sur un cron n8n du journal, NON créé).
+
+Politique : toute `error` → 422 (rien publié) ; `warning`/`info` → publié et signalé dans `edition_status`.
+
+### Audit
+Migration NON appliquée `20261025223000_atlas_journal_audit.sql` : `journal_audit` (acteur morgans|grok-bot|owner|n8n,
+action publish|correct|state, edition_id, item_id, before/after JSON, reason, at) et `journal_edition_checks` (edition_id,
+item_id, check, severity, detail, at). RLS lecture owner-only, aucune écriture pour `authenticated` : rôle service uniquement.
+
 ## Étapes restantes
 1. Revoir puis appliquer les deux migrations (prod Supabase) — OK de Paul requis.
 2. Créer le workflow n8n ci-dessus (+ secret d'en-tête dédié, clé service dans les identifiants n8n) — OK requis.
 3. Consigne MORGANS : poster le contrat v1 au webhook n8n avec les images (envoyée/à mettre à jour par ailleurs).
 4. Un seul preview Vercel vérifié (quota, cf. AGENTS.md), puis merge sur décision.
-5. Futur : Grok Bot producteur (`producer: "grok-bot"`), même webhook.
+5. Appliquer `20261025223000_atlas_journal_audit.sql`, puis construire `journal-mcp` selon le contrat ci-dessus.
+6. Futur : Grok Bot producteur (`producer: "grok-bot"`), même webhook.
