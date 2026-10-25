@@ -222,7 +222,7 @@ jobs:
           psql -X -v ON_ERROR_STOP=1
           -f tests/sql/engine-foundation-fixture.sql
           -f supabase/migrations/20261024161305_atlas_engine_foundation_preconnection.sql
-          -f supabase/migrations/20261025114500_atlas_n8n_automation_registry.sql
+          -f supabase/migrations/20261025114449_atlas_n8n_automation_registry.sql
           -f tests/sql/n8n-automation-registry-checks.sql
 
   validate:

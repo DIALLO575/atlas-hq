@@ -64,7 +64,7 @@ test("Atlas BFF workflow listing rechecks membership and instance scope before R
  assert.doesNotMatch(src,/export async function POST/);
 });
 test("PR04 SQL schema is metadata only and disallows client writes",async()=>{
- const sql=await file("../supabase/migrations/20261025114500_atlas_n8n_automation_registry.sql");
+ const sql=await file("../supabase/migrations/20261025114449_atlas_n8n_automation_registry.sql");
  assert.match(sql,/create table public\.atlas_automation_workflows/);
  assert.match(sql,/create table public\.atlas_automation_executions/);
  assert.match(sql,/foreign key\(workspace_id,instance_id,engine_key\)/);

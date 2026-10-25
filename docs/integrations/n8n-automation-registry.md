@@ -17,7 +17,7 @@ La fonction \`planN8nWorkflowSync\` projette une page de métadonnées du client
 
 ## Validation et mise en production SQL
 
-- Nouvelle migration versionnée \`supabase/migrations/20261025114500_atlas_n8n_automation_registry.sql\`, uniquement additive : crée deux tables, un index sur les instances, des indexes métier, contraintes et policies RLS.
+- Nouvelle migration versionnée \`supabase/migrations/20261025114449_atlas_n8n_automation_registry.sql\`, uniquement additive : crée deux tables, un index sur les instances, des indexes métier, contraintes et policies RLS.
 - CI \`n8n-automation-postgres\` exécute la migration en PostgreSQL 17 jetable avec \`tests/sql/engine-foundation-fixture.sql\` et \`tests/sql/n8n-automation-registry-checks.sql\` : deux tenants, IDs distants identiques, mauvais provider, FK composite, grants, lecture RLS, refus écriture, missions facultatives.
 - Ne jamais exécuter les **tests fixtures** sur le projet réel. Pour la base réelle : examiner historique et préconditions, appliquer uniquement le texte de migration SQL via \`apply_migration\`, puis vérifier tables/RLS/grants/0 ligne et conseillers sécurité. Si une version différente est générée par Supabase, synchroniser le nom du fichier GitHub avec l'historique de la base avant merge.
 - Pas de modification des credentials ou outbox, pas de connexion n8n, pas de déploiement Next.js et pas de backfill. Le SQL en prod ne publie **pas** automatiquement la UI des PR #57-59.
