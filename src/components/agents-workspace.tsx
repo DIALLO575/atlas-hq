@@ -12,7 +12,7 @@ type Task = { threadId: string; title: string | null; activity: string | null; a
 type Agent = { id: string; name: string; title?: string | null; activeTaskId: string | null; tasks: Task[] };
 type Team = { id: string; name: string; memberIds: string[]; activeTaskId?: string | null; tasks?: Task[] };
 type Template = { slug: string; name: string; category: string | null; summary: string | null; members: number | null; featured: boolean; requiredApps: string[] };
-type Inventory = { agents: Agent[]; groups: Team[]; teamTemplates: Template[]; teamCatalogAvailable: boolean };
+type Inventory = { agents: Agent[]; groups: Team[]; teamTemplates: Template[]; teamCatalogAvailable: boolean; canWrite: boolean };
 type Message = { id: string | null; at: string | null; role: string | null; kind: string | null; text: string; hasImage?: boolean; queued?: boolean; steered?: boolean;
   tool?: { name?: string; ok?: boolean; spoken?: string; setup?: string; terminal?: string };
   card?: { title?: string; subtitle?: string; answered?: boolean; dismissed?: boolean; expired?: boolean } };
@@ -49,6 +49,9 @@ export function AgentsWorkspace() {
   const [messagesIssue, setMessagesIssue] = useState("");
   const [messagesBusy, setMessagesBusy] = useState(false);
   const [messagesRevision, setMessagesRevision] = useState(0);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendIssue, setSendIssue] = useState("");
   const [proposalKind, setProposalKind] = useState<RequestKind | null>(null);
   const scrollRef = useRef<HTMLOListElement>(null);
 
@@ -94,6 +97,7 @@ export function AgentsWorkspace() {
           groups: data.groups,
           teamTemplates: Array.isArray(data.teamTemplates) ? data.teamTemplates : [],
           teamCatalogAvailable: data.teamCatalogAvailable === true,
+          canWrite: data.canWrite === true,
         });
       } catch (error) {
         if (!abort.signal.aborted) setInventoryIssue(error instanceof Error ? error.message : "MAUSBOT_UNAVAILABLE");
@@ -114,6 +118,30 @@ export function AgentsWorkspace() {
     (agent.name + " " + (agent.title ?? "")).toLocaleLowerCase("fr").includes(normalQuery)) ?? [];
   const activeWorkspace = spaces.status === "ready" ? spaces.workspaces.find(space => space.id === workspaceId) : null;
   const canReadMessages = activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
+  const canSend = inventory?.canWrite === true && activeWorkspace?.role === "owner" && !!selection && !!threadId;
+
+  async function sendMessage() {
+    if (!canSend || sending || !draft.trim()) return;
+    const value = draft.trim();
+    setSending(true); setSendIssue("");
+    try {
+      const response = await fetch("/api/engines/mausbot/primitives", {
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ workspaceId,
+          primitive: selection.kind === "team" ? "channels.messages.send" : "conversations.messages.send",
+          args: selection.kind === "team"
+            ? { channel_id: selection.id, task_id: threadId, text: value, send_id: crypto.randomUUID().replaceAll("-", "") }
+            : { bot_id: selection.id, task_id: threadId, text: value, send_id: crypto.randomUUID().replaceAll("-", "") },
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(typeof result.error === "string" ? result.error : "MAUSBOT_SEND_UNAVAILABLE");
+      setDraft(""); setMessagesRevision(value => value + 1);
+    } catch (error) {
+      setSendIssue(error instanceof Error ? error.message : "MAUSBOT_SEND_UNAVAILABLE");
+    } finally { setSending(false); }
+  }
 
   function selectItem(next: Selection, tasks: Task[]) {
     setSelection(next);
@@ -183,9 +211,9 @@ export function AgentsWorkspace() {
         <div className="atlas-people-hero-copy">
           <p className="atlas-people-overline"><Icon name="bot" /> ATLAS / COLLABORATION IA</p>
           <h1>Vos équipes. Vos agents. <span>Un même espace.</span></h1>
-          <p>Parcourez vos équipes, ouvrez un agent et suivez les conversations réelles depuis ATLAS. La communication sortante attend toujours la validation du moteur.</p>
+          <p>Parcourez vos équipes, ouvrez un agent et suivez les conversations réelles depuis ATLAS. Le propriétaire peut envoyer des messages lorsque la connexion administrateur est effectivement activée.</p>
           <div className="atlas-people-hero-meta">
-            <span><Icon name="shield-check" /> Lecture autorisée uniquement</span>
+            <span><Icon name="shield-check" /> Accès selon les droits du propriétaire</span>
             <span><Icon name="activity" /> Aucun message simulé</span>
           </div>
         </div>
@@ -320,13 +348,21 @@ export function AgentsWorkspace() {
               </ol>}
             </>}
           </div>
-          <div className="atlas-people-composer" aria-label="Envoi de messages verrouillé">
-            <div className="atlas-people-composer-field"><Icon name="shield-check" />
-              <textarea disabled rows={2} aria-label="Message verrouillé" placeholder={selected ? "Envoi désactivé jusqu’à autorisation du moteur et du worker durable" : "Sélectionnez un agent ou une équipe pour ouvrir sa conversation"} />
+          <div className="atlas-people-composer" aria-label="Composer un message MAUSBOT">
+            <div className="atlas-people-composer-field"><Icon name={canSend ? "bot" : "shield-check"} />
+              <textarea rows={2} aria-label="Message MAUSBOT" value={draft}
+                onChange={event => setDraft(event.target.value)}
+                disabled={!canSend || sending}
+                placeholder={canSend ? "Écrire à cet agent ou à cette équipe…" :
+                  selected ? "Envoi indisponible tant que le contrôle administrateur n’est pas activé" :
+                  "Sélectionnez un agent ou une équipe pour ouvrir sa conversation"} />
             </div>
+            {sendIssue && <p role="alert">{sendIssue} · Vérifiez le fil avant toute nouvelle tentative.</p>}
             <div className="atlas-people-composer-footer">
-              <span><Icon name="shield-check" /> Envoi désactivé · HTTP 423</span>
-              <button type="button" disabled><Icon name="arrow-up" /> Envoyer</button>
+              <span><Icon name="shield-check" /> {canSend ? "Envoi explicite par le propriétaire · suivi durable" : "Envoi verrouillé tant que l’autorisation manque"}</span>
+              <button type="button" onClick={() => void sendMessage()} disabled={!canSend || !draft.trim() || sending}>
+                <Icon name="arrow-up" /> {sending ? "Envoi…" : "Envoyer"}
+              </button>
             </div>
           </div>
         </div>
