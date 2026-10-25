@@ -5,6 +5,7 @@ import { readAtlasWorkflow } from "@/lib/atlas-workflow";
 import { buildChiefReply } from "@/lib/chief/briefing";
 import { ChiefCommandDeck } from "@/components/chief-command-deck";
 import { NotionObservationsPanel } from "@/components/notion-observations-panel";
+import { N8nCoordinationPanel } from "@/components/n8n-coordination-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function ChiefPage({
       workspaces={data.spaces}
       initialReply={buildChiefReply(initialPrompt,data.selected.name,
         data.missions,data.reviews,data.userId,data.selected.role === "owner" || data.selected.role === "admin")}/>
-      <NotionObservationsPanel workspaceId={data.selected.id}/></>}
+      <NotionObservationsPanel workspaceId={data.selected.id}/>
+      <N8nCoordinationPanel workspaceId={data.selected.id} scope="chief" /></>}
   </main></AppShell>;
 }
