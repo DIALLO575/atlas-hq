@@ -37,7 +37,7 @@ test("phone UI has a real fullscreen workspace with safe-area and keyboard contr
  assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
  assert.match(css, /min-height:50px/);
  assert.match(css, /font-size:16px/);
- assert.match(css, /:has\(input:focus\)/);
+ assert.match(css, /:has\(input:focus, textarea:focus, \[contenteditable="true"\]:focus\)/);
  assert.match(css, /@media \(max-width:390px\)/);
  assert.match(css, /prefers-reduced-motion:reduce/);
  assert.match(css, /:focus-visible/);
