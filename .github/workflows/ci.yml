@@ -224,6 +224,8 @@ jobs:
           -f supabase/migrations/20261024161305_atlas_engine_foundation_preconnection.sql
           -f supabase/migrations/20261025114449_atlas_n8n_automation_registry.sql
           -f tests/sql/n8n-automation-registry-checks.sql
+          -f supabase/migrations/20261025130000_atlas_n8n_runtime_offline_gate.sql
+          -f tests/sql/n8n-runtime-gate-checks.sql
 
   validate:
     runs-on: ubuntu-latest

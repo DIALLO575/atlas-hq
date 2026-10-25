@@ -76,7 +76,12 @@ export function resolveN8nReadOnlyConfig(env, workspaceId) {
       !/^[^\s\x00-\x1f\x7f]{16,512}$/.test(apiKey)) {
     fail("N8N_CONFIG_INVALID", 503);
   }
-  const config = Object.freeze({ baseUrl: url.origin, hostname, workspaceId, apiKey });
+  // The trusted config is intentionally NOT serializable with its API key.
+  // JS possessing the object can still read apiKey: never hand it to browsers.
+  const config = Object.freeze(Object.defineProperty(
+    { baseUrl: url.origin, hostname, workspaceId }, "apiKey",
+    { value: apiKey, enumerable: false, writable: false, configurable: false },
+  ));
   CONFIGS.add(config);
   return config;
 }
