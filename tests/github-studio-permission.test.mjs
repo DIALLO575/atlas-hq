@@ -40,6 +40,6 @@ test("cross-workspace, suspended and organization installations fail closed",asy
   await assert.rejects(readStudioCreationPermission(options(async()=>json({
     id:77,target_type:"User",account:{login:"octocat"},repository_selection:"selected",
     permissions:{repository_creation:"write"},suspended_at:null,...change,
-  })),e=>e.code==="GITHUB_NOT_AUTHORIZED");
+  }))),e=>e.code==="GITHUB_NOT_AUTHORIZED");
  }
 });
