@@ -16,7 +16,7 @@ test("app directory avoids unnecessary authenticated round trips", async () => {
   assert.match(dir, /import Link from "next\/link"/);
   assert.match(dir, /<Link className="atlas-app-details" href="\/apps\/github" prefetch=\{true\}/);
   assert.match(dir, /Piloter <Icon/);
-  assert.match(githubPage, /searchParams: Promise<\{ workspaceId\?: string; github\?: string \}>/);
+  assert.match(githubPage, /searchParams: Promise<\{ workspaceId\?: string; github\?: string; studioAuth\?: string \}>/);
   assert.match(githubPage, /params\.github === "connected"/);
   assert.match(connect, /new URL\("\/apps\/github", settings\.publicOrigin\)/);
 });
