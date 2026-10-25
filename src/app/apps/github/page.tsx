@@ -29,10 +29,19 @@ const githubFeedback: Record<string, string> = {
 export default async function GitHubPage({
   searchParams,
 }: {
-  searchParams: Promise<{ workspaceId?: string; github?: string }>;
+  searchParams: Promise<{ workspaceId?: string; github?: string; studioAuth?: string }>;
 }) {
   const params = await searchParams;
   const githubResult = params.github && Object.hasOwn(githubFeedback, params.github) ? githubFeedback[params.github] : null;
+  const studioAuthMessages: Record<string,string> = {
+    authorized:"Compte GitHub autorisé. Vérifiez maintenant votre dépôt dans le Studio avant la création.",
+    denied:"Vous n’avez pas autorisé la création de dépôt auprès de GitHub.",
+    forbidden:"L’autorisation nécessite un administrateur du workspace.",
+    unavailable:"L’autorisation GitHub est indisponible. Recommencez depuis le Studio.",
+    "invalid-state":"L’autorisation GitHub a expiré. Relancez-la depuis le Studio.",
+  };
+  const studioAuth = params.studioAuth && Object.hasOwn(studioAuthMessages,params.studioAuth)
+    ? studioAuthMessages[params.studioAuth] : null;
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = supabase
     ? await supabase.auth.getUser() : { data: { user: null } };
@@ -60,12 +69,14 @@ export default async function GitHubPage({
           <Link href="/apps">Mes Apps</Link><span aria-hidden="true">/</span><strong>GitHub</strong>
         </nav>
         {githubResult && <div className="atlas-gh-notice" role={params.github === "connected" ? "status" : "alert"}>{githubResult}</div>}
+        {studioAuth && <div className="atlas-gh-notice" role={params.studioAuth === "authorized" ? "status" : "alert"}>{studioAuth}</div>}
         {error ? (
           <div className="atlas-gh-notice" role="alert">Impossible de charger vos espaces. <Link href="/apps/github">Réessayer</Link></div>
         ) : (
           <GitHubControlCenter workspaces={workspaces}
             initialWorkspaceId={initialWorkspaceId}
-            configured={Boolean(githubConnectSettings())} />
+            configured={Boolean(githubConnectSettings())}
+            openStudioOnLoad={Boolean(studioAuth)} />
         )}
       </main>
     </AppShell>
