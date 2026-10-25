@@ -1,3 +1,5 @@
+> **Précision 25/10/2026 :** ceci décrit la publication historique du socle Notion. Les primitives avancées de documents, médias, Markdown et vues ont ensuite été préparées **hors main**. Le [bilan d'intégration actuel](notion-v2-etat-reel-et-recette-2026-10-25.md) fait la distinction entre code testé et fonctionnalité déployée.
+
 # ATLAS HQ Notion V2 — publication de code dans main (25 octobre 2026)
 
 ## Références et délimitation

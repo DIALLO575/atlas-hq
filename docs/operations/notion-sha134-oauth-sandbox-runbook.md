@@ -1,3 +1,5 @@
+> **Statut consolidé au 25/10/2026 :** le code Notion V2 avancé est candidat **non déployé**. La page « ATLAS — TEST » a été créée via la connexion ChatGPT à Notion, **pas** par ATLAS OAuth. Recette toujours **NON EXÉCUTÉE**. Voir [le bilan réel et la checklist](notion-v2-etat-reel-et-recette-2026-10-25.md).
+
 # SHA-134 — Recette OAuth Notion REST en sandbox (GO/NO-GO)
 
 **Statut : NON EXECUTEE sur Notion.** Ce runbook prépare la recette, il ne vaut pas preuve fournisseur. Périmètre : OAuth REST public, acteur/workspace ATLAS, lecture seule, isolation, refresh CAS, révocation. MCP OAuth, webhooks, workers, écritures et migrations sont exclus.

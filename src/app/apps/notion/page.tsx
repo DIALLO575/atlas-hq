@@ -57,8 +57,9 @@ export default async function NotionPage({
         <p>Retrouvez vos ressources et vos vraies vues Notion depuis ATLAS.
           Consultez les aperçus, vérifiez les accès et ouvrez les vues originales —
           sans recopier vos bases de données.</p>
-        <div className="nt-hero-tags"><span>Vues natives</span><span>Lecture seule</span>
-          <span>Permissions par ressource</span></div>
+        <div className="nt-hero-tags"><span>Pages et documents</span>
+          <span>Images et PDF</span><span>Bases et vues</span>
+          <span>Lecture seule</span></div>
       </div>
       <div className="nt-hero-badge"><span className="nt-hero-dot"/>
         {authorized.length > 0 ? "Connexion ATLAS enregistrée" : "Aucun accès fournisseur confirmé"}</div>
@@ -83,12 +84,18 @@ export default async function NotionPage({
           <p>Une fois l&apos;OAuth REST activé et une connexion de test autorisée, ATLAS
             affichera uniquement les pages, bases et vues que Notion partage réellement
             avec cette connexion. Aucun jeu de données fictif n’est présenté.</p>
+          <div className="nt-empty-features" aria-label="Fonctions accessibles après autorisation">
+            <span>▤ Pages et documents</span><span>▧ Images et fichiers</span>
+            <span>▦ Bases et vues enregistrées</span>
+          </div>
+          <a href="#notion-connections" className="nt-button nt-button-dark">
+            Gérer les connexions ↓</a>
           <p className="nt-empty-note">{!configured
             ? "Configuration OAuth serveur désactivée ou incomplète."
             : "Aucune connexion Notion personnelle active pour cet espace ATLAS."}</p>
         </div>
       </section>}
-    <section className="nt-setup" aria-label="Gestion des connexions Notion">
+    <section id="notion-connections" className="nt-setup" aria-label="Gestion des connexions Notion">
       <div><span className="nt-kicker">CONNEXIONS ET AUTORISATIONS</span>
         <h2>Gérer les espaces accessibles</h2>
         <p>Seuls les propriétaires et administrateurs ATLAS peuvent créer une connexion.
