@@ -37,7 +37,7 @@ test("phone UI has a real fullscreen workspace with safe-area and keyboard contr
  assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
  assert.match(css, /min-height:50px/);
  assert.match(css, /font-size:16px/);
- assert.match(css, /:has\(input:focus\)/);
+ assert.match(css, /:has\(input:focus, textarea:focus, \[contenteditable="true"\]:focus\)/);
  assert.match(css, /@media \(max-width:390px\)/);
  assert.match(css, /prefers-reduced-motion:reduce/);
  assert.match(css, /:focus-visible/);
@@ -66,4 +66,36 @@ test("permissions and OAuth remain unchanged while app navigation remains keyboa
  assert.match(ui,/aria-current=\{mobileScreen/);
  assert.match(ui,/nt-phone-manage-link/);
  assert.match(ui,/aria-label="Retour à Mes Apps ATLAS"|Navigation Notion mobile/);
+});
+
+test("last pass: portrait tablets receive full-screen Notion UI and keyboard-safe viewport",()=>{
+ assert.match(ui,/matchMedia\("\(max-width:840px\)"\)/);
+ assert.match(css,/@media \(max-width:840px\)/);
+ assert.doesNotMatch(css,/max-width:760px/);
+ assert.match(css,/scroll-padding-top:calc\(82px/);
+ assert.match(css,/scroll-padding-bottom:calc\(94px/);
+ assert.match(css,/:has\(input:focus, textarea:focus, \[contenteditable="true"\]:focus\)/);
+});
+test("last pass: Notion phone tabs announce screen and point to real controlled panes",()=>{
+ assert.match(ui,/<strong aria-live="polite">\{mobileScreen/);
+ for(const target of ["library","stage","inspector"]){
+   assert.match(ui,new RegExp('id=\\{"nt-'+target+'-"\\+connectionId\\}'));
+   assert.match(ui,new RegExp('aria-controls=\\{"nt-'+target+'-"\\+connectionId\\}'));
+ }
+ assert.match(ui,/nt-stage-no-views/);
+ assert.match(css,/\.nt-phone-views \.nt-stage-no-views \.nt-stage-title\{display:none\}/);
+});
+test("last pass: subdued Notion text has >=4.5:1 contrast on warm gray",()=>{
+ const luminance=(hex)=>{
+   const n=[1,3,5].map(i=>Number.parseInt(hex.slice(i,i+2),16)/255);
+   const linear=n.map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
+   return linear[0]*.2126+linear[1]*.7152+linear[2]*.0722;
+ };
+ const contrast=(a,b)=>{
+   const x=luminance(a),y=luminance(b);
+   return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+ };
+ assert.ok(contrast("#696862","#f1f1ef")>=4.5);
+ assert.match(css,/--nt-muted:#696862/);
+ assert.doesNotMatch(css,/#787774/);
 });

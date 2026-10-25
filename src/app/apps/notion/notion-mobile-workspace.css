@@ -1,7 +1,7 @@
 /* Notion inside ATLAS: own neutral brand surface, never the global ATLAS PWA.
    Notion's recognisable visual language is white, charcoal and warm grays. */
 .nt-page{
-  --nt-ink:#191919;--nt-muted:#787774;--nt-line:#e9e9e7;
+  --nt-ink:#191919;--nt-muted:#696862;--nt-line:#e9e9e7;
   --nt-soft:#f7f7f5;--nt-green:#37352f;--nt-ring:#343434;
   color:#191919;
 }
@@ -29,7 +29,7 @@
 .nt-page .nt-button-quiet,.nt-page .nt-filter-chip:not(.nt-filter-active){color:#37352f;background:#fff;border-color:#e9e9e7}
 .nt-page .nt-button-quiet:hover,.nt-page .nt-filter-chip:hover:not(.nt-filter-active){background:#f1f1ef}
 .nt-page .nt-status{color:#37352f;background:#f7f7f5;border-color:#e9e9e7}
-.nt-page .nt-status:before{background:#787774;box-shadow:0 0 0 3px #e9e9e7}
+.nt-page .nt-status:before{background:#696862;box-shadow:0 0 0 3px #e9e9e7}
 .nt-page .nt-status-loading:before{background:#37352f}
 .nt-page .nt-hub-switch{background:#fff;border-color:#e9e9e7}
 .nt-page .nt-library,.nt-page .nt-inspector{background:#f7f7f5;border-color:#e9e9e7}
@@ -42,11 +42,11 @@
 .nt-page .nt-view-glyph,.nt-page .nt-view-count,
 .nt-page .nt-load-more{background:#f1f1ef;color:#37352f;border-color:#e9e9e7}
 .nt-page .nt-document-tabs{background:#f1f1ef;border-color:#e9e9e7}
-.nt-page .nt-document-tab{color:#787774}
+.nt-page .nt-document-tab{color:#696862}
 .nt-page .nt-document-tab.nt-tab-active{background:#fff;color:#191919}
 .nt-page .nt-stage-feature-list span{color:#37352f}
 .nt-page .nt-resource-type-tag,.nt-page .nt-readonly-token{font-weight:720}
-.nt-page .nt-rich-block-media{background:#fff;border-color:#e9e9e7;border-left-color:#787774}
+.nt-page .nt-rich-block-media{background:#fff;border-color:#e9e9e7;border-left-color:#696862}
 .nt-page .nt-rich-table,.nt-page .nt-source-table-scroll{border-color:#e9e9e7}
 .nt-page .nt-source-table th,.nt-page .nt-rich-table th{background:#f7f7f5;color:#37352f}
 .nt-page .nt-source-item{color:#37352f;border-color:#e9e9e7}
@@ -62,13 +62,15 @@
 }
 
 /* App-like independent phone screen, modelled on Atlas GitHub PWA structure. */
-@media (max-width:760px){
+@media (max-width:840px){
   .atlas-shell .nt-page,.nt-page{
     position:fixed!important;inset:0!important;z-index:11000;
     width:100%!important;max-width:none!important;height:100vh;height:100dvh;
     min-height:0!important;margin:0!important;
     padding:0 0 calc(90px + env(safe-area-inset-bottom,0px))!important;
     overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+    scroll-padding-top:calc(82px + env(safe-area-inset-top,0px));
+    scroll-padding-bottom:calc(94px + env(safe-area-inset-bottom,0px));
     -webkit-overflow-scrolling:touch;scrollbar-width:thin;
     background:#fff;color:#191919;
   }
@@ -123,7 +125,7 @@
     padding:17px 18px 11px;gap:12px;background:#fff;
   }
   .nt-phone-viewtitle{display:flex;min-width:0;flex-direction:column;gap:5px}
-  .nt-phone-eyebrow{font-size:9px;letter-spacing:.12em;font-weight:760;color:#787774}
+  .nt-phone-eyebrow{font-size:9px;letter-spacing:.12em;font-weight:760;color:#696862}
   .nt-phone-viewtitle strong{font-size:22px;line-height:1.15;color:#191919}
   .nt-phone-back{
     min-width:92px;min-height:42px;display:flex;align-items:center;justify-content:center;
@@ -149,7 +151,7 @@
   .nt-page .nt-pane-heading{font-size:13px;margin-bottom:7px}
   .nt-page .nt-pane-heading span:last-child{background:#f1f1ef;color:#37352f}
   .nt-page .nt-library-hint{margin:5px 0 14px;font-size:11px}
-  .nt-page .nt-search label{font-size:11px;color:#787774}
+  .nt-page .nt-search label{font-size:11px;color:#696862}
   .nt-page .nt-search-row{min-height:48px;border-radius:11px}
   .nt-page .nt-search-row input{min-height:48px;font-size:16px;padding:10px 12px}
   .nt-page .nt-search-row button{min-width:48px;font-size:22px}
@@ -190,6 +192,7 @@
   .nt-page .nt-phone-views .nt-sources{display:none}
   .nt-page .nt-phone-views .nt-stage>.nt-preview{display:none}
   .nt-page .nt-phone-views .nt-stage-empty{display:none}
+  .nt-page .nt-phone-views .nt-stage-no-views .nt-stage-title{display:none}
   .nt-page .nt-phone-views .nt-view-section-head{margin-top:5px}
   .nt-page .nt-views{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
   .nt-page .nt-view-tile{min-height:133px;padding:13px;border-radius:12px}
@@ -200,7 +203,7 @@
     background:#f7f7f5;
   }
   .nt-page .nt-phone-views-empty h3{margin:9px 0;font-size:19px}
-  .nt-page .nt-phone-views-empty p{font-size:12px;color:#787774;line-height:1.7}
+  .nt-page .nt-phone-views-empty p{font-size:12px;color:#696862;line-height:1.7}
   .nt-phone-empty-icon{font-size:29px;color:#37352f}
   .nt-page .nt-inspector-card{padding:17px;border-radius:12px;margin:12px 0;background:#f7f7f5}
   .nt-page .nt-inspector-details{border:1px solid #e9e9e7;padding:13px;border-radius:11px}
@@ -244,7 +247,7 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:5px;min-height:50px;padding:5px 2px;
     border:1px solid transparent;border-radius:10px;
-    background:transparent;color:#787774;
+    background:transparent;color:#696862;
     font:700 10px/1.1 var(--font-body);cursor:pointer;
     touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   }
@@ -266,16 +269,32 @@
   .nt-page .nt-views{grid-template-columns:1fr 1fr}
   .nt-page .nt-filter-chip{padding:9px 10px}
 }
-@media (max-width:760px) and (max-height:560px){
+@media (max-width:840px) and (max-height:560px){
   .nt-page .nt-phone-appbar{min-height:55px}
   .nt-page .nt-phone-dock{min-height:59px}
 }
 @supports selector(:has(*)){
-  @media (max-width:760px){
-    .nt-page:has(input:focus) .nt-phone-dock{display:none!important}
+  @media (max-width:840px){
+    .nt-page:has(input:focus, textarea:focus, [contenteditable="true"]:focus)
+      .nt-phone-dock{display:none!important}
   }
 }
 @media (prefers-reduced-motion:reduce){
   .nt-page .nt-phone-dock button,.nt-page .nt-resource,
   .nt-page .nt-view-tile{animation:none!important;transition:none!important}
+}
+
+/* Final Notion phone review: clear states and high-contrast secondary labels. */
+@media(max-width:840px){
+  .nt-page .nt-phone-views .nt-stage-no-views{padding-top:4px}
+  .nt-page .nt-phone-dock button[aria-current="page"] span{
+    font-weight:800;text-decoration-thickness:2px;
+  }
+  .nt-page .nt-phone-viewtitle strong{overflow-wrap:anywhere}
+  .nt-page .nt-phone-app-settings,.nt-page .nt-phone-back{
+    touch-action:manipulation;
+  }
+  .nt-page .nt-document-preview,.nt-page .nt-markdown-panel{
+    overflow-wrap:anywhere;
+  }
 }

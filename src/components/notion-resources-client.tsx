@@ -238,7 +238,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
   function navigateMobile(screen:NotionPhoneScreen) {
     setMobileScreen(screen);
     if(typeof window!=="undefined" &&
-       window.matchMedia("(max-width:760px)").matches) {
+       window.matchMedia("(max-width:840px)").matches) {
       document.getElementById("notion-explorer")?.scrollIntoView({
         block:"start",behavior:"instant",
       });
@@ -482,7 +482,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
     <div className="nt-phone-viewtop">
       <div className="nt-phone-viewtitle">
         <span className="nt-phone-eyebrow">NOTION · LECTURE SEULE</span>
-        <strong>{mobileScreen==="library"?"Bibliothèque":
+        <strong aria-live="polite">{mobileScreen==="library"?"Bibliothèque":
           mobileScreen==="reader"?"Lecture":
           mobileScreen==="views"?"Vues enregistrées":"Accès & droits"}</strong>
       </div>
@@ -506,7 +506,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
     <p className={"nt-status"+(busy?" nt-status-loading":"")} role="status"
       aria-live="polite">{busy ? "Chargement sécurisé depuis Notion…" : message}</p>
     <div className="nt-browser" aria-busy={Boolean(busy)}>
-      <aside className="nt-library" aria-label="Ressources Notion">
+      <aside className="nt-library" id={"nt-library-"+connectionId} aria-label="Ressources Notion">
         <div className="nt-pane-heading"><span>Bibliothèque</span><span>{resources.length}</span></div>
         <p className="nt-library-hint">Uniquement les ressources visibles par cette connexion.</p>
         <form className="nt-search" onSubmit={(e: FormEvent) => { e.preventDefault(); void search(); }}>
@@ -544,7 +544,10 @@ function NotionExplorer({ connection }: { connection: Connection }) {
             onClick={() => void search(true)} disabled={Boolean(busy)}>Afficher plus de ressources</button>}
         </div>
       </aside>
-      <section className="nt-stage" aria-label="Lecteur Notion et aperçus des ressources">
+      <section className={"nt-stage"+(mobileScreen==="views" &&
+          (!selected||selected.kind==="page")?" nt-stage-no-views":"")}
+          id={"nt-stage-"+connectionId}
+          aria-label="Lecteur Notion et aperçus des ressources">
         {mobileScreen==="views" && (!selected || selected.kind==="page") &&
           <div className="nt-phone-views-empty" role="status">
             <div className="nt-phone-empty-icon" aria-hidden="true">▦</div>
@@ -747,7 +750,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
           </>}
         </>}
       </section>
-      <aside className="nt-inspector" aria-label="État et permissions">
+      <aside className="nt-inspector" id={"nt-inspector-"+connectionId} aria-label="État et permissions">
         <div className="nt-pane-heading"><span>Contrôle d’accès</span><span>REST</span></div>
         <div className="nt-inspector-card"><span className="nt-kicker">CONNEXION PERSONNELLE</span>
           <strong>{connection.label}</strong><p>{disconnected ? "Déconnectée" :
@@ -774,6 +777,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
     <nav className="nt-phone-dock" aria-label="Navigation Notion mobile">
       <button type="button" className={mobileScreen==="library"?"is-active":""}
         aria-current={mobileScreen==="library"?"page":undefined}
+        aria-controls={"nt-library-"+connectionId}
         onClick={()=>navigateMobile("library")}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
@@ -782,6 +786,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       </button>
       <button type="button" className={mobileScreen==="reader"?"is-active":""}
         aria-current={mobileScreen==="reader"?"page":undefined}
+        aria-controls={"nt-stage-"+connectionId}
         onClick={()=>navigateMobile("reader")}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
@@ -790,6 +795,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       </button>
       <button type="button" className={mobileScreen==="views"?"is-active":""}
         aria-current={mobileScreen==="views"?"page":undefined}
+        aria-controls={"nt-stage-"+connectionId}
         onClick={()=>navigateMobile("views")}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
@@ -800,6 +806,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       </button>
       <button type="button" className={mobileScreen==="access"?"is-active":""}
         aria-current={mobileScreen==="access"?"page":undefined}
+        aria-controls={"nt-inspector-"+connectionId}
         onClick={()=>navigateMobile("access")}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
