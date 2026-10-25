@@ -42,12 +42,74 @@ function str(value, max) {
 }
 function hostName(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return null; } }
 
-export const COVER_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,150}\.(webp|png|jpg|jpeg|gif)$/i;
-/** cover = { file, generated, alt, credit } produced by MausBot; file is a MausBot attachment name. */
+export const JOURNAL_SCHEMA_VERSION = "1";
+export const JOURNAL_TOPICS = Object.freeze(["ia", "commerce", "guinee", "afrique", "monde", "geopolitique", "economie", "tech"]);
+export const JOURNAL_PRODUCERS = Object.freeze(["morgans", "grok-bot"]);
+export const COVER_PATH = /^[A-Za-z0-9._-]{1,120}\/[A-Za-z0-9._-]{1,150}\.(webp|png|jpg|jpeg)$/;
+/** cover = { storage_path, generated, alt, credit, source_name } — storage_path is relative to the private bucket. */
 export function normalizeCover(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  if (typeof raw.file !== "string" || !COVER_FILE.test(raw.file) || raw.file.includes("..")) return null;
-  return { file: raw.file, generated: raw.generated === true, alt: str(raw.alt, 300) ?? "", credit: str(raw.credit, 200) };
+  const path = raw.storage_path;
+  if (typeof path !== "string" || !COVER_PATH.test(path) || path.includes("..")) return null;
+  return { storagePath: path, generated: raw.generated === true, alt: str(raw.alt, 300) ?? "",
+    credit: str(raw.credit, 200), sourceName: str(raw.source_name, 120) };
+}
+const isoDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v) && !Number.isNaN(Date.parse(v));
+const httpUrl = v => typeof v === "string" && v.length <= 2048 && /^https?:\/\//.test(v) && safeHttpUrl(v) !== null;
+const sized = (v, min, max) => typeof v === "string" && v.length >= min && v.length <= max;
+const nullOr = (v, f) => v === null || v === undefined || f(v);
+function onlyKeys(obj, allowed, path, errors) {
+  for (const k of Object.keys(obj)) if (!allowed.includes(k)) errors.push(path + "." + k + ": propriété inconnue");
+}
+/**
+ * Strict validator mirroring packages/engines/mausbot/schema/journal-edition.v1.schema.json.
+ * n8n may use the JSON Schema (or this function in a Code node); ATLAS uses it in tests and the demo path.
+ */
+export function validateJournalEdition(data) {
+  const e = [];
+  if (!data || typeof data !== "object" || Array.isArray(data)) return { ok: false, errors: ["$: objet attendu"] };
+  onlyKeys(data, ["schema_version", "edition_id", "generated_at", "producer", "items"], "$", e);
+  if (data.schema_version !== JOURNAL_SCHEMA_VERSION) e.push("$.schema_version: doit valoir \"1\"");
+  if (typeof data.edition_id !== "string" || !ID.test(data.edition_id)) e.push("$.edition_id: invalide");
+  if (!isoDate(data.generated_at)) e.push("$.generated_at: date-time attendue");
+  if (!JOURNAL_PRODUCERS.includes(data.producer)) e.push("$.producer: invalide");
+  if (!Array.isArray(data.items) || data.items.length < 1 || data.items.length > 200) e.push("$.items: 1 à 200 éléments");
+  const seen = new Set();
+  (Array.isArray(data.items) ? data.items : []).forEach((it, i) => {
+    const p = "$.items[" + i + "]";
+    if (!it || typeof it !== "object" || Array.isArray(it)) { e.push(p + ": objet attendu"); return; }
+    onlyKeys(it, ["id", "topic", "title", "summary", "why_it_matters", "certainty", "status", "source_url", "source_name", "extra_sources", "published_at", "author_bot", "cover"], p, e);
+    if (typeof it.id !== "string" || !ID.test(it.id)) e.push(p + ".id: invalide");
+    else if (seen.has(it.id)) e.push(p + ".id: doublon"); else seen.add(it.id);
+    if (!JOURNAL_TOPICS.includes(it.topic)) e.push(p + ".topic: invalide");
+    if (!sized(it.title, 1, 240)) e.push(p + ".title: 1 à 240 caractères");
+    if (!sized(it.summary, 1, 2000)) e.push(p + ".summary: 1 à 2000 caractères");
+    if (!nullOr(it.why_it_matters, v => sized(v, 0, 1000))) e.push(p + ".why_it_matters: invalide");
+    if (!CERTAINTY.includes(it.certainty)) e.push(p + ".certainty: invalide");
+    if (!STATUS.includes(it.status)) e.push(p + ".status: invalide");
+    if (!httpUrl(it.source_url)) e.push(p + ".source_url: URL http(s) attendue");
+    if (!sized(it.source_name, 1, 120)) e.push(p + ".source_name: invalide");
+    if (it.extra_sources !== undefined && (!Array.isArray(it.extra_sources) || it.extra_sources.length > 8 ||
+        it.extra_sources.some(x => !x || typeof x !== "object" || Object.keys(x).some(k => k !== "url" && k !== "name") || !httpUrl(x.url) || !sized(x.name, 0, 120))))
+      e.push(p + ".extra_sources: invalide");
+    if (!nullOr(it.published_at, isoDate)) e.push(p + ".published_at: invalide");
+    if (!nullOr(it.author_bot, v => sized(v, 0, 60))) e.push(p + ".author_bot: invalide");
+    if (!("cover" in it)) e.push(p + ".cover: requis (objet ou null)");
+    else if (it.cover !== null) {
+      const c = it.cover;
+      if (!c || typeof c !== "object" || Array.isArray(c)) e.push(p + ".cover: invalide");
+      else {
+        onlyKeys(c, ["storage_path", "generated", "alt", "credit", "source_name"], p + ".cover", e);
+        for (const k of ["storage_path", "generated", "alt", "credit", "source_name"]) if (!(k in c)) e.push(p + ".cover." + k + ": requis");
+        if (typeof c.storage_path !== "string" || !COVER_PATH.test(c.storage_path) || c.storage_path.includes("..")) e.push(p + ".cover.storage_path: invalide");
+        if (typeof c.generated !== "boolean") e.push(p + ".cover.generated: booléen attendu");
+        if (!sized(c.alt, 0, 300)) e.push(p + ".cover.alt: invalide");
+        if (!nullOr(c.credit, v => sized(v, 0, 200))) e.push(p + ".cover.credit: invalide");
+        if (!nullOr(c.source_name, v => sized(v, 0, 120))) e.push(p + ".cover.source_name: invalide");
+      }
+    }
+  });
+  return { ok: e.length === 0, errors: e.slice(0, 50) };
 }
 function normalizeItem(raw, editionId) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -85,6 +147,15 @@ export function parseJournalJson(input) {
   }
   const generatedAt = typeof data.generated_at === "string" && !Number.isNaN(Date.parse(data.generated_at)) ? data.generated_at : null;
   return { editionId, generatedAt, format: "json", items, skipped: data.items.length - items.length };
+}
+/** Maps Supabase journal_items rows (snake_case, cover jsonb) to display items. Invalid rows skipped. */
+export function journalItemsFromRows(editionId, rows) {
+  const items = [];
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const item = normalizeItem({ ...r, id: r?.item_id }, editionId);
+    if (item) items.push(item);
+  }
+  return items;
 }
 
 function slug(s) { return fold(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "item"; }

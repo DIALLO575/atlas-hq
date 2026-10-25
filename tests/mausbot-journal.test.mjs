@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { normalizeCover, normalizeJournalTopic, parseJournalJson, parseJournalMarkdown, groupJournal, JOURNAL_CATEGORIES } from "../packages/engines/mausbot/src/journal.mjs";
-import { resolveJournalSource, readJournalEdition, readJournalCover, validateJournalStateInput, JOURNAL_FIXTURE } from "../packages/engines/mausbot/src/journal-source.mjs";
+import { validateJournalEdition, journalItemsFromRows, normalizeCover, normalizeJournalTopic, parseJournalJson, parseJournalMarkdown, groupJournal, JOURNAL_CATEGORIES } from "../packages/engines/mausbot/src/journal.mjs";
+import { journalDemoAllowed, readJournalDemo, readJournalFromSupabase, validateJournalStateInput, JOURNAL_FIXTURE } from "../packages/engines/mausbot/src/journal-source.mjs";
 
 
 test("topics normalize to six categories, unknown → null", () => {
@@ -20,16 +20,16 @@ test("topics normalize to six categories, unknown → null", () => {
 
 test("JSON edition: strict envelope, bad items skipped, unsafe URLs dropped", () => {
   const e = parseJournalJson({ edition_id: "2026-10-25_matin", generated_at: "2026-10-25T13:00:00Z", items: [
-    { id: "a", topic: "ia", title: "T", summary: "S", certainty: "elevee", status: "confirme", source_url: "https://x.com/a", cover: { file: "../etc/passwd.png", generated: true }, extra_sources: [{ url: "file:///etc/passwd" }, { url: "https://y.org/b", name: "Y" }] },
+    { id: "a", topic: "ia", title: "T", summary: "S", certainty: "elevee", status: "confirme", source_url: "https://x.com/a", cover: { storage_path: "../etc/passwd.png", generated: true }, extra_sources: [{ url: "file:///etc/passwd" }, { url: "https://y.org/b", name: "Y" }] },
     { id: "b", topic: "sport", title: "ignored" },
     { id: "a", topic: "ia", title: "dup" },
     { id: "bad id!", topic: "ia", title: "x" },
-    { id: "c", topic: "economie", title: "E", certainty: "wat", unknownField: 1, cover: { file: "radar-c.webp", generated: true, alt: "A", credit: "Reuters" } },
+    { id: "c", topic: "economie", title: "E", certainty: "wat", unknownField: 1, cover: { storage_path: "ed1/radar-c.webp", generated: true, alt: "A", credit: "Reuters", source_name: "Reuters" } },
   ] });
   assert.equal(e.items.length, 2);
   assert.equal(e.skipped, 3);
   assert.equal(e.items[0].cover, null);
-  assert.deepEqual(e.items[1].cover, { file: "radar-c.webp", generated: true, alt: "A", credit: "Reuters" });
+  assert.deepEqual(e.items[1].cover, { storagePath: "ed1/radar-c.webp", generated: true, alt: "A", credit: "Reuters", sourceName: "Reuters" });
   assert.equal(e.items[0].sourceName, "x.com");
   assert.deepEqual(e.items[0].extraSources, [{ url: "https://y.org/b", name: "Y" }]);
   assert.equal(e.items[1].certainty, null);
@@ -56,43 +56,63 @@ test("Markdown fallback splits on ## Thème — Titre and extracts sources", () 
   assert.equal(g.certainty, "faible");
 });
 
-test("cover: MausBot attachment names only, generated flag strict", () => {
-  assert.equal(normalizeCover({ file: "https://evil.example/x.png" }), null);
-  assert.equal(normalizeCover({ file: "a/b.png" }), null);
-  assert.equal(normalizeCover({ file: "x.svg" }), null);
-  assert.equal(normalizeCover({ file: "x.jpeg", generated: "true" }).generated, false);
-  assert.equal(normalizeCover(null), null);
+test("cover: bucket-relative storage_path only", () => {
+  assert.equal(normalizeCover({ storage_path: "https://evil.example/x.png" }), null);
+  assert.equal(normalizeCover({ storage_path: "x.png" }), null);
+  assert.equal(normalizeCover({ storage_path: "a/../b.png" }), null);
+  assert.equal(normalizeCover({ storage_path: "e/x.svg" }), null);
+  assert.equal(normalizeCover({ storage_path: "e/x.jpeg", generated: "true" }).generated, false);
 });
 
-test("cover proxy: GET to /api/attachments, image types only, size capped, token stays server-side", async () => {
-  const config = { baseUrl: "https://mausbot.example", token: "SECRET-TOKEN" };
-  let seen;
-  const ok = async (url, init) => { seen = { url, init }; return new Response("img", { headers: { "content-type": "image/webp" } }); };
-  const r = await readJournalCover(config, "radar-1.webp", { fetchImpl: ok });
-  assert.equal(seen.url, "https://mausbot.example/api/attachments/radar-1.webp");
-  assert.equal(seen.init.method, "GET");
-  assert.equal(r.contentType, "image/webp");
-  await assert.rejects(readJournalCover(config, "../x.png", { fetchImpl: ok }), /INVALID/);
-  await assert.rejects(readJournalCover(config, "x.png", { fetchImpl: async () => new Response("<svg>", { headers: { "content-type": "image/svg+xml" } }) }), /NOT_IMAGE/);
-  await assert.rejects(readJournalCover(config, "x.png", { fetchImpl: ok, maxBytes: 1 }), /TOO_LARGE/);
+test("contract v1: JSON Schema and validator agree; strict rejection", () => {
+  const schema = JSON.parse(readFileSync(new URL("../packages/engines/mausbot/schema/journal-edition.v1.schema.json", import.meta.url), "utf8"));
+  const itemSchema = schema.properties.items.items;
+  assert.equal(schema.properties.schema_version.const, "1");
+  assert.deepEqual(itemSchema.properties.topic.enum, ["ia", "commerce", "guinee", "afrique", "monde", "geopolitique", "economie", "tech"]);
+  assert.deepEqual(itemSchema.properties.cover.oneOf[1].required, ["storage_path", "generated", "alt", "credit", "source_name"]);
+  assert.equal(schema.additionalProperties, false);
+  assert.deepEqual(validateJournalEdition(JOURNAL_FIXTURE), { ok: true, errors: [] });
+  const good = structuredClone(JOURNAL_FIXTURE);
+  good.items[0].cover = { storage_path: "demo/ia-1.webp", generated: false, alt: "x", credit: "AFP", source_name: "Le Monde" };
+  assert.equal(validateJournalEdition(good).ok, true);
+  for (const mutate of [
+    d => { d.schema_version = "2"; }, d => { d.extra = 1; }, d => { d.producer = "x"; }, d => { d.items = []; },
+    d => { d.items[0].topic = "sport"; }, d => { d.items[0].unknown = 1; }, d => { d.items[1].id = d.items[0].id; },
+    d => { delete d.items[0].cover; }, d => { d.items[0].cover = { storage_path: "a/b.webp" }; },
+    d => { d.items[0].source_url = "javascript:x"; }, d => { d.items[0].certainty = "haute"; },
+  ]) { const d = structuredClone(JOURNAL_FIXTURE); mutate(d); assert.equal(validateJournalEdition(d).ok, false, String(mutate)); }
 });
 
-test("source: env-only, https only, token never serialized, demo blocked in production", async () => {
-  assert.equal(resolveJournalSource({}, { token: "t" }), null);
-  assert.throws(() => resolveJournalSource({ ATLAS_MAUSBOT_JOURNAL_URL: "http://x/" }, { token: "t" }));
-  const s = resolveJournalSource({ ATLAS_MAUSBOT_JOURNAL_URL: "https://mausbot.example/journal/latest" }, { token: "SECRET-TOKEN" });
-  assert.equal(JSON.stringify(s).includes("SECRET-TOKEN"), false);
-  assert.equal(resolveJournalSource({ ATLAS_MAUSBOT_JOURNAL_DEMO: "true", VERCEL_ENV: "production" }, null), null);
-  assert.deepEqual(resolveJournalSource({ ATLAS_MAUSBOT_JOURNAL_DEMO: "true" }, null), { kind: "fixture" });
-  let seen;
-  const fetchImpl = async (url, init) => { seen = init; return new Response(JSON.stringify(JOURNAL_FIXTURE), { headers: { "content-type": "application/json" } }); };
-  const e = await readJournalEdition(s, { fetchImpl });
-  assert.equal(seen.method, "GET");
-  assert.equal(e.items.length, 3);
-  assert.equal(JSON.stringify(e).includes("SECRET-TOKEN"), false);
-  const md = async () => new Response("## IA — X\n- **Faits** : f\n", { headers: { "content-type": "text/markdown" } });
-  assert.equal((await readJournalEdition(s, { fetchImpl: md })).format, "markdown");
-  await assert.rejects(readJournalEdition(s, { fetchImpl: async () => new Response("", { status: 404 }) }), /NOT_FOUND/);
+function fakeSupabase({ edition, rows, signedCalls }) {
+  const q = result => { const b = { select: () => b, eq: () => b, order: () => b, limit: () => b, maybeSingle: async () => result, then: (r, j) => Promise.resolve(result).then(r, j) }; return b; };
+  return {
+    from: t => q(t === "journal_editions" ? { data: edition, error: null } : { data: rows, error: null }),
+    storage: { from: bucket => ({ createSignedUrls: async (paths, ttl) => { signedCalls.push({ bucket, paths, ttl }); return { data: paths.map(p => ({ path: p, signedUrl: "https://proj.supabase.co/storage/v1/object/sign/" + p + "?token=t", error: null })) }; } }) },
+  };
+}
+
+test("Supabase reader: latest edition, rows mapped, signed URLs from private bucket", async () => {
+  const signedCalls = [];
+  const rows = [{ item_id: "ia-1", topic: "ia", title: "T", summary: "S", certainty: "elevee", status: "confirme", source_url: "https://x.com", source_name: "X", extra_sources: [], cover: { storage_path: "ed1/ia-1.webp", generated: true, alt: "", credit: null, source_name: null }, position: 0 },
+    { item_id: "bad", topic: "sport", title: "x" }];
+  const sb = fakeSupabase({ edition: { edition_id: "ed1", generated_at: "2026-10-25T13:00:00Z", producer: "morgans", schema_version: "1" }, rows, signedCalls });
+  const e = await readJournalFromSupabase(sb, "ws-1");
+  assert.equal(e.items.length, 1);
+  assert.equal(signedCalls[0].bucket, "journal-covers");
+  assert.deepEqual(signedCalls[0].paths, ["ws-1/ed1/ia-1.webp"]);
+  assert.equal(signedCalls[0].ttl, 3600);
+  assert.match(e.items[0].coverUrl, /^https:\/\/proj\.supabase\.co\/storage\/v1\/object\/sign\/ws-1\/ed1\/ia-1\.webp/);
+  await assert.rejects(readJournalFromSupabase(fakeSupabase({ edition: null, rows: [], signedCalls }), "ws-1"), /NOT_FOUND/);
+  await assert.rejects(readJournalFromSupabase(fakeSupabase({ edition: { edition_id: "e", schema_version: "2" }, rows: [], signedCalls }), "ws-1"), /UNSUPPORTED/);
+  assert.equal(journalItemsFromRows("e", null).length, 0);
+});
+
+test("demo fixture never in production", () => {
+  assert.equal(journalDemoAllowed({ ATLAS_MAUSBOT_JOURNAL_DEMO: "true", VERCEL_ENV: "production" }), false);
+  assert.equal(journalDemoAllowed({ ATLAS_MAUSBOT_JOURNAL_DEMO: "true", NODE_ENV: "production" }), false);
+  assert.equal(journalDemoAllowed({}), false);
+  assert.equal(journalDemoAllowed({ ATLAS_MAUSBOT_JOURNAL_DEMO: "true" }), true);
+  assert.equal(readJournalDemo().demo, true);
 });
 
 test("state input validation is strict", () => {
@@ -112,9 +132,11 @@ test("routes: owner-only, GET-only to MausBot, state writes Supabase not MausBot
   assert.doesNotMatch(read, /export async function (POST|PUT|DELETE|PATCH)/);
   assert.match(owner, /role !== "owner"/);
   assert.match(state, /from\("feed_item_state"\)\.upsert/);
-  const cover = readFileSync(new URL("../src/app/api/engines/mausbot/journal/cover/route.ts", import.meta.url), "utf8");
-  assert.match(cover, /requireJournalOwner/);
-  assert.doesNotMatch(read + cover, /og:image|resolveCover/);
+  assert.doesNotMatch(read + state, /mausbotRequest|resolveMausbotConfig|ATLAS_MAUSBOT_JOURNAL_URL|og:image/);
+  const ed = readFileSync(new URL("../supabase/migrations/20261025221000_atlas_journal_editions.sql", import.meta.url), "utf8");
+  assert.match(ed, /'journal-covers', 'journal-covers', false/);
+  assert.match(ed, /GRANT SELECT ON public.journal_editions, public.journal_items TO authenticated;/);
+  assert.doesNotMatch(ed, /GRANT (INSERT|UPDATE|DELETE)[^;]*authenticated/);
   assert.doesNotMatch(state, /mausbotRequest|resolveMausbotConfig/);
   const mig = readFileSync(new URL("../supabase/migrations/20261025220000_atlas_feed_item_state.sql", import.meta.url), "utf8");
   assert.match(mig, /ENABLE ROW LEVEL SECURITY/);

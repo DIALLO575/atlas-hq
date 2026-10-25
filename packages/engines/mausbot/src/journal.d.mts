@@ -1,4 +1,4 @@
-export type JournalCover = { file: string; generated: boolean; alt: string; credit: string | null };
+export type JournalCover = { storagePath: string; generated: boolean; alt: string; credit: string | null; sourceName: string | null };
 export type JournalCategory = "ia" | "commerce" | "guinee" | "afrique" | "monde" | "economie";
 export type JournalItem = {
   id: string; editionId: string; category: JournalCategory; topic: string | null; title: string;
@@ -13,5 +13,10 @@ export function safeHttpUrl(value: unknown): string | null;
 export function parseJournalJson(input: unknown): JournalEdition;
 export function parseJournalMarkdown(markdown: unknown, editionId?: string): JournalEdition;
 export function groupJournal(edition: JournalEdition): { id: JournalCategory; label: string; count: number }[];
-export const COVER_FILE: RegExp;
+export const COVER_PATH: RegExp;
+export const JOURNAL_SCHEMA_VERSION: "1";
+export const JOURNAL_TOPICS: readonly string[];
+export const JOURNAL_PRODUCERS: readonly string[];
+export function validateJournalEdition(data: unknown): { ok: boolean; errors: string[] };
+export function journalItemsFromRows(editionId: string, rows: unknown): JournalItem[];
 export function normalizeCover(raw: unknown): JournalCover | null;

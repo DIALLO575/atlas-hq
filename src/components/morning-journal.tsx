@@ -11,16 +11,16 @@ type Item = {
   certainty: "elevee" | "moyenne" | "faible" | null; status: "confirme" | "rapporte" | "a_verifier" | null;
   sourceUrl: string | null; sourceName: string | null; extraSources: { url: string; name: string | null }[];
   publishedAt: string | null; authorBot: string | null; state: ReadState;
-  cover: { file: string; generated: boolean; alt: string; credit: string | null } | null;
+  cover: { storagePath: string; generated: boolean; alt: string; credit: string | null; sourceName: string | null } | null; coverUrl: string | null;
 };
-type Payload = { source: "live-read-only"; demo: boolean; editionId: string; generatedAt: string | null;
+type Payload = { source: "supabase-read-only"; producer: string; demo: boolean; editionId: string; generatedAt: string | null;
   categories: { id: Category; label: string; count: number }[]; items: Item[]; stateAvailable: boolean };
 type View = { status: "loading" | "ready" | "offline" | "error"; data?: Payload; error?: string };
 
 const CERTAINTY: Record<string, string> = { elevee: "Certitude élevée", moyenne: "Certitude moyenne", faible: "Certitude faible" };
 const STATUS: Record<string, string> = { confirme: "Confirmé", rapporte: "Rapporté", a_verifier: "À vérifier" };
 function errorText(code?: string) {
-  if (code === "JOURNAL_SOURCE_NOT_CONFIGURED") return "La source WORLD RADAR n’est pas encore branchée (route Caddy GET à créer).";
+  if (code === "JOURNAL_SOURCE_UNAVAILABLE") return "Tables du journal indisponibles (migrations non appliquées ou Supabase injoignable).";
   if (code === "JOURNAL_OWNER_REQUIRED" || code === "ENGINE_WRITE_FORBIDDEN" || code === "WORKSPACE_FORBIDDEN") return "Le journal est réservé au propriétaire du workspace.";
   if (code === "AUTH_REQUIRED") return "Connectez-vous pour lire le journal.";
   if (code === "JOURNAL_EDITION_NOT_FOUND") return "Aucune édition disponible pour l’instant.";
@@ -32,16 +32,16 @@ function dateLabel(v: string | null) {
   return Number.isNaN(d.getTime()) ? null : new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-function Cover({ item, ws, large }: { item: Item; ws: string; large?: boolean }) {
+function Cover({ item, large }: { item: Item; large?: boolean }) {
   const [failed, setFailed] = useState(false);
-  const src = item.cover && !failed ? "/api/engines/mausbot/journal/cover?workspaceId=" + encodeURIComponent(ws) + "&file=" + encodeURIComponent(item.cover.file) : null;
+  const src = item.coverUrl && !failed ? item.coverUrl : null;
   return <figure className={"mj-cover" + (large ? " is-large" : "")}>
     {src
       // eslint-disable-next-line @next/next/no-img-element
       ? <img src={src} alt={item.cover?.alt ?? ""} loading="lazy" onError={() => setFailed(true)} />
       : <span className="mj-cover-fallback" aria-hidden />}
     {item.cover?.generated && <figcaption className="mj-generated">Illustration générée</figcaption>}
-    {item.cover?.credit && !item.cover.generated && <figcaption className="mj-credit">{item.cover.credit}</figcaption>}
+    {item.cover && !item.cover.generated && (item.cover.credit || item.cover.sourceName) && <figcaption className="mj-credit">{[item.cover.credit, item.cover.sourceName].filter(Boolean).join(" · ")}</figcaption>}
   </figure>;
 }
 function Badges({ item }: { item: Item }) {
@@ -80,7 +80,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
         const res = await fetch("/api/engines/mausbot/journal?workspaceId=" + encodeURIComponent(ws), { credentials: "same-origin", signal: abort.signal });
         const body = await res.json();
         if (!res.ok) { setView({ status: res.status === 503 || res.status === 404 ? "offline" : "error", error: body.error }); return; }
-        if (body.source !== "live-read-only" || !Array.isArray(body.items)) throw Error("bad");
+        if (body.source !== "supabase-read-only" || !Array.isArray(body.items)) throw Error("bad");
         setView({ status: "ready", data: body as Payload });
       } catch { if (!abort.signal.aborted) setView({ status: "error" }); }
     })();
@@ -106,7 +106,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
 
   return <main className="mj-page">
     <header className="mj-masthead">
-      <p className="mj-kicker">WORLD RADAR · MORGANS & équipe</p>
+      <p className="mj-kicker">WORLD RADAR · {view.data?.producer === "grok-bot" ? "Grok Bot" : "MORGANS & équipe"}</p>
       <h1>Journal du matin</h1>
       {view.data && <p className="mj-edition">{dateLabel(view.data.generatedAt) ?? "Édition " + view.data.editionId}{view.data.demo && " · données de démonstration"}</p>}
       {view.data && <div className="mj-progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
@@ -124,7 +124,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
       {!view.data.stateAvailable && <p className="mj-state is-warn">Suivi lu/terminé indisponible (migration feed_item_state non appliquée).</p>}
       <section className="mj-grid">
         {items.map((item, idx) => <article key={item.id} className={"mj-card" + (idx === 0 && filter === "all" ? " is-lead" : "") + " is-state-" + item.state}>
-          <button className="mj-card-open" onClick={() => open(item)} aria-label={"Lire : " + item.title}><Cover item={item} ws={ws} /></button>
+          <button className="mj-card-open" onClick={() => open(item)} aria-label={"Lire : " + item.title}><Cover item={item} /></button>
           <div className="mj-card-body">
             <p className={"mj-cat is-" + item.category}>{view.data!.categories.find(c => c.id === item.category)?.label}{item.state === "new" && <i className="mj-dot" aria-label="nouveau" />}</p>
             <h2><button onClick={() => open(item)}>{item.title}</button></h2>
@@ -144,7 +144,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     {reading && <div className="mj-reader" role="dialog" aria-modal="true" aria-label={reading.title}>
       <div className="mj-reader-inner">
         <button className="mj-close" onClick={() => setReading(null)} aria-label="Fermer"><Icon name="close" /></button>
-        <Cover item={reading} ws={ws} large />
+        <Cover item={reading} large />
         <p className={"mj-cat is-" + reading.category}>{view.data?.categories.find(c => c.id === reading.category)?.label}{reading.authorBot && " · " + reading.authorBot}</p>
         <h2>{reading.title}</h2>
         <Badges item={reading} />

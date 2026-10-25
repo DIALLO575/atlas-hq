@@ -1,79 +1,79 @@
 # Journal du matin (WORLD RADAR) — ATLAS HQ
 
-Statut : **PR brouillon, non déployée.** Lecture seule côté MausBot ; l’état lu/terminé vit dans Supabase.
+Statut : **PR brouillon, rien d'appliqué ni de déployé.** Migrations non appliquées, aucun workflow n8n créé.
 
-**Partage des rôles (décision de Paul) :** toute l’intelligence — tri, thèmes, dédoublonnage, recherche de l’image réelle
-de l’article, génération d’illustration — se fait **côté MausBot** (MORGANS et son équipe). ATLAS **récupère et affiche** :
-aucun fetch d’article, aucun og:image, aucun générateur d’image, aucun stockage d’image dans ATLAS.
+## Architecture (décision de Paul)
+```
+MausBot (MORGANS & équipe)  ──POST + secret d'en-tête──►  n8n (contrôleur)  ──service role──►  Supabase
+  tri, thèmes, dédoublonnage,                              valide le contrat v1,             journal_editions / journal_items
+  image réelle ou illustration                             upsert idempotent, upload image    bucket privé journal-covers
+                                                                                                   │ RLS owner-only (lecture)
+                                                                         ATLAS /journal ◄──────────┘ + URL signées côté serveur
+                                                                         (lit, affiche, état lu/terminé → feed_item_state)
+```
+- **MausBot** fait toute l'intelligence. **n8n** est le seul écrivain (rôle service). **ATLAS** ne fait que lire et afficher,
+  et n'écrit que l'état de lecture du propriétaire (`feed_item_state`). ATLAS n'appelle pas MausBot pour le journal.
+- **Futur :** Grok Bot pourra remplacer MORGANS comme producteur en postant le même contrat au même webhook
+  (`"producer": "grok-bot"`). n8n reste le contrôleur ; rien ne change côté ATLAS (l'en-tête affiche « Grok Bot »).
 
-## Parcours
-`/journal` (lien « Journal » dans la navigation) → `GET /api/engines/mausbot/journal?workspaceId=…` → édition triée par thème
-(IA & outils, Commerce & logistique, Guinée, Afrique, Monde / géopolitique, Économie / marchés), cartes avec couverture,
-lecture plein écran, « Marquer lu » / « Marquer terminé », progression X/Y.
+## Contrat v1 (unique)
+Fichier source de vérité : `packages/engines/mausbot/schema/journal-edition.v1.schema.json` (JSON Schema 2020-12,
+`additionalProperties: false` partout). Validateur JS équivalent : `validateJournalEdition()` dans
+`packages/engines/mausbot/src/journal.mjs` (utilisable dans un nœud Code n8n ; un test vérifie que les deux restent alignés).
+```json
+{"schema_version":"1","edition_id":"2026-10-25_matin","generated_at":"2026-10-25T13:30:00Z","producer":"morgans",
+ "items":[{"id":"ia-1","topic":"ia","title":"…","summary":"…","why_it_matters":"…",
+   "certainty":"elevee","status":"confirme","source_url":"https://…","source_name":"Le Monde",
+   "extra_sources":[{"url":"https://…","name":"…"}],"published_at":"2026-10-25T08:00:00Z","author_bot":"Turing",
+   "cover":{"storage_path":"2026-10-25_matin/ia-1.webp","generated":false,"alt":"…","credit":"AFP","source_name":"Le Monde"}}]}
+```
+- `topic` ∈ ia, commerce, guinee, afrique, monde, geopolitique, economie, tech → affiché en 6 catégories.
+- `certainty` ∈ elevee, moyenne, faible · `status` ∈ confirme, rapporte, a_verifier · 1 à 200 items, ids uniques.
+- `cover` requis : objet ou `null`. `storage_path` = `<dossier>/<fichier>.(webp|png|jpg|jpeg)`, relatif au dossier du workspace
+  dans le bucket. `generated: true` → ATLAS affiche « Illustration générée » ; sinon `credit · source_name` sur l'image.
+- Toute évolution incompatible → `schema_version: "2"` et nouveau fichier de schéma ; ATLAS refuse les versions inconnues
+  (`JOURNAL_SCHEMA_UNSUPPORTED`).
 
-## Composants
+## Workflow n8n attendu (à créer plus tard, NON créé)
+1. **Webhook** `POST /webhook/world-radar-edition`, JSON (ou multipart si images), authentification par **en-tête dédié**
+   `X-Journal-Secret` comparé en temps constant à un secret propre à ce workflow (ni le jeton MausBot, ni la clé service).
+   Taille max ~2 Mo JSON + 5 Mo par image. Mauvais secret → 401.
+2. **Validation** du corps contre le schéma v1 (strict). Échec → **422** avec la liste `errors` (sans écho du contenu).
+3. **Images** : pour chaque `cover` non nul, le producteur fournit le fichier (champ multipart nommé `storage_path`, ou
+   base64 dans un champ de transport hors contrat retiré avant validation). n8n vérifie type (webp/png/jpeg) et taille, puis
+   **upload** vers `journal-covers/<workspace_id>/<storage_path>` avec `upsert: true`. Fichier manquant ou invalide → `cover = null`
+   (ou 422 si on veut être strict, à décider).
+4. **Upsert idempotent** avec la clé service : `journal_editions` sur `(workspace_id, edition_id)` (avec `payload_sha256`,
+   `item_count`), puis `journal_items` sur `(workspace_id, edition_id, item_id)` avec `position` = index. Supprimer les items
+   de l'édition absents du nouvel envoi. Même charge renvoyée deux fois → même résultat.
+   `workspace_id` vient de la config du workflow, **jamais** du producteur.
+5. **Réponse** `200 {"ok":true,"edition_id":…,"items":N}` ; `422` si contrat invalide ; `401` si secret faux ; `5xx` si Supabase
+   échoue (le producteur peut réessayer : l'upsert est idempotent).
+
+## Supabase (migrations NON appliquées)
+- `20261025221000_atlas_journal_editions.sql` : `journal_editions`, `journal_items` (contraintes = contrat), RLS **lecture
+  owner-only**, aucun droit d'écriture pour `authenticated` (seul le rôle service écrit) ; bucket **privé** `journal-covers`
+  (5 Mo, webp/png/jpeg) + politique de lecture `storage.objects` limitée au dossier `<workspace_id>/` du propriétaire.
+- `20261025220000_atlas_feed_item_state.sql` : état nouveau/lu/terminé par utilisateur, RLS owner-only, clé unique.
+
+## ATLAS
 | Fichier | Rôle |
 |---|---|
-| `packages/engines/mausbot/src/journal.mjs` | Parseur pur : JSON d’édition (strict) + repli Markdown `## Thème — Titre`, normalisation des thèmes |
-| `packages/engines/mausbot/src/journal-source.mjs` | Source (env serveur uniquement, GET, bearer non sérialisable), fixture de démo, validation de l’état |
-| `src/app/api/engines/mausbot/journal/route.ts` | GET owner-only, `Cache-Control: private, max-age=60` |
-| `src/app/api/engines/mausbot/journal/cover/route.ts` | Proxy image owner-only → MausBot `GET /api/attachments/<file>` (bearer côté serveur) |
-| `src/app/api/engines/mausbot/journal/state/route.ts` | POST owner-only → upsert `feed_item_state` (jamais MausBot) |
-| `supabase/migrations/20261025220000_atlas_feed_item_state.sql` | Table + RLS owner-only — **non appliquée** |
+| `packages/engines/mausbot/schema/journal-edition.v1.schema.json` | Contrat versionné |
+| `packages/engines/mausbot/src/journal.mjs` | Validateur strict, normalisation (thèmes, cover), mapping des lignes, repli Markdown |
+| `packages/engines/mausbot/src/journal-source.mjs` | Lecture Supabase (dernière édition), URL signées 1 h, fixture de démo |
+| `src/app/api/engines/mausbot/journal/route.ts` | GET owner-only, `no-store` |
+| `src/app/api/engines/mausbot/journal/state/route.ts` | POST owner-only → `feed_item_state` |
+| `src/app/journal/page.tsx`, `src/components/morning-journal.tsx` | UI magazine |
 
-## Schéma JSON d’édition (`world_radar_<date>_<edition>.json`)
-```json
-{"edition_id":"2026-10-25_matin","generated_at":"ISO-8601","items":[{
-  "id":"[A-Za-z0-9._:-]{1,120}","topic":"ia|commerce|guinee|afrique|monde|geopolitique|economie|tech",
-  "title":"…","summary":"…","why_it_matters":"…|null","certainty":"elevee|moyenne|faible","status":"confirme|rapporte|a_verifier",
-  "source_url":"https://…","source_name":"…","extra_sources":[{"url":"https://…","name":"…"}],
-  "cover":{"file":"radar-ia-1.webp","generated":false,"alt":"…","credit":"Reuters"},"published_at":"ISO-8601|null","author_bot":"Turing"}]}
-```
-Règles : enveloppe invalide → erreur `JOURNAL_EDITION_INVALID` ; items au thème inconnu, sans id/titre, ou en double → ignorés ;
-URLs non http(s) ou avec identifiants → supprimées ; max 200 items lus, 40 affichés ; textes tronqués.
-
-Repli Markdown (`world_radar_final_AAAA-MM-JJ.md`) : découpage sur `## <Thème> — <Titre>`, rubriques `Faits` (résumé),
-`Statut/certitude`, `Intérêt`, `Source(s)` (liens). Pas de couverture dans le .md → placeholder neutre.
-
-## Source MausBot : route Caddy GET à créer (NON faite)
-Aucune route GET existante du gateway (`/mcp`) ou de l’API MausBot ne sert les fichiers d’espace de travail d’un bot.
-Proposition (à valider par Paul, à poser par l’opérateur VPS) :
-```caddy
-# dans le site mausbot.shadoron.com, avant le reverse_proxy général
-@journal {
-  method GET
-  path /journal/latest
-}
-handle @journal {
-  @noauth not header Authorization "Bearer {env.OMB_JOURNAL_TOKEN}"
-  respond @noauth 401
-  rewrite * /world_radar_latest.json
-  root * /srv/omb-journal          # dossier en lecture seule, rempli par un lien/copie du dernier JSON de MORGANS
-  header Cache-Control "private, max-age=60"
-  file_server
-}
-```
-Alternative : mini-endpoint dans `/opt/omb-mcp-gw/gw.js` `GET /journal/latest` qui lit le dernier `world_radar_*.json`
-(sinon le dernier `world_radar_final_*.md`) du dossier de MORGANS, en lecture seule, avec le même bearer.
-Côté ATLAS : `ATLAS_MAUSBOT_JOURNAL_URL=https://mausbot.shadoron.com/journal/latest` (le bearer réutilise `ATLAS_MAUSBOT_TOKEN`
-via `resolveMausbotConfig` ; si un jeton dédié est préféré, adapter `resolveJournalSource`). Les gates de lecture MausBot
-existants (`mausbotReleasePermission(env,"read")`) s’appliquent. `ATLAS_MAUSBOT_JOURNAL_DEMO=true` sert la fixture hors production.
-
-## Couvertures
-- `cover.file` = nom d’une pièce jointe MausBot (`^[A-Za-z0-9][A-Za-z0-9._-]{0,150}\.(webp|png|jpg|jpeg|gif)$`, sans `/` ni `..`).
-  Toute autre valeur (URL externe, chemin) est ignorée → placeholder neutre.
-- Le navigateur charge `/api/engines/mausbot/journal/cover?workspaceId=…&file=…` (owner-only). ATLAS appelle
-  `GET <ATLAS_MAUSBOT_URL>/api/attachments/<file>` avec le bearer serveur, accepte seulement `image/(jpeg|png|webp|gif)`,
-  ≤ 5 Mo, renvoie `Cache-Control: private, max-age=3600`, `nosniff`, CSP sandbox. Aucune URL externe non vérifiée côté client.
-- La route Caddy `/api/attachments/*` actuelle accepte png/jpg/gif/webp : **ajouter `jpeg`** au motif si MORGANS produit des `.jpeg`
-  (sinon qu’il nomme ses fichiers `.jpg`).
-- `generated: true` → mention « Illustration générée » ; sinon `credit` (nom du média) affiché sur l’image. Source et lien toujours affichés.
-- C’est MORGANS qui choisit : image réelle de l’article d’abord, illustration générée sinon.
+- Les URL signées sont créées **côté serveur** avec la session du propriétaire (la RLS storage s'applique) ; le navigateur ne
+  reçoit que ces URL Supabase courtes, jamais une URL externe non vérifiée. Pas de cover → placeholder neutre.
+- `ATLAS_MAUSBOT_JOURNAL_DEMO=true` sert la fixture, **jamais** si `VERCEL_ENV` ou `NODE_ENV` = production.
+- Le repli Markdown (`parseJournalMarkdown`) reste disponible pour n8n/outils mais n'est plus utilisé par la route.
 
 ## Étapes restantes
-1. Valider puis poser la route Caddy GET (ou le mini-endpoint gw.js) — ne pas le faire sans OK.
-2. Appliquer la migration `feed_item_state` en prod Supabase après revue (sinon le journal s’affiche sans suivi lu/terminé).
-3. Définir `ATLAS_MAUSBOT_JOURNAL_URL` sur Vercel, puis un seul preview vérifié (quota, cf. AGENTS.md).
-4. Consigne de format JSON à MORGANS : envoyée par ailleurs.
-5. Côté MausBot : MORGANS dépose les couvertures comme pièces jointes et remplit `cover`. Ajouter `jpeg` dans Caddy si besoin.
-6. Optionnel : historique des éditions.
+1. Revoir puis appliquer les deux migrations (prod Supabase) — OK de Paul requis.
+2. Créer le workflow n8n ci-dessus (+ secret d'en-tête dédié, clé service dans les identifiants n8n) — OK requis.
+3. Consigne MORGANS : poster le contrat v1 au webhook n8n avec les images (envoyée/à mettre à jour par ailleurs).
+4. Un seul preview Vercel vérifié (quota, cf. AGENTS.md), puis merge sur décision.
+5. Futur : Grok Bot producteur (`producer: "grok-bot"`), même webhook.
