@@ -57,7 +57,9 @@ test("premium Mes Apps preserves its directory and offers the real GitHub connec
   assert.doesNotMatch(apps, /<GitHubWorkspacePicker|from\("workspace_members"\)|auth\.getUser\(\)/);
   assert.match(agents, /<AgentsWorkspace/);
   assert.match(agentsWorkspace, /view=inventory/);
-  assert.ok(agentsWorkspace.includes("channels.messages.list"));
+  assert.ok(agentsWorkspace.includes("/api/engines/mausbot/updates?"));
+  const updates = readFileSync(new URL("../src/app/api/engines/mausbot/updates/route.ts", import.meta.url), "utf8");
+  assert.ok(updates.includes("channels.messages.list"));
   assert.match(agentsWorkspace, /atlas-team-grid/);
   assert.match(agentsWorkspace, /atlas-team-member-grid/);
   assert.ok(agentsWorkspace.includes('href="/engines"'));

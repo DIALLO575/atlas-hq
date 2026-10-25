@@ -168,8 +168,11 @@ export function AgentsWorkspace() {
 
   function restoreCachedMessages(key: string) {
     const entry = threadCache.current.get(key);
-    return entry && Date.now() - entry.updatedAt < MAUSBOT_THREAD_CACHE_TTL_MS
-      ? entry.messages : [];
+    if (entry && Date.now() - entry.updatedAt >= MAUSBOT_THREAD_CACHE_TTL_MS) {
+      threadCache.current.delete(key);
+      return [];
+    }
+    return entry?.messages ?? [];
   }
 
   async function sendMessage() {
