@@ -1,27 +1,25 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import {readFile} from "node:fs/promises";
 import test from "node:test";
-
-const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-
-test("GitHub Studio wizard only submits preview, keeps creation disabled", async () => {
-  const ui = await read("../src/components/github-studio-repository-wizard.tsx");
-  const page = await read("../src/components/github-control-center.tsx");
-  assert.match(ui, /fetch\("\/api\/apps\/github\/studio\/repositories\/preview"/);
-  assert.match(ui, /credentials:\s*"same-origin"/);
-  assert.match(ui, /method:\s*"POST"/);
-  assert.match(ui, /data\?\.canExecute\s*!==\s*false/);
-  assert.match(ui, /Le dépôt n'a pas été créé/);
-  assert.match(ui, /Création GitHub désactivée/);
-  assert.doesNotMatch(ui, /\/api\/apps\/github\/studio\/repositories\/execute/);
-  assert.match(page, /id: "studio"/);
-  assert.match(page, /<GitHubStudioRepositoryWizard/);
-  assert.match(page, /section === "repositories" \|\| section === "pulls"/);
+const read=(p)=>readFile(new URL(p,import.meta.url),"utf8");
+test("Studio wizard supports preview, OAuth and explicit approved creation",async()=>{
+ const ui=await read("../src/components/github-studio-repository-wizard.tsx");
+ const page=await read("../src/components/github-control-center.tsx");
+ assert.match(ui,/fetch\("\/api\/apps\/github\/studio\/repositories\/preview"/);
+ assert.match(ui,/credentials:\s*"same-origin"/);
+ assert.match(ui,/method:\s*"POST"/);
+ assert.match(ui,/data\?\.canExecute\s*!==\s*false/);
+ assert.match(ui,/executionEnabled/);
+ assert.match(ui,/Création GitHub désactivée/);
+ assert.match(ui,/\/api\/apps\/github\/studio\/repositories\/execute/);
+ assert.match(ui,/studio\/oauth\/start/);
+ assert.match(page,/id: "studio"/);
+ assert.match(page,/<GitHubStudioRepositoryWizard/);
+ assert.match(page,/section === "repositories" \|\| section === "pulls"/);
 });
-
-test("GitHub Studio preview has responsive split layout and a clear readonly state", async () => {
-  const css = await read("../src/app/github-control-center.css");
-  assert.match(css, /\.atlas-gh-studio-layout\s*\{display:grid;/);
-  assert.match(css, /@media\(max-width:790px\)/);
-  assert.match(css, /\.atlas-gh-studio-form button:disabled/);
+test("Studio remains responsive with disabled submit and explicit human approval",async()=>{
+ const css=await read("../src/app/github-control-center.css");
+ assert.match(css,/\.atlas-gh-studio-layout\s*\{display:grid;/);
+ assert.match(css,/@media\(max-width:790px\)/);
+ assert.match(css,/\.atlas-gh-studio-form button:disabled/);
 });

@@ -897,3 +897,8 @@
  .atlas-gh-actions-run-text{min-width:140px}
 }
 @media(prefers-reduced-motion:reduce){.atlas-gh-tabs button{transition:none}}
+
+/* Server-authorized GitHub personal OAuth; no client token. */
+.atlas-gh-studio-oauth{display:flex;flex-direction:column;gap:7px;border:1px solid #dae8e1;padding:12px;border-radius:12px;background:#f4faf6}
+.atlas-gh-studio-oauth small{font-size:10px;line-height:1.5;color:#58675f}
+.atlas-gh-studio-oauth button{min-height:45px}

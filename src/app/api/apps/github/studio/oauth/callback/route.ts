@@ -3,6 +3,7 @@ import {
   adminGitHubClient, consumeConnectAttempt, githubConnectSettings,
   readConnectState, requireWorkspaceAdmin,
 } from "@/lib/github/connect";
+import { studioMutationMode, studioSandboxBindingAllowed } from "@/lib/github/studio-availability";
 import {
   exchangeStudioOAuthCode, readStudioOAuthAttempt, sealStudioUserGrant,
   studioOAuthAttemptCookie, studioOAuthGrantCookie, verifyStudioOAuthAccount,
@@ -30,10 +31,8 @@ function finish(origin: string, code: string, grant?: { value: string; maxAge: n
 }
 
 export async function GET(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== "preview" ||
-      process.env.ATLAS_GITHUB_STUDIO_OAUTH_ENABLED !== "sandbox") {
-    return NextResponse.json({ error: "STUDIO_OAUTH_DISABLED" }, { status: 404 });
-  }
+  const mode = studioMutationMode();
+  if (!mode) return NextResponse.json({ error: "STUDIO_OAUTH_DISABLED" }, { status: 404 });
   const settings = githubConnectSettings();
   if (!settings || !settings.publicOrigin.startsWith("https://")) {
     return NextResponse.json({ error: "STUDIO_NOT_CONFIGURED" }, { status: 503 });
@@ -45,8 +44,7 @@ export async function GET(request: NextRequest) {
     state, key: settings.stateKey,
   });
   if (!proof || !attempt || proof.tenantId !== attempt.workspaceId ||
-      attempt.workspaceId !== process.env.ATLAS_GITHUB_STUDIO_SANDBOX_WORKSPACE_ID ||
-      attempt.installationId !== Number(process.env.ATLAS_GITHUB_STUDIO_SANDBOX_INSTALLATION_ID)) {
+      !studioSandboxBindingAllowed(mode, attempt.workspaceId, attempt.installationId)) {
     return finish(settings.publicOrigin, "invalid-state");
   }
   const actor = await requireWorkspaceAdmin(attempt.workspaceId);
