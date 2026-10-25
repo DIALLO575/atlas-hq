@@ -4,7 +4,7 @@
 
 L'espace Notion d'ATLAS ressemble à une **véritable application mobile**, comme l'espace GitHub déjà déployé, mais utilise une **identité Notion neutre** : noir \`#191919\`, blanc \`#fff\`, gris chaud \`#f7f7f5\`, texte secondaire \`#787774\`.
 
-**Périmètre : uniquement \`/apps/notion\`**. Le service worker, le manifeste PWA global, les routes GitHub, l'accueil et le dock ATLAS ne changent pas. Le shell existant est recouvert par la route Notion **seulement sur téléphone (largeur ≤760px)**. À l'écran large, le cockpit utilise la même palette monochrome sans supprimer ses panneaux de productivité.
+**Périmètre : uniquement \`/apps/notion\`**. Le service worker, le manifeste PWA global, les routes GitHub, l'accueil et le dock ATLAS ne changent pas. Le shell existant est recouvert par la route Notion **seulement sur téléphone (largeur ≤840px)**. À l'écran large, le cockpit utilise la même palette monochrome sans supprimer ses panneaux de productivité.
 
 ## Parcours mobile concret
 
@@ -24,3 +24,12 @@ L'authentification, les tokens et droits d'accès aux ressources restent côté 
 - **GO fournisseur : non** tant que SHA-134 n'a pas passé le consentement test limité à \`ATLAS — TEST\`, W1/W2, refresh, révocation et les écrans réels.
 
 Références : [SHA-182](https://linear.app/shadoron/issue/SHA-182) (mission), [SHA-189](https://linear.app/shadoron/issue/SHA-189) (design), SHA-190 (mobile), [SHA-134](https://linear.app/shadoron/issue/SHA-134) (recette OAuth).
+
+## Renforcement final — 25 octobre 2026
+
+- L'ergonomie PWA en plein écran s'étend désormais à **840 px** pour couvrir aussi l'iPad/tablette en portrait à 768 px, tout en gardant l'affichage desktop en paysage.
+- Les textes secondaires Notion utilisent désormais un gris chaud contrasté `#696862` : ratio supérieur à **4,9:1** sur le fond `#f1f1ef`, supérieur au minimum de 4,5:1 en texte normal.
+- Les quatre touches de navigation indiquent désormais le panneau réellement contrôlé (`aria-controls`) ; le titre d'écran est annoncé (`aria-live`) sans charger de contenu en arrière-plan.
+- Si une page est sélectionnée, la vue « Vues » montre seulement l'état explicatif (pas un titre de page trompeur). Les zones de lecture longues gèrent les mots longs et la position de défilement en haut/bas pour les encoches et le dock.
+- Le dock disparaît pendant la saisie dans les champs texte, zones de texte et éditeurs (si présents) pour éviter de masquer le clavier.
+- Toujours **aucun changement** de la PWA ATLAS, de GitHub, d'OAuth/SQL/permissions ni de données Notion. Recette visuelle avec de vrais appareils et OAuth SHA-134 non réalisée : tests de contrat/CSS/compilation ≠ capture navigateur authentifiée.
