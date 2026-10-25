@@ -1,6 +1,7 @@
 # Journal du matin (WORLD RADAR) — ATLAS HQ
 
-Statut : **PR brouillon, rien d'appliqué ni de déployé.** Migrations non appliquées, aucun workflow n8n créé.
+Statut (2026-10-25) : **PR brouillon, ATLAS non déployé.** Migrations `journal_editions` et `feed_item_state` **appliquées** en prod
+Supabase ; workflow n8n d'ingestion **actif** et testé de bout en bout. Migration audit `20261025223000` **non appliquée**.
 
 ## Architecture (décision de Paul)
 ```
@@ -34,8 +35,19 @@ Fichier source de vérité : `packages/engines/mausbot/schema/journal-edition.v1
 - Toute évolution incompatible → `schema_version: "2"` et nouveau fichier de schéma ; ATLAS refuse les versions inconnues
   (`JOURNAL_SCHEMA_UNSUPPORTED`).
 
-## Workflow n8n attendu (à créer plus tard, NON créé)
-1. **Webhook** `POST /webhook/world-radar-edition`, JSON (ou multipart si images), authentification par **en-tête dédié**
+## Workflow n8n (actif)
+État réel : workflow « Journal du matin — ingestion » (`JournalMatinIng1`, instance shadoron-n8n), actif.
+- URL publique : `POST https://ops.shadoron.com/webhook/journal-a860a929-1735-44d5-a0cb-eef3d2d3e1c8`
+- Authentification : en-tête **`X-Journal-Secret`** (secret dédié, stocké hors dépôt sur le VPS ; jamais dans le corps).
+- Images : champ de transport **`_cover_files`** (objet `{ "<storage_path>": "<base64>" }`) au niveau de l'édition ;
+  fichier absent/invalide → `cover = null` (l'article est accepté). Upload vers `journal-covers/<workspace_id>/<storage_path>`.
+- Workspace cible : ATLAS-FORGE (`04cbf82c-45e7-469b-8587-89abbe87ef4d`), fixé dans le workflow.
+- Réponse 200 : `{"ok":true,"edition_id":…,"items":N,"covers":M}`.
+- Test du 2026-10-25 (édition `TEST-…`, données supprimées ensuite) : 200, 200 au renvoi identique sans doublon
+  (1 édition, 2 articles, 1 objet), 401 sans secret, 422 si contrat invalide.
+
+Spécification d'origine :
+1. **Webhook** `POST`, JSON, authentification par **en-tête dédié**
    `X-Journal-Secret` comparé en temps constant à un secret propre à ce workflow (ni le jeton MausBot, ni la clé service).
    Taille max ~2 Mo JSON + 5 Mo par image. Mauvais secret → 401.
 2. **Validation** du corps contre le schéma v1 (strict). Échec → **422** avec la liste `errors` (sans écho du contenu).
@@ -50,7 +62,7 @@ Fichier source de vérité : `packages/engines/mausbot/schema/journal-edition.v1
 5. **Réponse** `200 {"ok":true,"edition_id":…,"items":N}` ; `422` si contrat invalide ; `401` si secret faux ; `5xx` si Supabase
    échoue (le producteur peut réessayer : l'upsert est idempotent).
 
-## Supabase (migrations NON appliquées)
+## Supabase (2 migrations appliquées, audit non appliquée)
 - `20261025221000_atlas_journal_editions.sql` : `journal_editions`, `journal_items` (contraintes = contrat), RLS **lecture
   owner-only**, aucun droit d'écriture pour `authenticated` (seul le rôle service écrit) ; bucket **privé** `journal-covers`
   (5 Mo, webp/png/jpeg) + politique de lecture `storage.objects` limitée au dossier `<workspace_id>/` du propriétaire.
@@ -108,8 +120,8 @@ action publish|correct|state, edition_id, item_id, before/after JSON, reason, at
 item_id, check, severity, detail, at). RLS lecture owner-only, aucune écriture pour `authenticated` : rôle service uniquement.
 
 ## Étapes restantes
-1. Revoir puis appliquer les deux migrations (prod Supabase) — OK de Paul requis.
-2. Créer le workflow n8n ci-dessus (+ secret d'en-tête dédié, clé service dans les identifiants n8n) — OK requis.
+1. ~~Appliquer les deux migrations~~ — fait (2026-10-25).
+2. ~~Créer le workflow n8n~~ — fait, actif et testé (2026-10-25).
 3. Consigne MORGANS : poster le contrat v1 au webhook n8n avec les images (envoyée/à mettre à jour par ailleurs).
 4. Un seul preview Vercel vérifié (quota, cf. AGENTS.md), puis merge sur décision.
 5. Appliquer `20261025223000_atlas_journal_audit.sql`, puis construire `journal-mcp` selon le contrat ci-dessus.
