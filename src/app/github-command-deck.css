@@ -1,0 +1,189 @@
+/* GitHub Command Deck — a dedicated full-width workspace.
+   Scoped to GitHub only; the rest of Atlas retains its existing theme. */
+.atlas-github-page{max-width:none!important;width:100%;min-width:0}
+.atlas-gh-console{--gh-ink:#1f2328;--gh-muted:#59636e;--gh-border:#d8dee4;--gh-accent:#0969da;--gh-green:#1a7f37;--gh-surface:#fff;--gh-canvas:#f6f8fa;min-width:0;width:100%;color:var(--gh-ink);font-family:var(--font-body);isolation:isolate}
+.atlas-gh-console *{box-sizing:border-box}
+.atlas-gh-console .atlas-gh-hero{display:flex;align-items:center;justify-content:space-between;min-height:76px;gap:16px;padding:13px 20px;margin:0;border:1px solid #30363d;border-radius:15px 15px 0 0;background:#0d1117;color:#e6edf3}
+.atlas-gh-console .atlas-gh-identity{display:flex;align-items:center;gap:13px;min-width:0}
+.atlas-gh-console .atlas-gh-mark{display:grid;place-items:center;flex:0 0 43px;width:43px;height:43px;background:#fff;border-radius:12px;border:1px solid #d8dee4;box-shadow:0 4px 12px #0003}
+.atlas-gh-console .atlas-gh-mark .atlas-brand-image{max-height:31px;max-width:31px}
+.atlas-gh-console .atlas-gh-identity>div{min-width:0}
+.atlas-gh-console .atlas-gh-identity .atlas-overline{font-size:9px;font-weight:800;letter-spacing:.12em;color:#8b949e;margin:0 0 3px}
+.atlas-gh-console .atlas-gh-identity h1{font-size:19px!important;line-height:1.17!important;font-weight:760;letter-spacing:-.035em;color:#f0f6fc!important;margin:0}
+.atlas-gh-console .atlas-gh-identity h1 span{color:#7ee2a8!important;font-size:inherit}
+.atlas-gh-console .atlas-gh-identity p:last-child{margin:3px 0 0;font-size:10px!important;line-height:1.3;color:#9ba9b8}
+.atlas-gh-console .atlas-gh-header-actions{display:flex;align-items:flex-end;gap:9px;flex:0 0 auto}
+.atlas-gh-console .atlas-gh-workspace-pick{font-size:9px;color:#9ba9b8;font-weight:700}
+.atlas-gh-console .atlas-gh-workspace-pick select{height:36px;max-width:205px;border-radius:8px;border:1px solid #30363d;background:#21262d;color:#e6edf3;font-size:11px}
+.atlas-gh-console .atlas-gh-focus-toggle{height:36px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #484f58;border-radius:8px;background:#21262d;color:#e6edf3;padding:0 12px;font:700 10px var(--font-body);white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s}
+.atlas-gh-console .atlas-gh-focus-toggle:hover{border-color:#8b949e;background:#30363d}
+.atlas-gh-console .atlas-gh-focus-toggle svg{width:15px;height:15px}
+.atlas-gh-console .atlas-gh-connection-strip{min-height:57px;margin:0;padding:10px 19px;border:1px solid #d8dee4;border-top:0;border-radius:0 0 14px 14px;background:#fff;box-shadow:0 7px 18px #1b1f2410}
+.atlas-gh-console .atlas-gh-connection-label strong{color:#24292f;font-size:11px}
+.atlas-gh-console .atlas-gh-connection-label>span:last-child{color:#697683;font-size:10px}
+.atlas-gh-console .atlas-gh-state-dot.is-ready{background:#2da44e}
+.atlas-gh-console .atlas-gh-refresh,.atlas-gh-console .atlas-gh-minor-action{border-color:#d0d7de;background:#f6f8fa;color:#344054;border-radius:8px}
+.atlas-gh-console .atlas-gh-refresh:hover,.atlas-gh-console .atlas-gh-minor-action:hover{background:#eaeef2}
+.atlas-gh-console .atlas-gh-setup{margin-top:14px}
+.atlas-gh-console .atlas-gh-workbench{display:grid;grid-template-columns:228px minmax(0,1fr);min-height:680px;margin-top:13px;border:1px solid #d8dee4;border-radius:16px;overflow:clip;background:#f6f8fa;box-shadow:0 12px 36px #1b1f240c}
+.atlas-gh-console .atlas-gh-tabs{display:flex;flex-direction:column;align-items:stretch;gap:5px;min-width:0;margin:0;padding:20px 12px 12px;border:0;border-radius:0;background:#0d1117;overflow:visible;white-space:normal}
+.atlas-gh-console .atlas-gh-nav-overline{display:block;margin:0 10px 8px;color:#7d8590;font-weight:800;font-size:9px;letter-spacing:.14em}
+.atlas-gh-console .atlas-gh-tabs button{display:flex;align-items:center;justify-content:flex-start;gap:11px;width:100%;min-height:54px;padding:10px;border:1px solid transparent;border-radius:9px;background:transparent;color:#a9b6c4;text-align:left;font:600 11px var(--font-body);cursor:pointer;transition:background .14s,color .14s}
+.atlas-gh-console .atlas-gh-tabs button:hover{background:#21262d;color:#f0f6fc}
+.atlas-gh-console .atlas-gh-tabs button.is-active{background:#1b2730;border:1px solid #385a45;border-left:3px solid #3fb950;border-radius:9px;box-shadow:none;color:#f0f6fc}
+.atlas-gh-console .atlas-gh-nav-icon{display:grid;place-items:center;width:31px;height:31px;flex:0 0 31px;border:1px solid #30363d;border-radius:9px;background:#161b22;color:#9ba9b8}
+.atlas-gh-console .atlas-gh-tabs button.is-active .atlas-gh-nav-icon{border-color:#315d42;background:#203b2d;color:#5ee58a}
+.atlas-gh-console .atlas-gh-nav-icon svg{height:17px;width:17px}
+.atlas-gh-console .atlas-gh-nav-copy{min-width:0;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.atlas-gh-console .atlas-gh-nav-copy strong{display:block;font-size:11px;font-weight:760;color:inherit;overflow:hidden;text-overflow:ellipsis}
+.atlas-gh-console .atlas-gh-nav-copy small{display:block;font-size:9px;font-weight:450;color:#778493;white-space:normal;line-height:1.4}
+.atlas-gh-console .atlas-gh-nav-dot{width:6px;height:6px;margin-left:auto;flex:0 0 6px;border-radius:50%;background:#3fb950}
+.atlas-gh-console .atlas-gh-nav-bottom{display:flex;align-items:center;gap:9px;margin:auto 4px 0;padding:14px 9px 3px;border-top:1px solid #30363d;color:#8b949e;font-size:9px;line-height:1.65}
+.atlas-gh-console .atlas-gh-nav-bottom svg{height:19px;width:19px;color:#56c785;flex:0 0 19px}
+.atlas-gh-console .atlas-gh-workbench-body{min-width:0;padding:22px 23px 18px;background:#f6f8fa}
+.atlas-gh-console .atlas-gh-view-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 19px}
+.atlas-gh-console .atlas-gh-view-title .atlas-gh-eyebrow{font-size:9px;font-weight:770;letter-spacing:.1em;color:#6e7781;margin:0 0 6px}
+.atlas-gh-console .atlas-gh-view-title h2{font-size:20px;line-height:1.2;letter-spacing:-.03em;font-weight:790;color:#1f2328;margin:0}
+.atlas-gh-console .atlas-gh-view-title p:last-child{font-size:11px;line-height:1.5;color:#68727d;margin:6px 0 0}
+.atlas-gh-console .atlas-gh-view-flag{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border:1px solid #cfe8d6;border-radius:999px;background:#ecf8ef;color:#1a7f37;font-size:10px;font-weight:740;padding:8px 11px}
+.atlas-gh-console .atlas-gh-view-flag svg{height:14px;width:14px}
+.atlas-gh-console .atlas-gh-overview{display:flex;flex-direction:column;gap:15px}
+.atlas-gh-console .atlas-gh-overview-welcome{display:flex;align-items:stretch;justify-content:space-between;gap:18px;overflow:hidden;min-height:190px;padding:23px 26px;border:1px solid #30363d;border-radius:14px;background:radial-gradient(circle at 95% 20%,#25432e 0%,transparent 42%),linear-gradient(115deg,#0d1117,#1c2530);color:#e6edf3}
+.atlas-gh-console .atlas-gh-overview-welcome-copy{flex:1;max-width:540px;min-width:0}
+.atlas-gh-console .atlas-gh-overview-flag{display:inline-flex;align-items:center;gap:7px;color:#7ee2a8;font-size:9px;font-weight:790;letter-spacing:.12em}
+.atlas-gh-console .atlas-gh-overview-flag svg{width:15px;height:15px}
+.atlas-gh-console .atlas-gh-overview-welcome h3{margin:13px 0 9px;font-size:clamp(18px,2.1vw,26px);letter-spacing:-.04em;font-weight:790;line-height:1.18;color:#f0f6fc}
+.atlas-gh-console .atlas-gh-overview-welcome p{font-size:11px;line-height:1.65;color:#b0bac5;max-width:430px;margin:0}
+.atlas-gh-console .atlas-gh-overview-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:18px}
+.atlas-gh-console .atlas-gh-overview-actions button{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid #444c56;border-radius:8px;background:#21262d;color:#e6edf3;cursor:pointer;font:700 10px var(--font-body)}
+.atlas-gh-console .atlas-gh-overview-actions button:first-child{background:#238636;border-color:#2ea043;color:#fff}
+.atlas-gh-console .atlas-gh-overview-actions button:hover{filter:brightness(1.12)}
+.atlas-gh-console .atlas-gh-overview-actions svg{width:14px;height:14px}
+.atlas-gh-console .atlas-gh-overview-glyph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:146px;opacity:.9}
+.atlas-gh-console .atlas-gh-overview-glyph .atlas-brand-image{height:82px;width:82px;padding:15px;background:#fff;border-radius:26px;box-shadow:0 8px 25px #0002}
+.atlas-gh-console .atlas-gh-overview-glyph span{font-size:9px;letter-spacing:.12em;color:#9ba9b8;font-weight:800}
+.atlas-gh-console .atlas-gh-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.atlas-gh-console .atlas-gh-stat{border:1px solid #d8dee4;box-shadow:none;border-radius:12px;background:#fff;padding:16px;min-width:0}
+.atlas-gh-console .atlas-gh-stat-icon{background:#eef4ff;color:#0969da;border-radius:10px}
+.atlas-gh-console .atlas-gh-stat strong{color:#1f2328;font-size:25px;letter-spacing:-.045em}
+.atlas-gh-console .atlas-gh-stat div>span{color:#57606a}
+.atlas-gh-console .atlas-gh-overview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.atlas-gh-console .atlas-gh-overview-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-height:156px;padding:17px 18px;border:1px solid #d8dee4;border-radius:12px;background:#fff;text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+.atlas-gh-console .atlas-gh-overview-card:hover{border-color:#8c959f;box-shadow:0 8px 25px #1b1f2410;transform:translateY(-2px)}
+.atlas-gh-console .atlas-gh-overview-card-icon{display:grid;place-items:center;width:35px;height:35px;border-radius:10px;background:#ddf4ff;color:#0969da}
+.atlas-gh-console .atlas-gh-overview-card:nth-child(3) .atlas-gh-overview-card-icon{background:#dafbe1;color:#1a7f37}
+.atlas-gh-console .atlas-gh-overview-card:nth-child(4) .atlas-gh-overview-card-icon{background:#fbefff;color:#8250df}
+.atlas-gh-console .atlas-gh-overview-card-icon svg{width:18px;height:18px}
+.atlas-gh-console .atlas-gh-overview-card strong{color:#24292f;font-size:13px;font-weight:780}
+.atlas-gh-console .atlas-gh-overview-card small{font-size:10px;line-height:1.55;color:#6e7781}
+.atlas-gh-console .atlas-gh-overview-card-action{display:inline-flex;align-items:center;gap:6px;margin-top:auto;font-size:10px;color:#0969da;font-weight:760}
+.atlas-gh-console .atlas-gh-overview-card-action svg{height:13px;width:13px}
+.atlas-gh-console .atlas-gh-overview-activity{border:1px solid #d8dee4;border-radius:12px;background:#fff;padding:19px;min-width:0}
+.atlas-gh-console .atlas-gh-overview-activity .atlas-gh-section-heading{margin-bottom:10px}
+.atlas-gh-console .atlas-gh-overview-activity h3{font-size:13px;color:#24292f;margin:0}
+.atlas-gh-console .atlas-gh-overview-activity .atlas-gh-section-heading>button{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:#0969da;cursor:pointer;font-size:10px;font-weight:740}
+.atlas-gh-console .atlas-gh-overview-activity .atlas-gh-section-heading>button svg{width:14px;height:14px}
+.atlas-gh-console .atlas-gh-overview-pr{width:100%;display:flex;align-items:center;gap:12px;border:0;border-top:1px solid #f0f2f4;background:#fff;padding:13px 4px;text-align:left;cursor:pointer;color:#59636e}
+.atlas-gh-console .atlas-gh-overview-pr:hover{background:#f6f8fa}
+.atlas-gh-console .atlas-gh-overview-pr>svg:first-child{width:18px;height:18px;color:#1a7f37;flex:none}
+.atlas-gh-console .atlas-gh-overview-pr>span{min-width:0;flex:1}
+.atlas-gh-console .atlas-gh-overview-pr strong{display:block;font-size:11px;color:#24292f;overflow-wrap:anywhere}
+.atlas-gh-console .atlas-gh-overview-pr small{display:block;font-size:10px;color:#6e7781;margin-top:5px}
+.atlas-gh-console .atlas-gh-overview-pr>svg:last-child{width:14px;height:14px;color:#8c959f}
+.atlas-gh-console .atlas-gh-repositories-only{grid-template-columns:minmax(0,1fr)!important}
+.atlas-gh-console .atlas-gh-repositories-only .atlas-gh-primary{width:100%}
+.atlas-gh-console .atlas-gh-primary,.atlas-gh-console .atlas-gh-detail-panel,.atlas-gh-console .atlas-gh-panel{border-color:#d8dee4;background:#fff;box-shadow:none;border-radius:12px}
+.atlas-gh-console .atlas-gh-section-heading h2{color:#24292f;font-size:14px}
+.atlas-gh-console .atlas-gh-section-heading>a,.atlas-gh-console .atlas-gh-primary-action{color:#0969da}
+.atlas-gh-console .atlas-gh-primary-action{background:#0969da;color:#fff}
+.atlas-gh-console .atlas-gh-primary-action:hover{background:#0550ae}
+.atlas-gh-console .atlas-gh-repo-toolbar select,.atlas-gh-console .atlas-gh-repo-toolbar input{border-color:#d0d7de;background:#fff;color:#24292f}
+.atlas-gh-console .atlas-gh-list-row:hover,.atlas-gh-console .atlas-gh-list-row[aria-pressed="true"]{background:#f6f8fa}
+.atlas-gh-console .atlas-gh-list-row.is-selected,.atlas-gh-console .atlas-gh-file[aria-pressed="true"]{box-shadow:inset 3px 0 #0969da;background:#f1f7ff}
+.atlas-gh-console .atlas-gh-file.is-active{background:#eff6ff;border-color:#cce1f5}
+.atlas-gh-console .atlas-gh-tabs button:focus-visible,.atlas-gh-console button:focus-visible,
+.atlas-gh-console input:focus-visible,.atlas-gh-console select:focus-visible,
+.atlas-gh-console textarea:focus-visible,.atlas-gh-console a:focus-visible{
+  outline:2px solid #0969da;outline-offset:2px
+}
+.atlas-gh-console .atlas-gh-studio,.atlas-gh-console .atlas-gh-actions{border:1px solid #d8dee4;background:#fff;box-shadow:none;border-radius:12px}
+.atlas-gh-console .atlas-gh-studio-head{background:linear-gradient(110deg,#f6f8fa,#eaf5ec);border-color:#d8dee4;padding:21px 22px}
+.atlas-gh-console .atlas-gh-studio h2{font-size:clamp(18px,2vw,24px);color:#24292f}
+.atlas-gh-console .atlas-gh-studio-dot,.atlas-gh-console .atlas-gh-studio-kicker{color:#1a7f37}
+.atlas-gh-console .atlas-gh-studio-state{color:#1a7f37;border-color:#aaddb8;background:#fff}
+.atlas-gh-console .atlas-gh-studio-state>span{background:#2da44e;box-shadow:0 0 0 3px #dafbe1}
+.atlas-gh-console .atlas-gh-studio-steps{border-color:#d8dee4;padding:0 18px}
+.atlas-gh-console .atlas-gh-studio-step.is-current .atlas-gh-studio-step-number{background:#dafbe1;color:#1a7f37;border-color:#a2d9ae}
+.atlas-gh-console .atlas-gh-studio-layout{background:#f6f8fa;padding:18px;gap:17px}
+.atlas-gh-console .atlas-gh-studio-form,.atlas-gh-console .atlas-gh-studio-approval,.atlas-gh-console .atlas-gh-studio-preview{border-color:#d8dee4;box-shadow:none;background:#fff}
+.atlas-gh-console .atlas-gh-studio-panel-icon,.atlas-gh-console .atlas-gh-studio-choice-icon{background:#ddf4ff;color:#0969da}
+.atlas-gh-console .atlas-gh-studio-visibility label.is-selected{background:#f0f8ff;border-color:#80b6ec;box-shadow:inset 0 0 0 1px #d1e6fa}
+.atlas-gh-console .atlas-gh-studio-visibility input,.atlas-gh-console .atlas-gh-studio-check input,.atlas-gh-console .atlas-gh-studio-consent input{accent-color:#238636}
+.atlas-gh-console .atlas-gh-studio-field input:focus,.atlas-gh-console .atlas-gh-studio-field textarea:focus{border-color:#0969da;outline:2px solid #cce1ff}
+.atlas-gh-console .atlas-gh-studio-submit,.atlas-gh-console .atlas-gh-studio-approve{background:#238636;box-shadow:none;border:1px solid #2ea043;color:#fff}
+.atlas-gh-console .atlas-gh-studio-submit:hover:not(:disabled),.atlas-gh-console .atlas-gh-studio-approve:hover:not(:disabled){background:#2ea043}
+.atlas-gh-console .atlas-gh-studio-preview{position:sticky;top:14px;background:linear-gradient(150deg,#fff,#f1f8fa)}
+.atlas-gh-console .atlas-gh-studio-preview-symbol{background:#ddf4ff;color:#0969da}
+.atlas-gh-console .atlas-gh-studio-preview-type{border-color:#cfe5da;color:#1a7f37}
+.atlas-gh-console .atlas-gh-actions-hero{background:linear-gradient(110deg,#f6f8fa,#edf3ff);border-color:#d8dee4;padding:21px 22px}
+.atlas-gh-console .atlas-gh-actions-hero h2{font-size:clamp(18px,2vw,24px);color:#24292f}
+.atlas-gh-console .atlas-gh-actions-overline{color:#0969da}
+.atlas-gh-console .atlas-gh-actions-readonly{color:#1a7f37;border-color:#b8dec0}
+.atlas-gh-console .atlas-gh-actions-stats,.atlas-gh-console .atlas-gh-actions-content{background:#f6f8fa}
+.atlas-gh-console .atlas-gh-actions-stats>div,.atlas-gh-console .atlas-gh-actions-feed,.atlas-gh-console .atlas-gh-actions-inspector{border-color:#d8dee4}
+.atlas-gh-console .atlas-gh-actions-run:hover,.atlas-gh-console .atlas-gh-actions-run.is-active{background:#eff6ff}
+.atlas-gh-console .atlas-gh-actions-link,.atlas-gh-console .atlas-gh-actions-job a{color:#0969da}
+.atlas-gh-console .atlas-gh-actions-toolbar select{border-color:#d0d7de;color:#24292f}
+.atlas-gh-console .atlas-gh-actions-toolbar button{border-color:#d0d7de;color:#0969da}
+.atlas-gh-console .atlas-gh-footnote{color:#6e7781;font-size:10px;margin:24px 0 0}
+.atlas-gh-console.is-focus{position:fixed;inset:0;z-index:11000;width:100vw;height:100dvh;max-width:none;overflow-y:auto;overscroll-behavior:contain;padding:13px 16px 28px;background:#f6f8fa;scrollbar-gutter:stable}
+.atlas-gh-console.is-focus .atlas-gh-workbench{min-height:calc(100dvh - 178px)}
+.atlas-gh-console.is-focus .atlas-gh-workbench-body{padding:23px 26px}
+.atlas-gh-console.is-focus .atlas-gh-tabs{position:sticky;top:0;min-height:calc(100dvh - 178px)}
+@media(max-width:1080px){
+  .atlas-gh-console .atlas-gh-workbench{grid-template-columns:196px minmax(0,1fr)}
+  .atlas-gh-console .atlas-gh-workbench-body{padding:17px}
+  .atlas-gh-console .atlas-gh-studio-layout{grid-template-columns:1fr}
+  .atlas-gh-console .atlas-gh-studio-preview{position:static}
+}
+@media(max-width:760px){
+  .atlas-gh-console .atlas-gh-hero{padding:12px;gap:12px;align-items:flex-start;flex-direction:column}
+  .atlas-gh-console .atlas-gh-header-actions{width:100%;align-items:flex-end;justify-content:space-between}
+  .atlas-gh-console .atlas-gh-identity h1{font-size:18px!important}
+  .atlas-gh-console .atlas-gh-workspace-pick{flex:1}
+  .atlas-gh-console .atlas-gh-workspace-pick select{max-width:100%;width:100%}
+  .atlas-gh-console .atlas-gh-workbench{display:block;overflow:visible}
+  .atlas-gh-console .atlas-gh-tabs{position:relative!important;top:auto!important;min-height:0!important;display:flex;flex-direction:row;gap:4px;overflow-x:auto;padding:10px;background:#0d1117;border-radius:14px 14px 0 0;scrollbar-width:thin}
+  .atlas-gh-console .atlas-gh-nav-overline,.atlas-gh-console .atlas-gh-nav-bottom,.atlas-gh-console .atlas-gh-nav-dot,.atlas-gh-console .atlas-gh-nav-copy small{display:none}
+  .atlas-gh-console .atlas-gh-tabs button{flex:0 0 auto;min-height:42px;width:auto;gap:6px;padding:7px 10px;font-size:10px}
+  .atlas-gh-console .atlas-gh-tabs button.is-active{border-left-width:1px;border-bottom:2px solid #3fb950}
+  .atlas-gh-console .atlas-gh-nav-icon{width:25px;height:25px;flex-basis:25px}
+  .atlas-gh-console .atlas-gh-nav-icon svg{height:14px;width:14px}
+  .atlas-gh-console .atlas-gh-nav-copy strong{font-size:10px}
+  .atlas-gh-console .atlas-gh-view-title{align-items:flex-start}
+  .atlas-gh-console .atlas-gh-view-flag{display:none}
+  .atlas-gh-console .atlas-gh-overview-glyph{display:none}
+  .atlas-gh-console .atlas-gh-overview-welcome{min-height:0;padding:19px}
+  .atlas-gh-console .atlas-gh-overview-grid{gap:9px}
+  .atlas-gh-console .atlas-gh-overview-card{min-height:145px;padding:13px}
+  .atlas-gh-console.is-focus{padding:0 0 20px}
+  .atlas-gh-console.is-focus .atlas-gh-hero{border-radius:0}
+}
+@media(max-width:460px){
+  .atlas-gh-console .atlas-gh-header-actions{gap:6px}
+  .atlas-gh-console .atlas-gh-focus-toggle{padding:0 9px}
+  .atlas-gh-console .atlas-gh-focus-toggle span{display:none}
+  .atlas-gh-console .atlas-gh-overview-grid{grid-template-columns:1fr}
+  .atlas-gh-console .atlas-gh-overview-card{min-height:110px}
+  .atlas-gh-console .atlas-gh-overview-welcome h3{font-size:19px}
+  .atlas-gh-console .atlas-gh-workbench-body{padding:13px}
+  .atlas-gh-console .atlas-gh-stats{gap:7px}
+  .atlas-gh-console .atlas-gh-stat{padding:11px}
+  .atlas-gh-console .atlas-gh-stat strong{font-size:20px}
+  .atlas-gh-console .atlas-gh-studio-head,.atlas-gh-console .atlas-gh-actions-hero{padding:17px}
+}
+@media(prefers-reduced-motion:reduce){
+  .atlas-gh-console .atlas-gh-overview-card,
+  .atlas-gh-console .atlas-gh-tabs button,
+  .atlas-gh-console .atlas-gh-focus-toggle{transition:none!important;transform:none!important}
+}

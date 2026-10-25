@@ -8,15 +8,15 @@ test("GitHub Studio wizard only submits preview, keeps creation disabled", async
   const ui = await read("../src/components/github-studio-repository-wizard.tsx");
   const page = await read("../src/components/github-control-center.tsx");
   assert.match(ui, /fetch\("\/api\/apps\/github\/studio\/repositories\/preview"/);
-  assert.match(ui, /credentials: "same-origin"/);
-  assert.match(ui, /method: "POST"/);
-  assert.match(ui, /data\?\.canExecute !== false/);
+  assert.match(ui, /credentials:\s*"same-origin"/);
+  assert.match(ui, /method:\s*"POST"/);
+  assert.match(ui, /data\?\.canExecute\s*!==\s*false/);
   assert.match(ui, /Le dépôt n'a pas été créé/);
   assert.match(ui, /Création GitHub désactivée/);
   assert.doesNotMatch(ui, /\/api\/apps\/github\/studio\/repositories\/execute/);
   assert.match(page, /id: "studio"/);
   assert.match(page, /<GitHubStudioRepositoryWizard/);
-  assert.match(page, /section !== "settings" && section !== "studio"/);
+  assert.match(page, /section === "repositories" \|\| section === "pulls"/);
 });
 
 test("GitHub Studio preview has responsive split layout and a clear readonly state", async () => {

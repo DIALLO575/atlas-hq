@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-type IconName = "pin" | "grip" | "chevron-left" | "chevron-right" | "rotate-ccw" | "grid" | "layers" | "activity" | "settings" | "search" | "bot" | "apps" | "inbox" | "link" | "spark" | "arrow-up-right" | "arrow-right" | "arrow-left" | "arrow-up" | "arrow-down" | "menu" | "close";
+type IconName = "pin" | "grip" | "chevron-left" | "chevron-right" | "rotate-ccw" | "grid" | "layers" | "activity" | "settings" | "search" | "bot" | "apps" | "inbox" | "link" | "spark" | "arrow-up-right" | "arrow-right" | "arrow-left" | "arrow-up" | "arrow-down" | "menu" | "close" | "git-pull-request" | "git-branch" | "workflow" | "plus-circle" | "maximize" | "minimize" | "shield-check";
 
 const paths: Record<IconName, React.ReactNode> = {
   pin: <><path d="m16 3 5 5-3 1-3 5-2 2-4-4 2-2 5-3 0-4Z"/><path d="m9 15-6 6"/></>,
@@ -25,6 +25,13 @@ const paths: Record<IconName, React.ReactNode> = {
   "arrow-down": <><path d="M12 5v14m6-6-6 6-6-6"/></>,
   menu: <><path d="M4 7h16M4 12h16M4 17h16"/></>,
   close: <><path d="m18 6-12 12M6 6l12 12"/></>,
+  "git-pull-request": <><circle cx="6" cy="4" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="18" cy="20" r="2"/><path d="M6 6v12M18 18v-5a6 6 0 0 0-6-6H9m4-3-4 3 4 3"/></>,
+  "git-branch": <><circle cx="6" cy="4" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 6v12M18 8a6 6 0 0 1-6 6H6"/></>,
+  workflow: <><rect x="2" y="9" width="6" height="6" rx="2"/><rect x="16" y="3" width="6" height="6" rx="2"/><rect x="16" y="15" width="6" height="6" rx="2"/><path d="M8 12h4a4 4 0 0 0 4-4M12 12a4 4 0 0 1 4 4"/></>,
+  "plus-circle": <><circle cx="12" cy="12" r="9"/><path d="M12 8v8m-4-4h8"/></>,
+  maximize: <><path d="M9 3H3v6m0-6 7 7M15 21h6v-6m0 6-7-7M21 9V3h-6m6 0-7 7M3 15v6h6m-6 0 7-7"/></>,
+  minimize: <><path d="M9 9H3m6 0V3M15 15h6m-6 0v6M9 15H3m6 0v6M15 9h6m-6 0V3"/></>,
+  "shield-check": <><path d="m12 2 8 4v6c0 5-4 8-8 10-4-2-8-5-8-10V6l8-4Z"/><path d="m9 12 2 2 4-4"/></>,
 };
 
 export function Icon({ name, ...props }: SVGProps<SVGSVGElement> & { name: IconName }) {

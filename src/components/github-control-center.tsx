@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { Icon } from "@/components/icon";
 import { GitHubStudioRepositoryWizard } from "@/components/github-studio-repository-wizard";
+import { GitHubActionsControlCenter } from "@/components/github-actions-control-center";
 
 type Workspace = { id: string; name: string; role: "owner" | "admin" | "member" };
 type Installation = {
@@ -19,7 +20,7 @@ type PullDetail = {
   updatedAt: string | null; htmlUrl: string; resource: { headSha: string };
   files: FileChange[]; filesTruncated: boolean;
 };
-type Section = "overview" | "repositories" | "pulls" | "studio" | "settings";
+type Section = "overview" | "repositories" | "pulls" | "actions" | "studio" | "settings";
 type Loading = "connections" | "repositories" | "pulls" | "detail" | null;
 
 const labels: Record<string, string> = {
@@ -66,34 +67,69 @@ function verified(installation: Installation) {
     ["selected", "all"].includes(installation.repositorySelection ?? "") &&
     Boolean(installation.ownershipVerifiedAt && installation.repositoriesVerifiedAt);
 }
-const sections: { id: Section; title: string; icon: "grid" | "layers" | "activity" | "spark" | "settings" }[] = [
-  { id: "overview", title: "Vue générale", icon: "grid" },
-  { id: "repositories", title: "Dépôts", icon: "layers" },
-  { id: "pulls", title: "Pull Requests", icon: "activity" },
-  { id: "studio", title: "Studio", icon: "spark" },
-  { id: "settings", title: "Connexion", icon: "settings" },
+const sections: { id: Section; title: string; caption: string; icon: "grid" | "layers" | "git-pull-request" | "workflow" | "plus-circle" | "settings" }[] = [
+  { id: "overview", title: "Tableau de bord", caption: "Vue générale", icon: "grid" },
+  { id: "repositories", title: "Mes dépôts", caption: "Explorer les projets", icon: "layers" },
+  { id: "pulls", title: "Pull Requests", caption: "Révision du code", icon: "git-pull-request" },
+  { id: "studio", title: "Création de dépôt", caption: "Repository Studio", icon: "plus-circle" },
+  { id: "actions", title: "CI / Actions", caption: "Builds et diagnostics", icon: "workflow" },
+  { id: "settings", title: "Connexions", caption: "Accès GitHub", icon: "settings" },
 ];
+const sectionHelp: Record<Section, string> = {
+  overview: "L'essentiel de votre activité GitHub.",
+  repositories: "Tous les dépôts accessibles dans votre installation.",
+  pulls: "Inspectez les Pull Requests et leurs diffs.",
+  studio: "Préparez et approuvez la configuration d'un dépôt.",
+  actions: "Surveillez les workflows et diagnostiquez les échecs.",
+  settings: "Gérez les connexions et autorisations de GitHub.",
+};
 
 export function GitHubControlCenter({ workspaces, initialWorkspaceId, configured }: {
   workspaces: Workspace[]; initialWorkspaceId: string; configured: boolean;
 }) {
   const [workspaceId, setWorkspaceId] = useState(initialWorkspaceId);
+  const [focusMode, setFocusMode] = useState(false);
+  useEffect(() => {
+    if (!focusMode) return;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFocusMode(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [focusMode]);
   const selected = workspaces.find((item) => item.id === workspaceId);
-  return <>
+  return <div className={"atlas-gh-console" + (focusMode ? " is-focus" : "")}>
     <header className="atlas-gh-hero">
+      <Link href="/apps" className="atlas-gh-mobile-atlas-back" aria-label="Retour à Atlas, Mes Apps">
+        <Icon name="arrow-left"/>
+      </Link>
       <div className="atlas-gh-identity">
-        <span className="atlas-gh-mark"><BrandLogo slug="github" size={42} /></span>
+        <span className="atlas-gh-mark"><BrandLogo slug="github" size={29} /></span>
         <div>
-          <p className="atlas-overline">MES APPS / GITHUB</p>
-          <h1>GitHub Control Center <span aria-hidden="true">✦</span></h1>
-          <p>Vos dépôts, vos PR et leurs modifications. Données réelles, accès contrôlé.</p>
+          <p className="atlas-overline">ATLAS / GITHUB CONNECT</p>
+          <h1>GitHub <span>Workspace</span></h1>
+          <p>Dépôts, Pull Requests et pipelines au même endroit.</p>
         </div>
       </div>
-      {workspaces.length > 0 && <label className="atlas-gh-workspace-pick">Workspace
-        <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
-          {workspaces.map((space) => <option value={space.id} key={space.id}>{space.name}</option>)}
-        </select>
-      </label>}
+      <div className="atlas-gh-header-actions">
+        {workspaces.length > 0 && <label className="atlas-gh-workspace-pick">Workspace
+          <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
+            {workspaces.map((space) => <option value={space.id} key={space.id}>{space.name}</option>)}
+          </select>
+        </label>}
+        <button type="button" className="atlas-gh-focus-toggle" aria-pressed={focusMode}
+          aria-label={focusMode ? "Quitter le mode plein écran GitHub" : "Ouvrir GitHub en plein écran"}
+          title={focusMode ? "Quitter le plein écran (Échap)" : "Piloter GitHub en plein écran"}
+          onClick={() => setFocusMode((current) => !current)}>
+          <Icon name={focusMode ? "minimize" : "maximize"}/>
+          <span>{focusMode ? "Quitter le plein écran" : "Plein écran"}</span>
+        </button>
+      </div>
     </header>
     {selected
       ? <WorkspaceGitHub key={selected.id} workspace={selected} configured={configured} />
@@ -101,7 +137,7 @@ export function GitHubControlCenter({ workspaces, initialWorkspaceId, configured
         <p>Créez un espace pour rattacher une connexion GitHub et ses dépôts autorisés.</p>
         <Link href="/workspaces">Ouvrir Workspaces <Icon name="arrow-right"/></Link>
       </section>}
-  </>;
+  </div>;
 }
 
 function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; configured: boolean }) {
@@ -117,6 +153,8 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const [visibleFileCount, setVisibleFileCount] = useState(35);
   const [section, setSection] = useState<Section>("overview");
+  // Phone-only drill-down: PR list and diff inspector are separate screens.
+  const [mobilePRDetail, setMobilePRDetail] = useState(false);
   const [search, setSearch] = useState("");
   const [visibility, setVisibility] = useState<"all" | "public" | "private">("all");
   const [loading, setLoading] = useState<Loading>("connections");
@@ -141,6 +179,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
   const openRepository = useCallback(async (newInstallation: number, newRepository: number) => {
     const controller = newRequest();
     setRepositoryId(newRepository);
+    setMobilePRDetail(false);
     setPulls([]); setPullsTruncated(false); setDetail(null); setDetailNumber(null); setExpandedFile(null); setVisibleFileCount(35);
     setProblem(null); setLoading("pulls");
     try {
@@ -157,6 +196,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
   const openInstallation = useCallback(async (newInstallation: number) => {
     const controller = newRequest();
     setInstallationId(newInstallation); setRepositories([]); setRepositoryId(null);
+    setMobilePRDetail(false);
     setPulls([]); setDetail(null); setDetailNumber(null); setRepositoriesTruncated(false);
     setPullsTruncated(false); setLastSynced(null); setProblem(null); setLoading("repositories");
     try {
@@ -180,6 +220,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
     setLoading("connections"); setProblem(null); setInstallations([]);
     setInstallationId(null); setRepositories([]); setRepositoryId(null); setPulls([]);
     setDetail(null); setDetailNumber(null); setLastSynced(null);
+    setMobilePRDetail(false);
     try {
       const result = await readGitHub<{ installations: Installation[] }>({
         workspaceId: workspace.id, view: "connections",
@@ -203,6 +244,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
     if (installationId === null || repositoryId === null) return;
     const controller = newRequest();
     setDetailNumber(number); setDetail(null); setExpandedFile(null); setVisibleFileCount(35); setProblem(null); setLoading("detail");
+    setMobilePRDetail(true);
     try {
       const result = await readGitHub<PullDetail>({
         workspaceId: workspace.id, view: "pull", installationId: String(installationId),
@@ -211,7 +253,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
       if (controller.signal.aborted) return;
       setDetail(result);
       // Open the first available patch in the dedicated code pane.
-      setExpandedFile(result.files.find((file) => file.patch)?.path ?? result.files[0]?.path ?? null);
+      setExpandedFile(result.files.slice(0, 35).find((file) => file.patch)?.path ?? result.files[0]?.path ?? null);
     } catch (error) { failIfActive(error, controller); }
     finally { if (!controller.signal.aborted) setLoading(null); }
   }
@@ -227,7 +269,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
     { label: "Installations vérifiées", number: loading === "connections" ? "—" : String(ready.length), desc: "Votre workspace", icon: "link" as const },
   ];
   const status = problem ? "error" : hasLiveRepositories ? "live" : ready.length ? "verified" : "empty";
-  const displayPulls = section === "overview" || section === "pulls";
+  const displayPulls = section === "pulls";
 
   return <>
     <div className="atlas-gh-connection-strip">
@@ -263,20 +305,82 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
         {configured ? "Voir les autorisations" : "Configuration requise"} <Icon name="arrow-right"/></button>}
     </section>}
 
-    <section className="atlas-gh-stats" aria-label="Indicateurs calculés à partir de GitHub">
-      {summary.map((item) => <article key={item.label} className="atlas-gh-stat">
-        <span className="atlas-gh-stat-icon"><Icon name={item.icon}/></span>
-        <div><strong>{item.number}</strong><span>{item.label}</span><small>{item.desc}</small></div>
-      </article>)}
-    </section>
 
-    <nav className="atlas-gh-tabs" aria-label="Sections du Control Center">
-      {sections.map((item) => <button key={item.id} type="button" aria-current={section === item.id ? "page" : undefined}
-        className={section === item.id ? "is-active" : ""}
-        onClick={() => { setSection(item.id); setSearch(""); }}>
-        <Icon name={item.icon}/>{item.title}
-      </button>)}
-    </nav>
+
+    <div className="atlas-gh-workbench">
+      <nav className="atlas-gh-tabs" aria-label="Espaces GitHub">
+        <span className="atlas-gh-nav-overline">ESPACES</span>
+        {sections.map((item) => <button key={item.id} type="button"
+          aria-current={section === item.id ? "page" : undefined}
+          className={section === item.id ? "is-active" : ""}
+          onClick={() => { setSection(item.id); setSearch(""); }}>
+          <span className="atlas-gh-nav-icon"><Icon name={item.icon}/></span>
+          <span className="atlas-gh-nav-copy"><strong>{item.title}</strong><small>{item.caption}</small></span>
+          {section === item.id && <span className="atlas-gh-nav-dot" aria-hidden="true"/>}
+        </button>)}
+        <div className="atlas-gh-nav-bottom"><Icon name="shield-check"/>
+          <span>Accès vérifié<br/>par workspace Atlas</span>
+        </div>
+      </nav>
+      <div className="atlas-gh-workbench-body">
+        <div className="atlas-gh-view-title">
+          <div><p className="atlas-gh-eyebrow">GITHUB / {sections.find((item) => item.id === section)?.title.toUpperCase()}</p>
+            <h2>{sections.find((item) => item.id === section)?.title}</h2>
+            <p>{sectionHelp[section]}</p>
+          </div>
+          <span className="atlas-gh-view-flag"><Icon name="shield-check"/> Accès contrôlé</span>
+        </div>
+
+    {section === "overview" && <div className="atlas-gh-overview">
+      <section className="atlas-gh-overview-welcome">
+        <div className="atlas-gh-overview-welcome-copy">
+          <span className="atlas-gh-overview-flag"><Icon name="git-branch"/> VOTRE CENTRE DE PILOTAGE</span>
+          <h3>Gardez le contrôle de vos projets GitHub.</h3>
+          <p>Accédez à vos dépôts, révisez le code et suivez les workflows sans changer de contexte.</p>
+          <div className="atlas-gh-overview-actions">
+            <button type="button" onClick={() => setSection("pulls")}><Icon name="git-pull-request"/> Examiner les PR <Icon name="arrow-right"/></button>
+            <button type="button" onClick={() => setSection("actions")}><Icon name="workflow"/> Voir la CI/CD</button>
+          </div>
+        </div>
+        <div className="atlas-gh-overview-glyph" aria-hidden="true"><BrandLogo slug="github" size={76}/><span>ATLAS · GITHUB</span></div>
+      </section>
+      <section className="atlas-gh-stats" aria-label="Indicateurs calculés à partir de GitHub">
+        {summary.map((item) => <article key={item.label} className="atlas-gh-stat">
+          <span className="atlas-gh-stat-icon"><Icon name={item.icon}/></span>
+          <div><strong>{item.number}</strong><span>{item.label}</span><small>{item.desc}</small></div>
+        </article>)}
+      </section>
+      <div className="atlas-gh-overview-grid">
+        {([
+          {id:"repositories",icon:"layers",title:"Mes dépôts",description:"Dépôts accessibles, branches et visibilité.",action:"Explorer"},
+          {id:"pulls",icon:"git-pull-request",title:"Pull Requests",description:"Consultez les PR et inspectez les diffs.",action:"Réviser"},
+          {id:"studio",icon:"plus-circle",title:"Création de dépôt",description:"Préparez votre projet et son approbation.",action:"Préparer"},
+          {id:"actions",icon:"workflow",title:"CI / Actions",description:"Détectez les échecs dans vos pipelines.",action:"Diagnostiquer"},
+        ] as const).map((item)=><button key={item.id} type="button" className="atlas-gh-overview-card"
+          onClick={() => setSection(item.id)}>
+          <span className="atlas-gh-overview-card-icon"><Icon name={item.icon}/></span>
+          <strong>{item.title}</strong>
+          <small>{item.description}</small>
+          <span className="atlas-gh-overview-card-action">{item.action} <Icon name="arrow-up-right"/></span>
+        </button>)}
+      </div>
+      <section className="atlas-gh-overview-activity">
+        <div className="atlas-gh-section-heading">
+          <div><h3>Pull Requests récentes</h3><p>{selectedRepo?.fullName ?? "Aucun dépôt sélectionné"}</p></div>
+          <button type="button" onClick={() => setSection("pulls")}>Toutes les PR <Icon name="arrow-right"/></button>
+        </div>
+        {pulls.slice(0,4).map((pr)=><button type="button" className="atlas-gh-overview-pr" key={pr.number}
+          onClick={() => { setSection("pulls"); void openPull(pr.number); }}>
+          <Icon name="git-pull-request"/>
+          <span><strong>#{pr.number} · {pr.title}</strong><small>{readableDate(pr.updatedAt)} · {pr.draft ? "Brouillon" : "Ouverte"}</small></span>
+          <Icon name="chevron-right"/>
+        </button>)}
+        {pulls.length === 0 && <p className="atlas-gh-no-data">
+          {loading ? "Chargement des Pull Requests…" : repositoryId === null
+            ? "Aucun dépôt sélectionné." : "Aucune Pull Request ouverte dans ce dépôt."}
+        </p>}
+      </section>
+    </div>}
 
     {loading && <p className="atlas-gh-loading" role="status"><Icon name="rotate-ccw"/> Lecture des données GitHub…</p>}
     {problem && <div className="atlas-gh-notice" role="alert">{problem}
@@ -284,11 +388,16 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
     </div>}
     {!configured && <p className="atlas-gh-notice">Configuration de la GitHub App manquante côté serveur. Les données ne peuvent pas être chargées.</p>}
 
-    {section === "studio" && <GitHubStudioRepositoryWizard
+    {section === "studio" && <GitHubStudioRepositoryWizard key={`${workspace.id}:${installationId ?? "none"}`}
       workspaceId={workspace.id} installationId={installationId}
       canManage={canInstall} ready={ready.some((item) => item.installationId === installationId)} />}
 
-    {section !== "settings" && section !== "studio" && <div className="atlas-gh-content atlas-gh-content-v2">
+    {section === "actions" && <GitHubActionsControlCenter key={`${workspace.id}:${installationId ?? "none"}`}
+      workspaceId={workspace.id} installationId={installationId}
+      repositories={repositories.map((item)=>({id:item.id,fullName:item.fullName}))}
+      ready={ready.some((item)=>item.installationId===installationId)} />}
+
+    {(section === "repositories" || section === "pulls") && <div className={"atlas-gh-content atlas-gh-content-v2" + (section === "repositories" ? " atlas-gh-repositories-only" : "") + (section === "pulls" && mobilePRDetail ? " is-mobile-pr-detail" : "")}>
       <section className="atlas-gh-primary">
         <div className="atlas-gh-section-heading">
           <div><h2>{section === "repositories" ? "Dépôts autorisés" : "Pull Requests ouvertes"}</h2>
@@ -328,7 +437,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
           </> : <>
             {matchingPulls.map((pr) => <button key={pr.number} type="button"
               className={"atlas-gh-list-row" + (detailNumber === pr.number ? " is-selected" : "")}
-              disabled={loading !== null} onClick={() => void openPull(pr.number)}>
+              disabled={loading !== null} aria-pressed={detailNumber === pr.number} onClick={() => void openPull(pr.number)}>
               <span className="atlas-gh-row-icon"><Icon name="activity"/></span>
               <span className="atlas-gh-row-copy"><strong>#{pr.number} · {pr.title}</strong>
                 <small>{readableDate(pr.updatedAt)} · {selectedRepo?.fullName}</small></span>
@@ -341,9 +450,13 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
           </>}
         </div>
       </section>
-      <aside className="atlas-gh-secondary">
+      {section === "pulls" && <aside className="atlas-gh-secondary">
+        <button type="button" className="atlas-gh-mobile-back" onClick={() => setMobilePRDetail(false)}>
+          <Icon name="arrow-left"/> Retour aux Pull Requests
+        </button>
         <section className="atlas-gh-detail-panel">
           <div className="atlas-gh-section-heading"><h2>Inspecteur de PR</h2><span className="atlas-gh-readonly">Lecture seule</span></div>
+          {loading === "detail" && <p className="atlas-gh-loading" role="status">Chargement des modifications de la Pull Request…</p>}
           {detail ? <>
             <h3>#{detailNumber} · {detail.title}</h3>
             <p className="atlas-gh-detail-body">{detail.body || "Aucune description."}</p>
@@ -364,7 +477,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
                     <div key={file.path} className="atlas-gh-diff-file">
                       <button type="button" className={"atlas-gh-file" + (expandedFile === file.path ? " is-active" : "")}
                         onClick={() => setExpandedFile(expandedFile === file.path ? null : file.path)}
-                        aria-expanded={expandedFile === file.path}
+                        aria-expanded={expandedFile === file.path} aria-pressed={expandedFile === file.path}
                         aria-label={"Afficher les modifications de " + file.path}
                         title={file.path}>
                         <span className="atlas-gh-file-icon"><Icon name="layers"/></span>
@@ -395,7 +508,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
                     </div>
                     <div className="atlas-gh-diff">
                       {file.patch ? <pre aria-label={"Diff de " + file.path}>{file.patch.split("\n").map((line, index) => <span key={index}
-                        className={line.startsWith("+") ? "is-add" : line.startsWith("-") ? "is-remove" : line.startsWith("@@") ? "is-hunk" : ""}>{line}{"\n"}</span>)}</pre> :
+                        className={line.startsWith("+") && !line.startsWith("+++") ? "is-add" : line.startsWith("-") && !line.startsWith("---") ? "is-remove" : line.startsWith("@@") ? "is-hunk" : ""}>{line}{"\n"}</span>)}</pre> :
                         <p>Aucun extrait de diff disponible (fichier binaire, volumineux ou non transmis par GitHub).</p>}
                     </div>
                   </div>
@@ -414,7 +527,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
             <Icon name="activity"/><p>Sélectionnez une Pull Request pour lire sa description, ses fichiers et ses vrais diffs.</p>
           </div>}
         </section>
-      </aside>
+      </aside>}
     </div>}
 
     {section === "settings" && <section className="atlas-gh-panel atlas-gh-settings">
@@ -435,6 +548,19 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
       </form> : <p className="atlas-gh-notice">{!configured ? "La configuration serveur de la GitHub App est requise." :
         "Seuls les propriétaires et admins peuvent installer la GitHub App."}</p>}
     </section>}
-    <p className="atlas-gh-footnote">Données consultées à la demande via GitHub. Aucun merge, validation, déclencheur ou agent IA n’est exécuté.</p>
+        <p className="atlas-gh-footnote">Lecture des données GitHub à la demande, dans les limites d’accès de chaque installation.</p>
+      <nav className="atlas-gh-mobile-dock" aria-label="Navigation GitHub mobile">
+        {sections.map((item) => <button type="button" key={item.id}
+          aria-label={item.title} aria-current={section === item.id ? "page" : undefined}
+          className={section === item.id ? "is-active" : ""}
+          onClick={() => { setSection(item.id); setSearch(""); setMobilePRDetail(false); }}>
+          <Icon name={item.icon}/>
+          <span>{item.id === "overview" ? "Accueil" : item.id === "repositories" ? "Dépôts" :
+            item.id === "pulls" ? "PR" : item.id === "studio" ? "Créer" :
+            item.id === "actions" ? "Actions" : "Plus"}</span>
+        </button>)}
+      </nav>
+      </div>
+    </div>
   </>;
 }
