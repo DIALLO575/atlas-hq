@@ -54,6 +54,16 @@ jobs:
           -f supabase/migrations/20261024205621_atlas_engine_outbox_fencing_v1.sql
           -f tests/sql/engine-outbox-fencing-checks.sql
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify simulated workers with concurrent processes and crash recovery
+        env:
+          ATLAS_ENGINE_DISPOSABLE_TEST: "1"
+        run: node tests/engine-worker-processes.mjs
+
   github-studio-ledger-postgres:
     runs-on: ubuntu-latest
     services:
