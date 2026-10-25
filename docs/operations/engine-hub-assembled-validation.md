@@ -45,3 +45,38 @@ Après validation assemblée : resolver serveur et liaisons mission/agents/outil
 ressources, identité SQL privée du worker, staging et vrais comptes distincts,
 recette UI/Auth, puis gate SHA133. La connexion réelle SHA105 et la preuve SHA106
 restent en aval et demandent leur autorisation explicite.
+
+## Reprise vérifiée — PR #60 (25 octobre 2026)
+
+La PR #60 remplace cet assemblage initial, basé sur un main antérieur. Base
+revérifiée : `9d64498dceb6d80e0c126854bc02e0bbcae4f1f0`. HEAD :
+`4a1ae7b2b52796d1c778dfb23f7cb442407a1c57`. La PR reste draft, ouverte et non
+fusionnée. CI Actions `40189365203` a réussi ses cinq jobs : validation,
+PostgreSQL Notion, ledger GitHub, OAuth Linear et Engines. Le job Engines passe
+les fondations SQL en PostgreSQL jetable, les demandes/rejeux, les décisions
+concurrentes, les révocations concurrentes du contexte et les workers simulés
+après crash. Le job de validation inclut tests, typecheck, lint, build, audit des
+dépendances et détection de secrets. L'assertion d'audit de la première exécution
+avait échoué; elle a été corrigée pour distinguer affectation et grant primitif,
+puis la CI finale a réussi.
+
+Les 513 tests Node/typecheck/lint/diffcheck locaux avaient réussi avant cette
+correction d'assertion. La CI finale vérifie le commit corrigé. Netlify a publié
+les previews de la PR. Vercel a refusé une preview à cause de sa limite API
+quotidienne; aucune preview Vercel n'est donc confirmée pour ce commit. Aucun
+déploiement de production n'est confirmé.
+
+Le schéma d'affectation mission→agent et l'allowlist primitive restent du SQL
+proposé, testé seulement dans PostgreSQL jetable; rien n'a été appliqué à
+Supabase. Le resolver prépare des métadonnées et échoue sans affectation/grant
+actif; il n'est branché ni à une route, ni au worker, ni à un fournisseur réel.
+`canDispatch:false` demeure. Aucun agent, équipe, canal ou mission n'a été créé
+dans MAUSBOT. KMS reste différé et le verrou d'exécution reste fermé. La CI ne
+permet pas de conclure à une migration appliquée, une interface déployée ou un
+parcours Auth/exécution testé de bout en bout.
+
+Suite ordonnée : revue/intégration coordonnée de PR #60 pour éviter les doublons
+avec ses PR sources; endpoint et droits d'écriture contrôlés; staging identifié
+et vrais demandeur/reviewer distincts; adaptateur réel d'accès aux ressources et
+lecteur SQL privé minimal; worker durable. Aucun ticket n'est clôturé sur cette
+seule preuve CI.
