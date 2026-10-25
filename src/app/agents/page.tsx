@@ -25,7 +25,7 @@ export default async function AgentsPage({
       </nav>
       <N8nCoordinationPanel workspaceId={data.selected.id} scope="agents" />
       <p className="section-footnote">Liaisons Agents ↔ Moteurs à certifier : ce registre d’automatisations ne crée aucun agent et n’accorde aucune permission d’exécution.</p>
-    </> : <p>Aucun registre d’automatisations n8n disponible pour ce workspace.</p>
+    </> : <p>Aucun registre d’automatisations n8n disponible pour ce workspace.</p>}
     <p className="section-footnote"><Link href="/engines">Ouvrir Moteurs IA pour consulter l’état de connexion →</Link></p>
   </main></AppShell>;
 }
