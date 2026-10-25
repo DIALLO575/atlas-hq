@@ -309,15 +309,15 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
           <span>Workspace <b>Atlas</b></span>
           <span>README <b>{draft.autoInit?"Inclus":"Non"}</b></span>
           <span>Contrôle GitHub <b>{permission==="granted"?"Write vérifié":permission==="missing"?"À réapprouver":"À vérifier"}</b></span>
-          <span>Action réelle <b>{created?.state??"Non exécutée"}</b></span>
+          <span>Action réelle <b>{created?.state??"Aucune tentative"}</b></span>
         </div>
         <div className="atlas-gh-studio-preview-divider"/>
         <div className="atlas-gh-studio-unavailable">
           <Icon name="settings"/>
-          <div><strong>{preview?.executionEnabled?"Création GitHub avec approbation":"Création GitHub désactivée"}</strong>
+          <div><strong>{preview?.executionEnabled?"Création GitHub disponible après approbation":"Création non activée dans cet environnement"}</strong>
             <p>{preview?.executionEnabled ?
-              "Autorisation OAuth, confirmation explicite et journal d’audit requis avant création.":
-              "Le dépôt n’a pas été créé. L’environnement permet seulement la préparation."}</p>
+              "La création pourra être lancée après autorisation OAuth, vérification des droits et approbation explicite.":
+              "Aucune tentative de création n’a été envoyée à GitHub. Cet environnement permet seulement la préparation."}</p>
           </div>
         </div>
         <span className="atlas-gh-studio-preview-footer"><Icon name="spark"/> PRÉPARATION SÉCURISÉE PAR ATLAS</span>
