@@ -56,6 +56,8 @@ test("Studio and Actions remain separate and neither enables production mutation
  const actions = await read("../src/components/github-actions-control-center.tsx");
  assert.match(page,/<GitHubStudioRepositoryWizard key=/);
  assert.match(page,/<GitHubActionsControlCenter key=/);
- assert.doesNotMatch(studio,/repositories\/execute/);
+ assert.match(studio,/repositories\\/execute/);
+ assert.match(studio,/x-studio-approval/);
+ assert.match(studio,/confirmed:true/);
  assert.doesNotMatch(actions,/\/rerun|method:"POST"/);
 });
