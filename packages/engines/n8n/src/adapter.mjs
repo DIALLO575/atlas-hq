@@ -219,16 +219,19 @@ async function bodyJson(response) {
  * Only server tests may inject httpsRequestImpl. Production does not accept a
  * dispatcher, arbitrary proxy, forwarded auth, redirect or alternate host.
  */
-async function pinnedHttpsGet(url, config, address, timeoutMs, requestImpl) {
+async function pinnedHttpsGet(url, config, address, timeoutMs, requestImpl, method = "GET", body = undefined) {
   return new Promise((resolve, reject) => {
     let req;
     try {
       req = requestImpl(url, {
-        method: "GET",
+        method,
         agent: false,
         servername: config.hostname,
         rejectUnauthorized: true,
-        headers: { Accept: "application/json", "X-N8N-API-KEY": config.apiKey },
+        headers: {
+          Accept: "application/json", "X-N8N-API-KEY": config.apiKey,
+          ...(body === undefined ? {} : { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) }),
+        },
         lookup: (hostname, _options, callback) => {
           if (hostname !== config.hostname) {
             callback(new Error("N8N_HOSTNAME_DRIFT"));
@@ -257,14 +260,18 @@ async function pinnedHttpsGet(url, config, address, timeoutMs, requestImpl) {
       });
       req.on("error", reject);
       req.setTimeout(timeoutMs, () => req.destroy(new Error("N8N_TIMEOUT")));
-      req.end();
+      req.end(body);
     } catch (err) { req?.destroy?.(); reject(err); }
   });
 }
 
-async function request(config, path, search = {}, deps = {}) {
+async function request(config, path, search = {}, deps = {}, operation = {}) {
   trusted(config);
   const { fetchImpl, dnsLookup, httpsRequestImpl, timeoutMs } = checkDeps(deps);
+  const method = operation.method ?? "GET";
+  const body = operation.body === undefined ? undefined : JSON.stringify(operation.body);
+  // API requests from owners may be substantial, but never unbounded.
+  if (body !== undefined && Buffer.byteLength(body, "utf8") > 262144) fail("N8N_REQUEST_TOO_LARGE", 413);
   // Resolve once, reject *all* non-public answers, pin the chosen IP in TLS.
   // This is transport-level anti-rebinding, not a substitute for firewall egress.
   let addresses;
@@ -281,11 +288,15 @@ async function request(config, path, search = {}, deps = {}) {
   let response;
   try {
     response = fetchImpl ? await fetchImpl(url.toString(), {
-      method: "GET",
-      headers: { Accept: "application/json", "X-N8N-API-KEY": config.apiKey },
+      method,
+      headers: {
+        Accept: "application/json", "X-N8N-API-KEY": config.apiKey,
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+      ...(body === undefined ? {} : { body }),
       cache: "no-store", redirect: "manual", credentials: "omit",
       signal: AbortSignal.timeout(timeoutMs),
-    }) : await pinnedHttpsGet(url, config, addresses[0], timeoutMs, httpsRequestImpl);
+    }) : await pinnedHttpsGet(url, config, addresses[0], timeoutMs, httpsRequestImpl, method, body);
   } catch { fail("N8N_UNREACHABLE", 503); }
   if (!response || typeof response.status !== "number" || !response.headers?.get) {
     fail("N8N_RESPONSE_INVALID");
@@ -300,6 +311,7 @@ async function request(config, path, search = {}, deps = {}) {
     fail("N8N_RATE_LIMITED", 429, seconds);
   }
   if (response.status < 200 || response.status >= 300) fail("N8N_UPSTREAM_ERROR");
+  if (response.status === 204 || response.status === 205) return { ok: true, status: response.status };
   return bodyJson(response);
 }
 
@@ -335,4 +347,47 @@ export async function getN8nExecutionStatus(config, workflowId, executionId, dep
   const result = execution(await request(config, "executions/" + encodeURIComponent(id), { includeData: false }, deps));
   if (result.id !== id || result.workflowId !== workflow) fail("N8N_SCOPE_MISMATCH");
   return result;
+}
+
+
+/**
+ * Owner-only public REST API transport used by the separate Atlas admin BFF.
+ * Paths are strictly relative to /api/v1/, never arbitrary URLs or internal
+ * n8n endpoints. The BFF MUST validate Supabase workspace ownership, browser
+ * origin for mutations and explicit confirmation BEFORE calling this function.
+ * This is not an agent or worker permission, and does not bypass n8n's
+ * independent HTTP423 durable engine release gate.
+ */
+export async function callN8nPublicAdminApi(config, input, deps = {}) {
+  trusted(config);
+  if (!isRecord(input) ||
+      Object.keys(input).some(k => !["method", "path", "query", "body"].includes(k))) {
+    fail("N8N_ADMIN_REQUEST_INVALID", 400);
+  }
+  const method = input.method;
+  if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    fail("N8N_ADMIN_METHOD_INVALID", 400);
+  }
+  // Restrict to opaque normalized public-API path segments: no escapes,
+  // traversal, scheme, query, slash prefix or user-controlled hostname.
+  const path = input.path;
+  if (typeof path !== "string" || path.length > 400 ||
+      !/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(path) ||
+      path.startsWith("api/") || path.startsWith("rest/")) {
+    fail("N8N_ADMIN_PATH_INVALID", 400);
+  }
+  const query = input.query ?? {};
+  if (!isRecord(query) || Object.keys(query).length > 20 ||
+      Object.entries(query).some(([key,val]) =>
+        !/^[A-Za-z][A-Za-z0-9_]{0,48}$/.test(key) ||
+        !["string", "number", "boolean"].includes(typeof val) ||
+        (typeof val === "string" && (val.length > 800 || /[\x00-\x1f]/.test(val))) ||
+        (typeof val === "number" && !Number.isFinite(val)))) {
+    fail("N8N_ADMIN_QUERY_INVALID", 400);
+  }
+  if (method === "GET" && input.body !== undefined) fail("N8N_ADMIN_BODY_FORBIDDEN", 400);
+  if (input.body !== undefined && (!isRecord(input.body) && !Array.isArray(input.body))) {
+    fail("N8N_ADMIN_BODY_INVALID", 400);
+  }
+  return request(config, path, query, deps, { method, body: input.body });
 }

@@ -39,8 +39,10 @@ test("n8n console is a real Atlas tabbed management UI, not a false live connect
  assert.match(ui,/controller\.abort\(\)/);
  assert.match(ui,/overview\.workflowListTruncated/);
  assert.match(ui,/overview\.executionListTruncated/);
- assert.match(ui,/Exécution n8n verrouillée/);
- assert.match(ui,/Aucun appel fournisseur/);
+ assert.match(ui,/API Admin propriétaire · exécution autonome verrouillée/);
+ assert.match(ui,/N8nAdminStudio/);
+ assert.match(ui,/isOwner={workspace\?\.role === "owner"}/);
+ assert.match(ui,/Passerelle inactive|Aucun appel fournisseur/);
  assert.match(ui,/readOnlyApiEnabled: false/);
  assert.doesNotMatch(ui,/NEXT_PUBLIC_N8N|ATLAS_N8N_API_KEY|https:\/\/.*n8n\.io\/webhook/i);
  for(const marker of [".n8n-hero",".n8n-hero-diagram",".n8n-tabs",
