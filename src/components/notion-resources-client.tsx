@@ -3,6 +3,14 @@ import { useEffect, useState, type FormEvent } from "react";
 import { NotionCapabilitiesClient } from "./notion-capabilities-client";
 
 type Connection = { id: string; workspaceId: string; label: string };
+type ResourceFilter="all"|"page"|"database"|"data_source";
+const resourceFilters:{id:ResourceFilter;label:string}[]=[
+  {id:"all",label:"Tout"},{id:"page",label:"Pages"},
+  {id:"database",label:"Bases"},{id:"data_source",label:"Sources"},
+];
+const resourceLabels:Record<Resource["kind"],string>={
+  page:"Page",database:"Base",data_source:"Source de données",
+};
 type Resource = { id: string; kind: "page" | "database" | "data_source";
   title: string; editedAt: string | null; url: string | null };
 type ViewMetadata={id:string;name:string;type:string;databaseId:string;
@@ -100,10 +108,23 @@ function NotionDocumentBlock({ block, binding, depth = 0 } : {
   const label=block.media?.filename || block.media?.caption ||
     (block.media?.kind === "pdf" ? "Document PDF" : "Média Notion");
   const media=block.media;
+  const mediaNames:Record<Media["kind"],string>={
+    image:"Image",pdf:"Document PDF",video:"Vidéo",audio:"Audio",file:"Fichier",
+  };
+  const mediaSymbols:Record<Media["kind"],string>={
+    image:"▧",pdf:"▤",video:"▶",audio:"♫",file:"⇩",
+  };
   const isTable=block.type==="table";
   const children=isTable ? block.children.filter(c=>c.type==="table_row") : block.children;
-  return <div className={"nt-rich-block nt-rich-"+block.type} style={{marginLeft: depth ? 12:0}}>
+  return <div className={"nt-rich-block nt-rich-"+block.type+(media?" nt-rich-block-media":"")} style={{marginLeft: depth ? 12:0}}>
     {media ? <figure className="nt-rich-media">
+      <div className="nt-media-header">
+        <span className="nt-media-symbol" aria-hidden="true">{mediaSymbols[media.kind]}</span>
+        <div className="nt-media-heading"><strong>{mediaNames[media.kind]}</strong>
+          <small>{media.filename || media.caption || "Fichier associé à cette page"}</small>
+        </div>
+        <span className="nt-media-origin">{media.origin==="notion"?"Notion":"Externe"}</span>
+      </div>
       {media.mode==="proxy" && media.kind==="image" &&
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt={label} loading="lazy" referrerPolicy="no-referrer"/>}
@@ -119,7 +140,7 @@ function NotionDocumentBlock({ block, binding, depth = 0 } : {
         <a href={media.href} target="_blank" rel="noopener noreferrer">
           Ouvrir le média externe · {label} ↗</a>}
       {media.mode==="unavailable" &&
-        <p className="nt-muted">Média indisponible ici. Ouvrir la page dans Notion.</p>}
+        <p className="nt-muted">Aperçu indisponible ou fichier trop volumineux. Consultez la page originale dans Notion.</p>}
       {media.caption && <figcaption>{media.caption}</figcaption>}
     </figure> : <>
       {block.type==="to_do" ? <label className="nt-rich-todo">
@@ -154,6 +175,8 @@ function NotionExplorer({ connection }: { connection: Connection }) {
   const { workspaceId, id: connectionId } = connection;
   const binding = { workspaceId, connectionId };
   const [query, setQuery] = useState("");
+  const [resourceFilter,setResourceFilter]=useState<ResourceFilter>("all");
+  const [documentMode,setDocumentMode]=useState<"document"|"markdown">("document");
   const [resources, setResources] = useState<Resource[]>([]);
   const [resourceCursor, setResourceCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState<Resource | null>(null);
@@ -176,6 +199,10 @@ function NotionExplorer({ connection }: { connection: Connection }) {
   const [busy, setBusy] = useState("");
   const [disconnected, setDisconnected] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const visibleResources=resourceFilter==="all"?resources:
+    resources.filter(item=>item.kind===resourceFilter);
+  const mediaCount=(items:Block[]):number=>items.reduce((n,block)=>
+    n+(block.media?1:0)+mediaCount(block.children??[]),0);
 
   // One initial title search per selected connection; never poll or prefetch
   // every workspace in the browser.
@@ -216,7 +243,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       setResources(previous => more ? [...previous, ...entries] : entries);
       setResourceCursor(data.hasMore === true && typeof data.nextCursor === "string" ? data.nextCursor : null);
       if (!more) {
-        setSelected(null); setViews([]); setCurrentView(null); setPreview(null); setSourceRefs([]); setSourceColumns([]); setSourceRows([]); setSourceCursor(null); setSourceLimited(false); setMarkdownPreview(null); setBlocks([]); setDocumentPartial(false); setDocumentCursor(null);
+        setSelected(null); setViews([]); setCurrentView(null); setPreview(null); setSourceRefs([]); setSourceColumns([]); setSourceRows([]); setSourceCursor(null); setSourceLimited(false); setMarkdownPreview(null); setDocumentMode("document"); setBlocks([]); setDocumentPartial(false); setDocumentCursor(null);
       }
       setMessage(entries.length ? "Résultats autorisés chargés depuis Notion."
         : "Aucun résultat pour ce titre parmi les ressources partagées.");
@@ -229,7 +256,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
     setSelected(item); setViews([]); setViewCursor(null); setCurrentView(null);
     setSourceRefs([]);setSourceColumns([]);setSourceRows([]);
     setSourceCursor(null);setSourceLimited(false);
-    setPreview(null); setMarkdownPreview(null); setBlocks([]); setDocumentPartial(false); setDocumentCursor(null); setPermission("");
+    setPreview(null); setMarkdownPreview(null); setDocumentMode("document"); setBlocks([]); setDocumentPartial(false); setDocumentCursor(null); setPermission("");
     setBusy("resource");
     try {
       if (item.kind === "page") {
@@ -291,6 +318,8 @@ function NotionExplorer({ connection }: { connection: Connection }) {
 
   async function showMarkdown() {
     if(busy || disconnected || selected?.kind!=="page")return;
+    setDocumentMode("markdown");
+    if(markdownPreview)return;
     setBusy("markdown");
     try {
       const data=await readEndpoint("read",{
@@ -436,17 +465,23 @@ function NotionExplorer({ connection }: { connection: Connection }) {
 
   return <div className="nt-console">
     <div className="nt-console-top">
-      <div><span className="nt-kicker">EXPLORATEUR REST · LECTURE SEULE</span>
-        <h2>Vos ressources et vues Notion</h2>
-        <p>Les vues, filtres et données restent chez Notion. ATLAS affiche seulement un aperçu à la demande.</p>
+      <div><span className="nt-kicker">EXPLORATEUR NOTION · ESPACE PERSONNEL</span>
+        <h2>Vos documents et vos bases, au même endroit.</h2>
+        <p>Ouvrez une ressource, explorez son contenu et retrouvez ses vues officielles.
+          Rien n’est synchronisé sans votre action.</p>
+        <div className="nt-console-modes" aria-label="Contenu accessible en lecture seule">
+          <span>Pages et médias</span><span>Sources et colonnes</span><span>Vues Notion</span>
+        </div>
       </div>
       <button className="nt-button nt-button-quiet" type="button" onClick={() => void search()}
         disabled={Boolean(busy) || disconnected}>Actualiser les ressources</button>
     </div>
-    <p className="nt-status" role="status" aria-live="polite">{busy ? "Chargement sécurisé depuis Notion…" : message}</p>
-    <div className="nt-browser">
+    <p className={"nt-status"+(busy?" nt-status-loading":"")} role="status"
+      aria-live="polite">{busy ? "Chargement sécurisé depuis Notion…" : message}</p>
+    <div className="nt-browser" aria-busy={Boolean(busy)}>
       <aside className="nt-library" aria-label="Ressources Notion">
         <div className="nt-pane-heading"><span>Bibliothèque</span><span>{resources.length}</span></div>
+        <p className="nt-library-hint">Uniquement les ressources visibles par cette connexion.</p>
         <form className="nt-search" onSubmit={(e: FormEvent) => { e.preventDefault(); void search(); }}>
           <label htmlFor={"nt-query-" + connectionId}>Recherche par titre Notion</label>
           <div className="nt-search-row"><input id={"nt-query-" + connectionId} type="search"
@@ -455,15 +490,24 @@ function NotionExplorer({ connection }: { connection: Connection }) {
             <button type="submit" disabled={Boolean(busy) || disconnected} aria-label="Rechercher">⌕</button>
           </div>
         </form>
+        <div className="nt-resource-filters" role="group" aria-label="Filtrer les ressources affichées">
+          {resourceFilters.map(filter=><button key={filter.id} type="button"
+            className={"nt-filter-chip"+(resourceFilter===filter.id?" nt-filter-active":"")}
+            aria-pressed={resourceFilter===filter.id}
+            onClick={()=>setResourceFilter(filter.id)}>{filter.label}</button>)}
+        </div>
+        <p className="nt-results-note">{visibleResources.length} sur {resources.length} ressource(s) chargée(s)</p>
         <div className="nt-resource-list">
           {!loaded && <p className="nt-placeholder">Lecture des ressources autorisées…</p>}
           {loaded && resources.length === 0 && <p className="nt-placeholder">
             Aucune ressource visible. Dans Notion, partagez une page ou une base avec l’intégration ATLAS.
           </p>}
-          {resources.map(item => <button type="button" key={item.id}
+          {loaded && resources.length>0 && visibleResources.length===0 &&
+            <p className="nt-placeholder">Aucun élément de ce type parmi les résultats chargés.</p>}
+          {visibleResources.map(item => <button type="button" key={item.id}
             className={"nt-resource" + (selected?.id === item.id ? " nt-selected" : "")}
             onClick={() => void choose(item)} disabled={Boolean(busy) || disconnected}
-            aria-pressed={selected?.id === item.id}>
+            aria-pressed={selected?.id === item.id} aria-label={"Ouvrir "+resourceLabels[item.kind]+ " : "+item.title}>
             <span className="nt-item-icon" aria-hidden="true">{item.kind === "page" ? "▤" : "▦"}</span>
             <span><strong>{item.title}</strong><small>{item.kind === "page" ? "Page" :
               item.kind === "database" ? "Base" : "Source de données"}</small></span>
@@ -473,53 +517,84 @@ function NotionExplorer({ connection }: { connection: Connection }) {
             onClick={() => void search(true)} disabled={Boolean(busy)}>Afficher plus de ressources</button>}
         </div>
       </aside>
-      <section className="nt-stage" aria-label="Aperçu des vues">
+      <section className="nt-stage" aria-label="Lecteur Notion et aperçus des ressources">
         {!selected ? <div className="nt-stage-empty">
           <div className="nt-stage-symbol" aria-hidden="true">N</div>
           <span className="nt-kicker">VOS DONNÉES RESTENT DANS NOTION</span>
-          <h3>Un cockpit, pas une copie.</h3>
-          <p>Choisissez une page ou une base à gauche pour découvrir les vues existantes, les consulter et ouvrir leur présentation complète dans Notion.</p>
+          <h3>Vos contenus commencent ici.</h3>
+          <p>Sélectionnez une page pour lire son texte, ses images et ses documents,
+            ou une base pour explorer ses colonnes et ses vues enregistrées.</p>
+          <div className="nt-stage-feature-list">
+            <span>▤ Documents et fichiers</span><span>▦ Tableaux et propriétés</span>
+            <span>▥ Vues Notion</span>
+          </div>
         </div> : <>
           <div className="nt-stage-title">
             <div><span className="nt-kicker">{selected.kind === "page" ? "PAGE PARTAGÉE" : "RESSOURCE NOTION"}</span>
-              <h3>{selected.title}</h3><p>Dernière modification : {date(selected.editedAt)}</p></div>
+              <h3>{selected.title}</h3><p>
+                <span className="nt-resource-type-tag">{resourceLabels[selected.kind]}</span>
+                Dernière modification : {date(selected.editedAt)}
+              </p></div>
             {selected.url && <a className="nt-button nt-button-dark" href={selected.url}
               target="_blank" rel="noopener noreferrer">Ouvrir dans Notion ↗</a>}
           </div>
           {selected.kind === "page" ? <div className="nt-preview">
-            <div className="nt-preview-top">
-              <h4>Aperçu de la page</h4>
-              <button type="button" className="nt-button nt-button-quiet"
+            <div className="nt-page-reader-head">
+              <div><span className="nt-kicker">LECTEUR DE PAGE</span>
+                <h4>Document et pièces jointes</h4>
+                <p>Un aperçu à la demande, sans duplication des fichiers.</p>
+              </div><span className="nt-readonly-token">Lecture seule</span>
+            </div>
+            <div className="nt-document-tabs" role="group" aria-label="Choisir le mode de lecture">
+              <button type="button" className={"nt-document-tab"+(documentMode==="document"?" nt-tab-active":"")}
+                onClick={()=>setDocumentMode("document")} aria-pressed={documentMode==="document"}>
+                Document enrichi
+              </button>
+              <button type="button" className={"nt-document-tab"+(documentMode==="markdown"?" nt-tab-active":"")}
                 disabled={Boolean(busy) || disconnected}
-                onClick={()=>void showMarkdown()}>Voir la lecture Markdown</button>
+                onClick={()=>void showMarkdown()} aria-pressed={documentMode==="markdown"}>
+                Markdown filtré
+              </button>
             </div>
-            {!blocks.length && !busy && <p className="nt-placeholder">Aucun bloc disponible dans cet aperçu.</p>}
-
-            {markdownPreview && <section className="nt-markdown-panel"
-              aria-label="Aperçu Markdown sécurisé">
+            {documentMode==="markdown" ? <section className="nt-markdown-panel"
+              aria-label="Lecture Markdown filtrée">
               <div className="nt-kicker">MARKDOWN NOTION V1 · APERÇU FILTRÉ</div>
-              <p className="nt-muted">Liens directs et fichiers masqués.
-                Ceci n’est pas une conversion sans perte.</p>
-              {markdownPreview.lines.map((line,index)=>
-                <div key={index} className={"nt-md-line nt-md-"+line.kind}>
-                  {line.text || " "}
-                </div>)}
-              {(markdownPreview.truncated || markdownPreview.unknownCount>0) &&
-                <p className="nt-muted" role="status">Document partiel :
-                  certains éléments ne sont pas accessibles ou n’ont pas été chargés.</p>}
-            </section>}
-            <div className="nt-document-preview">
-              {blocks.map(block => <NotionDocumentBlock key={block.id}
-                block={block} binding={binding}/>)}
-            </div>
-            {documentCursor && <button type="button" className="nt-link-button"
-              disabled={Boolean(busy) || disconnected}
-              onClick={()=>void moreDocument()}>
-              Afficher les blocs suivants
-            </button>}
-            {documentPartial && <p className="nt-muted">
-              Aperçu limité pour préserver les performances. Ouvrez Notion pour consulter la suite.</p>}
-            {blocks.length > 0 && <small>Images et documents chargés à la demande. Aucun stockage permanent.</small>}
+              <p className="nt-muted">Aperçu texte : liens des fichiers et éléments complexes masqués.
+                Cette vue ne fournit pas d’export sans perte.</p>
+              {!markdownPreview && <p className="nt-placeholder">
+                {busy==="markdown"?"Lecture du Markdown depuis Notion…":
+                  "Markdown indisponible. Réessayez ou consultez la page dans Notion."}</p>}
+              {markdownPreview?.lines.map((line,index)=>
+                <div key={index} className={"nt-md-line nt-md-"+line.kind}>{line.text || " "}</div>)}
+              {markdownPreview && (markdownPreview.truncated || markdownPreview.unknownCount>0) &&
+                <p className="nt-preview-caution" role="status">
+                  Contenu partiel ou non accessible. Consultez l’original dans Notion.
+                </p>}
+            </section> : <>
+              <div className="nt-document-stats" aria-label="Éléments chargés dans la page">
+                <span><strong>{blocks.length}</strong> blocs affichés</span>
+                <span><strong>{mediaCount(blocks)}</strong> médias détectés</span>
+                {documentPartial && <span className="nt-stat-limited">Extrait partiel</span>}
+              </div>
+              {!blocks.length && !busy && <div className="nt-reader-empty">
+                <strong>Aucun bloc visible.</strong>
+                <p>Le contenu peut être vide, non partagé ou hors des limites de l’aperçu.</p>
+              </div>}
+              <div className="nt-document-preview">
+                {blocks.map(block => <NotionDocumentBlock key={block.id}
+                  block={block} binding={binding}/>)}
+              </div>
+              {documentCursor && <button type="button" className="nt-load-more"
+                disabled={Boolean(busy) || disconnected}
+                onClick={()=>void moreDocument()}>
+                Afficher les blocs suivants <span aria-hidden="true">↓</span>
+              </button>}
+              {documentPartial && <p className="nt-preview-caution">
+                Aperçu partiel : certains sous-blocs ne sont pas chargés.
+                Ouvrez Notion pour consulter la suite.</p>}
+              {blocks.length>0 && <small className="nt-reader-note">
+                Images et documents chargés à la demande. Aucun stockage permanent dans ATLAS.</small>}
+            </>}
           </div> : <>
             {selected.kind==="database" && <section className="nt-sources"
               aria-label="Sources de données de la base">
@@ -545,6 +620,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
                 <span>{sourceRows.length} ligne(s) affichée(s)</span></div>
               <p className="nt-muted">Aperçu brut de la source, sans filtres de vue.
                 Pour voir les filtres et tris enregistrés, sélectionne une vue ci-dessous.</p>
+              <p className="nt-table-scroll-hint">Faites défiler horizontalement pour voir toutes les colonnes.</p>
               <div className="nt-source-table-scroll" role="region" tabIndex={0}
                 aria-label="Lignes et propriétés Notion">
                 <table className="nt-source-table"><thead><tr>
@@ -556,7 +632,11 @@ function NotionExplorer({ connection }: { connection: Connection }) {
                       {column.type==="title" && row.url ?
                         <a href={row.url} target="_blank" rel="noopener noreferrer">
                           {row.cells[index]?.value||row.title} ↗</a>:
-                        <span>{row.cells[index]?.value||"—"}</span>}
+                        <span>{column.type==="status"||column.type==="select"?
+                          <span className="nt-value-pill">{row.cells[index]?.value||"—"}</span>:
+                        column.type==="checkbox"?
+                          <span className="nt-value-check">{row.cells[index]?.value||"—"}</span>:
+                          (row.cells[index]?.value||"—")}</span>}
                     </td>)}
                   </tr>)}</tbody></table>
               </div>
@@ -570,7 +650,12 @@ function NotionExplorer({ connection }: { connection: Connection }) {
               <small>Les formules affichent leur résultat, pas leur expression.
                 Les fichiers et données personnelles ne sont pas transférés.</small>
             </section>}
-            <div className="nt-view-bar"><h4>Vues enregistrées dans Notion</h4><span>{views.length} affichée(s)</span></div>
+            <div className="nt-view-section-head">
+              <div><span className="nt-kicker">ORGANISATION PAR NOTION</span>
+                <h4>Vues enregistrées</h4>
+                <p>Filtres, tris et regroupements restent appliqués par Notion.</p>
+              </div><span className="nt-view-count">{views.length} vue(s)</span>
+            </div>
             <div className="nt-views">
               {views.map(item => <button type="button" key={item.id}
                 className={"nt-view-tile" + (currentView?.id === item.id ? " nt-active-view" : "")}
