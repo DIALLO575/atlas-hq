@@ -39,6 +39,14 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
   const requestRef=useRef<AbortController|null>(null);
   const approvalKey=useRef<string|null>(null);
   useEffect(()=>()=>requestRef.current?.abort(),[]);
+  // The server approval receipt expires after five minutes. Never leave
+  // an expired approval displayed as valid if the user stays on this view.
+  useEffect(()=>{
+    if(!approval)return;
+    const delay=Math.min(300000,Math.max(0,approval.expiresAt-Date.now()));
+    const timeout=window.setTimeout(()=>setApproval(null),delay);
+    return ()=>window.clearTimeout(timeout);
+  },[approval]);
   const permitted=canManage && ready && installationId!==null;
   const permission=preview?.permissionState ?? "unavailable";
   const canApprove=Boolean(permitted && preview && permission==="granted" &&

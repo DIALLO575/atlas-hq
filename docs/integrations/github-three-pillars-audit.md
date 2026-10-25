@@ -4,7 +4,7 @@
 
 ## Rassemblement
 - PR #45 : Repository Studio UI + approbation HMAC 5 minutes / permission GitHub App live vérifiée (écritures sandbox uniquement, OFF par défaut).
-- PR #47 : GitHub Actions diagnostic read-only à repo ID restreint. 
+- PR #47 : GitHub Actions diagnostic read-only à repo ID restreint.
 - Déjà sur main : Pull Requests avec inspecteur diff et Repository Studio en prévisualisation.
 
 Cette intégration consolide les deux PR existantes dans un seul parcours visuel : **PR → Studio → Actions**. L'onglet Actions ne partage **pas** les jetons de PR (sous-autorisation Actions:Read distincte).

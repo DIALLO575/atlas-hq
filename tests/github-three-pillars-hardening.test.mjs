@@ -12,6 +12,9 @@ test("three pillars remain visible and Studio approval is reset on installation 
  assert.match(page,/GitHubStudioRepositoryWizard key=\{\x60\$\{workspace.id\}:\$\{installationId/);
  assert.match(page,/GitHubActionsControlCenter key=\{\x60\$\{workspace.id\}:\$\{installationId/);
  assert.match(page,/Le dépôt|préparer les dépôts/);
+ const studio=await file("../src/components/github-studio-repository-wizard.tsx");
+ assert.match(studio,/Math\.min\(300000,Math\.max\(0,approval\.expiresAt-Date\.now\(\)\)\)/);
+ assert.match(studio,/window\.setTimeout\(\(\)=>setApproval\(null\),delay\)/);
 });
 test("PR diff inspector selects a visible file, distinguishes patch headers and has keyboard semantics",async()=>{
  const page=await file("../src/components/github-control-center.tsx");
