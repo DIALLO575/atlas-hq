@@ -5,8 +5,9 @@ import { Icon } from "@/components/icon";
 
 type Draft = {name:string;description:string;private:boolean;autoInit:boolean};
 type PermissionState = "granted" | "missing" | "unavailable";
-type PreviewResult = {preview:Draft;canExecute:false;permissionState:PermissionState;nextStep:string};
-type Approval = {approved:true;receipt:string;expiresAt:number;canExecute:false};
+type PreviewResult = {preview:Draft;canExecute:false;executionEnabled:boolean;permissionState:PermissionState;nextStep:string};
+type Approval = {approved:true;receipt:string;expiresAt:number;canExecute:true};
+type CreationResult={operationId:string;state:string;repository?:{id:number;name:string;url:string}};
 const errors:Record<string,string>={
   INVALID_REQUEST:"Vérifiez les informations de votre dépôt.",
   INVALID_INPUT:"Utilisez uniquement lettres, chiffres, points, tirets et underscores.",
@@ -32,10 +33,11 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
   const [draft,setDraft]=useState<Draft>({name:"",description:"",private:true,autoInit:true});
   const [preview,setPreview]=useState<PreviewResult|null>(null);
   const [approval,setApproval]=useState<Approval|null>(null);
+  const [created,setCreated]=useState<CreationResult|null>(null);
   const [typedName,setTypedName]=useState("");
   const [consent,setConsent]=useState(false);
   const [problem,setProblem]=useState<string|null>(null);
-  const [working,setWorking]=useState<"check"|"approve"|null>(null);
+  const [working,setWorking]=useState<"check"|"approve"|"create"|null>(null);
   const requestRef=useRef<AbortController|null>(null);
   const approvalKey=useRef<string|null>(null);
   useEffect(()=>()=>requestRef.current?.abort(),[]);
@@ -58,7 +60,7 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
     approvalKey.current=null;
     setWorking(null);
     setDraft(current=>({...current,...next}));
-    setPreview(null);setApproval(null);setTypedName("");setConsent(false);setProblem(null);
+    setPreview(null);setApproval(null);setCreated(null);setTypedName("");setConsent(false);setProblem(null);
   }
 
   async function submit(event:FormEvent<HTMLFormElement>) {
@@ -67,7 +69,7 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
     requestRef.current?.abort();
     const controller=new AbortController();
     requestRef.current=controller;
-    setWorking("check");setProblem(null);setApproval(null);setPreview(null);setTypedName("");setConsent(false);
+    setWorking("check");setProblem(null);setApproval(null);setCreated(null);setPreview(null);setTypedName("");setConsent(false);
     approvalKey.current=null;
     try {
       const response=await fetch("/api/apps/github/studio/repositories/preview",{
@@ -81,7 +83,7 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
         setProblem(errors[String(data?.error)]??"La demande ne peut pas être vérifiée.");
         return;
       }
-      if(data?.canExecute !== false || !data?.preview ||
+      if(data?.canExecute !== false || typeof data?.executionEnabled!=="boolean" || !data?.preview ||
          !["granted","missing","unavailable"].includes(data?.permissionState)) {
         setProblem("Réponse de vérification inattendue.");return;
       }
@@ -113,7 +115,7 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
         setProblem(errors[String(data?.error)]??"La confirmation sécurisée est indisponible.");
         return;
       }
-      if(data?.approved!==true || data?.canExecute!==false ||
+      if(data?.approved!==true || data?.canExecute!==true ||
         typeof data?.receipt!=="string" || !Number.isFinite(data?.expiresAt)){
         setProblem("Confirmation inattendue : aucun accord enregistré.");return;
       }
@@ -123,6 +125,38 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
     }finally{
       if(!controller.signal.aborted)setWorking(null);
     }
+  }
+
+  async function execute(){
+    if(!preview?.executionEnabled || !approval || !approvalKey.current ||
+        permission!=="granted" || typedName!==preview.preview.name || !consent || working)return;
+    const controller=new AbortController();
+    requestRef.current?.abort();requestRef.current=controller;
+    setWorking("create");setProblem(null);
+    try {
+      const response=await fetch("/api/apps/github/studio/repositories/execute",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","idempotency-key":approvalKey.current,
+          "x-studio-approval":approval.receipt},
+        body:JSON.stringify({...preview.preview,workspaceId,installationId,confirmed:true}),
+        signal:controller.signal,
+      });
+      const data=await response.json();
+      if(controller.signal.aborted)return;
+      if(!response.ok){
+        setProblem(String(data?.error)==="STUDIO_USER_AUTH_REQUIRED"?
+          "Autorisez votre compte GitHub avec le bouton OAuth, puis confirmez à nouveau.":
+          "Création indisponible ("+String(data?.error??"UNKNOWN")+"). Aucune nouvelle tentative automatique.");
+        return;
+      }
+      if(typeof data?.operationId!=="string" || typeof data?.state!=="string"){
+        setProblem("Résultat incertain. Vérifiez votre compte GitHub avant de réessayer.");
+        return;
+      }
+      setCreated(data as CreationResult);setApproval(null);
+    }catch{
+      if(!controller.signal.aborted)setProblem("Résultat incertain. Vérifiez GitHub avant de réessayer.");
+    }finally{if(!controller.signal.aborted)setWorking(null);}
   }
 
   return <section className="atlas-gh-studio" aria-label="GitHub Repository Studio">
@@ -216,6 +250,15 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
                 "Atlas ne peut pas encore confirmer les nouveaux droits auprès de GitHub."}</p>
             </div>
           </div>
+          {preview.executionEnabled && permission==="granted" && <form method="POST"
+            action="/api/apps/github/studio/oauth/start" className="atlas-gh-studio-oauth">
+            <input type="hidden" name="workspaceId" value={workspaceId}/>
+            <input type="hidden" name="installationId" value={installationId??""}/>
+            <button type="submit" className="atlas-gh-studio-approve" disabled={Boolean(working)}>
+              <Icon name="spark"/> Autoriser mon compte GitHub
+            </button>
+            <small>Autorisation utilisateur temporaire nécessaire avant la création.</small>
+          </form>}
           <label className="atlas-gh-studio-field">{"Recopiez le nom exact du dépôt pour confirmer"}
             <input value={typedName} onChange={event=>{setTypedName(event.target.value);setApproval(null);}}
               placeholder={preview.preview.name} autoComplete="off" disabled={permission!=="granted"}/>
@@ -224,18 +267,28 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
             <input type="checkbox" checked={consent}
               disabled={permission!=="granted"}
               onChange={event=>{setConsent(event.target.checked);setApproval(null);}}/>
-            <span>{"J'approuve cette configuration pour un futur essai sandbox. Je comprends qu'aucun dépôt n'est créé maintenant."}</span>
+            <span>{"J’approuve ces paramètres et je comprends que seul un clic explicite sur Créer effectuera la création GitHub."}</span>
           </label>
           <button type="button" className="atlas-gh-studio-approve" onClick={()=>void approve()}
             disabled={!canApprove}>
             <Icon name="spark"/> {working==="approve"?"Approbation en cours…":"Approuver la préparation"}
           </button>
           {approval && <div className="atlas-gh-studio-ok" role="status">
-            <strong>Préparation approuvée en sandbox</strong>
-            {"Accord temporaire délivré pour ce dépôt uniquement. Aucune création GitHub effectuée."}
+            <strong>Configuration approuvée</strong>
+            {"Accord temporaire délivré pour ce dépôt uniquement. Aucune création encore effectuée."}
           </div>}
+          {approval && preview.executionEnabled && <button type="button" className="atlas-gh-studio-submit"
+            onClick={()=>void execute()} disabled={Boolean(working) || !consent || typedName!==preview.preview.name}>
+            <Icon name="plus-circle"/> {working==="create"?"Création en cours…":"Créer ce dépôt sur GitHub"}
+          </button>}
+          {created && <p className="atlas-gh-studio-ok" role="status">
+            {created.state==="succeeded"?"Dépôt créé et autorisé dans Atlas.":
+              created.state==="reconciliation_required"?
+                "GitHub peut avoir créé le dépôt. Confirmez son accès dans l’installation GitHub avant de continuer.":
+                "Opération enregistrée. Vérifiez son statut avant une nouvelle tentative."}
+          </p>}
           <p className="atlas-gh-studio-approval-footnote">
-            {"L'accord serveur expire après cinq minutes et n'active pas la création en Production."}
+            {"L’accord serveur expire après cinq minutes et une création demande toujours un consentement explicite."}
           </p>
         </section>}
         {problem && <p className="atlas-gh-studio-caution" role="alert">{problem}</p>}
@@ -256,13 +309,15 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
           <span>Workspace <b>Atlas</b></span>
           <span>README <b>{draft.autoInit?"Inclus":"Non"}</b></span>
           <span>Contrôle GitHub <b>{permission==="granted"?"Write vérifié":permission==="missing"?"À réapprouver":"À vérifier"}</b></span>
-          <span>Action réelle <b>Non exécutée</b></span>
+          <span>Action réelle <b>{created?.state??"Non exécutée"}</b></span>
         </div>
         <div className="atlas-gh-studio-preview-divider"/>
         <div className="atlas-gh-studio-unavailable">
           <Icon name="settings"/>
-          <div><strong>Création GitHub désactivée</strong>
-            <p>{"Le dépôt n'a pas été créé. Vous préparez uniquement l'approbation. L'exécution restera limitée à la sandbox après validation."}</p>
+          <div><strong>{preview?.executionEnabled?"Création GitHub avec approbation":"Création GitHub désactivée"}</strong>
+            <p>{preview?.executionEnabled ?
+              "Autorisation OAuth, confirmation explicite et journal d’audit requis avant création.":
+              "Le dépôt n’a pas été créé. L’environnement permet seulement la préparation."}</p>
           </div>
         </div>
         <span className="atlas-gh-studio-preview-footer"><Icon name="spark"/> PRÉPARATION SÉCURISÉE PAR ATLAS</span>

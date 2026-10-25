@@ -84,8 +84,8 @@ const sectionHelp: Record<Section, string> = {
   settings: "Gérez les connexions et autorisations de GitHub.",
 };
 
-export function GitHubControlCenter({ workspaces, initialWorkspaceId, configured }: {
-  workspaces: Workspace[]; initialWorkspaceId: string; configured: boolean;
+export function GitHubControlCenter({ workspaces, initialWorkspaceId, configured, openStudioOnLoad = false }: {
+  workspaces: Workspace[]; initialWorkspaceId: string; configured: boolean; openStudioOnLoad?: boolean;
 }) {
   const [workspaceId, setWorkspaceId] = useState(initialWorkspaceId);
   const [focusMode, setFocusMode] = useState(false);
@@ -132,7 +132,8 @@ export function GitHubControlCenter({ workspaces, initialWorkspaceId, configured
       </div>
     </header>
     {selected
-      ? <WorkspaceGitHub key={selected.id} workspace={selected} configured={configured} />
+      ? <WorkspaceGitHub key={selected.id} workspace={selected} configured={configured}
+          initialSection={openStudioOnLoad ? "studio" : "overview"} />
       : <section className="atlas-gh-empty"><Icon name="layers"/><h2>Aucun workspace</h2>
         <p>Créez un espace pour rattacher une connexion GitHub et ses dépôts autorisés.</p>
         <Link href="/workspaces">Ouvrir Workspaces <Icon name="arrow-right"/></Link>
@@ -140,7 +141,7 @@ export function GitHubControlCenter({ workspaces, initialWorkspaceId, configured
   </div>;
 }
 
-function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; configured: boolean }) {
+function WorkspaceGitHub({ workspace, configured, initialSection }: { workspace: Workspace; configured: boolean; initialSection: Section }) {
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [installationId, setInstallationId] = useState<number | null>(null);
   const [repositories, setRepositories] = useState<Repository[]>([]);
@@ -152,7 +153,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
   const [detailNumber, setDetailNumber] = useState<number | null>(null);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const [visibleFileCount, setVisibleFileCount] = useState(35);
-  const [section, setSection] = useState<Section>("overview");
+  const [section, setSection] = useState<Section>(initialSection);
   // Phone-only drill-down: PR list and diff inspector are separate screens.
   const [mobilePRDetail, setMobilePRDetail] = useState(false);
   const [search, setSearch] = useState("");

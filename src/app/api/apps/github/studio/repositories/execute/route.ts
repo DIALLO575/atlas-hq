@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { executeSandboxRepositoryCreation } from "@/lib/github/studio-runner";
+import { studioMutationMode, studioSandboxBindingAllowed } from "@/lib/github/studio-availability";
 import { githubConnectSettings } from "@/lib/github/connect";
 import { checkStudioApprovalReceipt } from "../../../../../../../../packages/connectors/github/src/github-studio-approval.mjs";
 import { readStudioUserGrant, studioOAuthGrantCookie,
@@ -24,16 +25,8 @@ const respond = (payload: unknown, status: number) =>
  * this route. Never enable without GitHub App consent and sandbox migration.
  */
 export async function POST(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== "preview" ||
-      process.env.ATLAS_GITHUB_STUDIO_WRITE_ENABLED !== "sandbox") {
-    return respond({ error: "STUDIO_DISABLED" }, 404);
-  }
-  const expectedWorkspace = process.env.ATLAS_GITHUB_STUDIO_SANDBOX_WORKSPACE_ID;
-  const expectedInstallation = Number(process.env.ATLAS_GITHUB_STUDIO_SANDBOX_INSTALLATION_ID);
-  if (!expectedWorkspace || !UUID.test(expectedWorkspace) ||
-      !Number.isSafeInteger(expectedInstallation) || expectedInstallation < 1) {
-    return respond({ error: "STUDIO_NOT_CONFIGURED" }, 503);
-  }
+  const mode = studioMutationMode();
+  if (!mode) return respond({ error: "STUDIO_DISABLED" }, 404);
 
   let expectedOrigin: string;
   try {
@@ -72,8 +65,7 @@ export async function POST(request: NextRequest) {
     draft = parseRepositoryDraft(spec);
   } catch { return respond({ error: "INVALID_INPUT" }, 400); }
 
-  if (draft.workspaceId !== expectedWorkspace ||
-      draft.installationId !== expectedInstallation) {
+  if (!studioSandboxBindingAllowed(mode, draft.workspaceId, draft.installationId)) {
     return respond({ error: "SANDBOX_ONLY" }, 403);
   }
   const supabase = await createSupabaseServerClient();

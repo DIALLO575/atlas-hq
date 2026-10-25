@@ -6,6 +6,7 @@ import {
 } from "../../../../../../../../packages/connectors/github/src/github-studio-create.mjs";
 import { readStudioCreationPermission } from "../../../../../../../../packages/connectors/github/src/github-studio-permission.mjs";
 import { issueStudioApprovalReceipt } from "../../../../../../../../packages/connectors/github/src/github-studio-approval.mjs";
+import { studioMutationMode, studioSandboxBindingAllowed } from "@/lib/github/studio-availability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,10 +17,8 @@ const reply = (error: string, status: number) => NextResponse.json({error}, {
 
 /** Approves a bound INTENT in preview sandbox. Does NOT execute a GitHub write. */
 export async function POST(request: NextRequest) {
-  if (process.env.VERCEL_ENV !== "preview" ||
-      process.env.ATLAS_GITHUB_STUDIO_APPROVAL_ENABLED !== "sandbox") {
-    return reply("STUDIO_APPROVAL_DISABLED",404);
-  }
+  const mode = studioMutationMode();
+  if (!mode) return reply("STUDIO_APPROVAL_DISABLED",404);
   const settings = githubConnectSettings();
   if (!settings || !settings.publicOrigin.startsWith("https://")) {
     return reply("STUDIO_NOT_CONFIGURED",503);
@@ -48,8 +47,7 @@ export async function POST(request: NextRequest) {
     return reply(error instanceof GitHubStudioError ? error.code : "INVALID_INPUT",400);
   }
 
-  if (draft.workspaceId !== process.env.ATLAS_GITHUB_STUDIO_SANDBOX_WORKSPACE_ID ||
-      String(draft.installationId) !== process.env.ATLAS_GITHUB_STUDIO_SANDBOX_INSTALLATION_ID) {
+  if (!studioSandboxBindingAllowed(mode, draft.workspaceId, draft.installationId)) {
     return reply("SANDBOX_ONLY",403);
   }
 
@@ -87,7 +85,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({
       approved:true,receipt:receipt.receipt,expiresAt:receipt.expiresAt,
-      canExecute:false,notice:"APPROVAL_ONLY_NO_REPOSITORY_CREATED",
+      canExecute:true,notice:"APPROVED_ONLY_NOT_DISPATCHED",
     }, {headers:{"Cache-Control":"no-store"}});
   } catch {
     return reply("GITHUB_PERMISSION_UNAVAILABLE",503);

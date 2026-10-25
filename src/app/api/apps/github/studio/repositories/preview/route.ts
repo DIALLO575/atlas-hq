@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { githubConnectSettings } from "@/lib/github/connect";
 import { readStudioCreationPermission } from "../../../../../../../../packages/connectors/github/src/github-studio-permission.mjs";
+import { studioMutationMode } from "@/lib/github/studio-availability";
 import {
   GitHubStudioError, parseRepositoryDraft, verifiedPersonalInstallation,
 } from "../../../../../../../../packages/connectors/github/src/github-studio-create.mjs";
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
     },
     permissionState,
     canExecute: false,
+    executionEnabled: studioMutationMode() !== null,
     nextStep: permissionState === "granted" ? "HUMAN_APPROVAL_REQUIRED" : "GITHUB_PERMISSION_NOT_CONFIRMED",
   }, { headers: { "Cache-Control": "no-store" } });
 }
