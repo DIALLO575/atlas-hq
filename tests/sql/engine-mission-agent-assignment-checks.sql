@@ -4,7 +4,7 @@ set role service_role;
 insert into private.atlas_engine_agent_bindings(workspace_id,instance_id,atlas_agent_key,remote_agent_key)
 values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-0000-4000-8000-000000000001','vision','remote-vision-v1'),
  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','bbbbbbbb-0000-4000-8000-000000000002','vision','remote-vision-other');
-create temp table assignment_baseline as select count(*) n from private.atlas_engine_audit_events;
+create temp table assignment_baseline as select count(*) n from private.atlas_engine_audit_events where event_key like 'engine.mission_agent.%';
 insert into private.atlas_engine_mission_agents(id,workspace_id,mission_id,instance_id,atlas_agent_key,remote_agent_key,assigned_by)
 values('abababab-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','aaaaaaaa-0000-4000-8000-000000000001','vision','remote-vision-v1',
@@ -12,7 +12,8 @@ values('abababab-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa
 insert into private.atlas_engine_mission_agent_primitives(id,workspace_id,mission_agent_id,primitive_id,granted_by)
 values('abababab-0000-4000-8000-000000000002','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','abababab-0000-4000-8000-000000000001','conversations.messages.send','11111111-1111-4111-8111-111111111111');
 do $$ begin
- if (select count(*) from private.atlas_engine_audit_events where event_key='engine.mission_agent.assigned')<2 then raise exception 'ASSIGNMENT_AUDIT_MISSING';end if;
+ if (select count(*) from private.atlas_engine_audit_events where event_key='engine.mission_agent.assigned')<>1
+  or (select count(*) from private.atlas_engine_audit_events where event_key='engine.mission_agent.primitive.granted')<>1 then raise exception 'ASSIGNMENT_AUDIT_MISSING';end if;
  begin
   insert into private.atlas_engine_mission_agents(workspace_id,mission_id,instance_id,atlas_agent_key,remote_agent_key,assigned_by)
   values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','aaaaaaaa-0000-4000-8000-000000000001','vision','remote-vision-v1','11111111-1111-4111-8111-111111111111');
@@ -47,7 +48,7 @@ insert into private.atlas_engine_mission_agents(workspace_id,mission_id,instance
 values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
  'aaaaaaaa-0000-4000-8000-000000000001','vision','remote-vision-v1','11111111-1111-4111-8111-111111111111');
 do $$ begin
- if (select count(*) from private.atlas_engine_audit_events where event_key in('engine.mission_agent.assigned','engine.mission_agent.revoked'))<6 then raise exception 'BINDING_HISTORY_AUDIT_MISSING';end if;
+ if (select count(*) from private.atlas_engine_audit_events where event_key like 'engine.mission_agent.%') - (select n from assignment_baseline)<>6 then raise exception 'BINDING_HISTORY_AUDIT_MISSING';end if;
  if has_table_privilege('anon','private.atlas_engine_mission_agents','SELECT') or has_table_privilege('authenticated','private.atlas_engine_mission_agent_primitives','SELECT') then raise exception 'CLIENT_CAN_READ_PRIVATE_ASSIGNMENTS';end if;
  if not has_table_privilege('service_role','private.atlas_engine_mission_agents','SELECT') then raise exception 'WORKER_CANNOT_READ_ASSIGNMENTS';end if;
 end $$;

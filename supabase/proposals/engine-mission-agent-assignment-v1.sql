@@ -4,7 +4,7 @@
 create table private.atlas_engine_mission_agents (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null, mission_id uuid not null, instance_id uuid not null,
-  atlas_agent_key text not null, remote_agent_key text not null,
+  atlas_agent_key text not null, remote_agent_key text not null check(remote_agent_key ~ '^[A-Za-z0-9_-]{1,120}$'),
   assigned_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default now(), version integer not null default 1 check(version=1),
   revoked_at timestamptz, revoked_by uuid references auth.users(id) on delete restrict,
