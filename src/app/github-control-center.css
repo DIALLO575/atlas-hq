@@ -872,3 +872,28 @@
 @media(max-width:980px){.atlas-gh-actions-content{grid-template-columns:1fr}.atlas-gh-actions-runs{max-height:400px}}
 @media(max-width:600px){.atlas-gh-actions-hero{padding:22px;flex-direction:column}.atlas-gh-actions-toolbar{align-items:stretch;flex-direction:column;padding:14px}.atlas-gh-actions-toolbar label{width:100%}.atlas-gh-actions-stats{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px}.atlas-gh-actions-content{padding:12px}.atlas-gh-actions-feed>header{flex-direction:column;align-items:stretch}.atlas-gh-actions-run{flex-wrap:wrap}.atlas-gh-actions-run .atlas-gh-actions-status{margin-left:auto}.atlas-gh-actions-run>svg{display:none}}
 @media(prefers-reduced-motion:reduce){.atlas-gh-actions *{transition:none!important}}
+
+/* Shared refinement: the three GitHub pillars keep visible selection and keyboard focus. */
+.atlas-gh-tabs{padding:3px 4px 0;border-radius:14px 14px 0 0;background:linear-gradient(90deg,#fff,#fbf9ff)}
+.atlas-gh-tabs button{transition:color .16s,background .16s,box-shadow .16s;font-size:11px;letter-spacing:.005em}
+.atlas-gh-tabs button.is-active{box-shadow:inset 0 1px 0 #e8d9ff}
+.atlas-gh-tabs button:focus-visible,.atlas-gh-list-row:focus-visible,.atlas-gh-file:focus-visible,
+.atlas-gh-actions-run:focus-visible,.atlas-gh-actions-filters button:focus-visible,
+.atlas-gh-studio input:focus-visible,.atlas-gh-studio button:focus-visible,
+.atlas-gh-actions-toolbar select:focus-visible,.atlas-gh-actions-toolbar button:focus-visible{
+ outline:2px solid #875adb;outline-offset:3px
+}
+.atlas-gh-list-row[aria-pressed="true"],.atlas-gh-file[aria-pressed="true"]{
+ box-shadow:inset 3px 0 #8a63d9;background:#f7f3fe
+}
+.atlas-gh-actions-filters button:focus-visible{outline-offset:1px}
+.atlas-gh-actions-inspector[aria-busy="true"]{opacity:.86}
+.atlas-gh-code-pane .atlas-gh-diff pre{tab-size:2;overflow-x:auto;scrollbar-width:thin}
+.atlas-gh-connection-strip{border-color:#e9e2f5;box-shadow:0 4px 14px #36265108}
+@media(max-width:500px){
+ .atlas-gh-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .atlas-gh-tabs button{min-height:48px}
+ .atlas-gh-actions-job-head{align-items:flex-start}
+ .atlas-gh-actions-run-text{min-width:140px}
+}
+@media(prefers-reduced-motion:reduce){.atlas-gh-tabs button{transition:none}}

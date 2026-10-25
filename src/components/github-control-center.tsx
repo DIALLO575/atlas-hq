@@ -88,7 +88,7 @@ export function GitHubControlCenter({ workspaces, initialWorkspaceId, configured
         <div>
           <p className="atlas-overline">MES APPS / GITHUB</p>
           <h1>GitHub Control Center <span aria-hidden="true">✦</span></h1>
-          <p>Vos dépôts, vos PR et leurs modifications. Données réelles, accès contrôlé.</p>
+          <p>Trois espaces complémentaires : analyser les PR, préparer les dépôts et comprendre vos builds CI/CD.</p>
         </div>
       </div>
       {workspaces.length > 0 && <label className="atlas-gh-workspace-pick">Workspace
@@ -213,7 +213,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
       if (controller.signal.aborted) return;
       setDetail(result);
       // Open the first available patch in the dedicated code pane.
-      setExpandedFile(result.files.find((file) => file.patch)?.path ?? result.files[0]?.path ?? null);
+      setExpandedFile(result.files.slice(0, 35).find((file) => file.patch)?.path ?? result.files[0]?.path ?? null);
     } catch (error) { failIfActive(error, controller); }
     finally { if (!controller.signal.aborted) setLoading(null); }
   }
@@ -286,11 +286,11 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
     </div>}
     {!configured && <p className="atlas-gh-notice">Configuration de la GitHub App manquante côté serveur. Les données ne peuvent pas être chargées.</p>}
 
-    {section === "studio" && <GitHubStudioRepositoryWizard
+    {section === "studio" && <GitHubStudioRepositoryWizard key={`${workspace.id}:${installationId ?? "none"}`}
       workspaceId={workspace.id} installationId={installationId}
       canManage={canInstall} ready={ready.some((item) => item.installationId === installationId)} />}
 
-    {section === "actions" && <GitHubActionsControlCenter
+    {section === "actions" && <GitHubActionsControlCenter key={`${workspace.id}:${installationId ?? "none"}`}
       workspaceId={workspace.id} installationId={installationId}
       repositories={repositories.map((item)=>({id:item.id,fullName:item.fullName}))}
       ready={ready.some((item)=>item.installationId===installationId)} />}
@@ -335,7 +335,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
           </> : <>
             {matchingPulls.map((pr) => <button key={pr.number} type="button"
               className={"atlas-gh-list-row" + (detailNumber === pr.number ? " is-selected" : "")}
-              disabled={loading !== null} onClick={() => void openPull(pr.number)}>
+              disabled={loading !== null} aria-pressed={detailNumber === pr.number} onClick={() => void openPull(pr.number)}>
               <span className="atlas-gh-row-icon"><Icon name="activity"/></span>
               <span className="atlas-gh-row-copy"><strong>#{pr.number} · {pr.title}</strong>
                 <small>{readableDate(pr.updatedAt)} · {selectedRepo?.fullName}</small></span>
@@ -351,6 +351,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
       <aside className="atlas-gh-secondary">
         <section className="atlas-gh-detail-panel">
           <div className="atlas-gh-section-heading"><h2>Inspecteur de PR</h2><span className="atlas-gh-readonly">Lecture seule</span></div>
+          {loading === "detail" && <p className="atlas-gh-loading" role="status">Chargement des modifications de la Pull Request…</p>}
           {detail ? <>
             <h3>#{detailNumber} · {detail.title}</h3>
             <p className="atlas-gh-detail-body">{detail.body || "Aucune description."}</p>
@@ -371,7 +372,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
                     <div key={file.path} className="atlas-gh-diff-file">
                       <button type="button" className={"atlas-gh-file" + (expandedFile === file.path ? " is-active" : "")}
                         onClick={() => setExpandedFile(expandedFile === file.path ? null : file.path)}
-                        aria-expanded={expandedFile === file.path}
+                        aria-expanded={expandedFile === file.path} aria-pressed={expandedFile === file.path}
                         aria-label={"Afficher les modifications de " + file.path}
                         title={file.path}>
                         <span className="atlas-gh-file-icon"><Icon name="layers"/></span>
@@ -402,7 +403,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
                     </div>
                     <div className="atlas-gh-diff">
                       {file.patch ? <pre aria-label={"Diff de " + file.path}>{file.patch.split("\n").map((line, index) => <span key={index}
-                        className={line.startsWith("+") ? "is-add" : line.startsWith("-") ? "is-remove" : line.startsWith("@@") ? "is-hunk" : ""}>{line}{"\n"}</span>)}</pre> :
+                        className={line.startsWith("+") && !line.startsWith("+++") ? "is-add" : line.startsWith("-") && !line.startsWith("---") ? "is-remove" : line.startsWith("@@") ? "is-hunk" : ""}>{line}{"\n"}</span>)}</pre> :
                         <p>Aucun extrait de diff disponible (fichier binaire, volumineux ou non transmis par GitHub).</p>}
                     </div>
                   </div>

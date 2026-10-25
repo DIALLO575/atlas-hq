@@ -18,18 +18,18 @@ function mock(overrides={}) {
     assert.equal(options.method,"POST");
     assert.deepEqual(JSON.parse(options.body),{repository_ids:[91],permissions:{actions:"read"}});
     return json({token:"private-installation-token",expires_at:"2026-10-24T23:00:00Z",
-      permissions:{actions:overrides.permission??"read"},repositories:[{id:91}]},201);
+      permissions:{actions:overrides.permission??"read"},repositories:[{id:91}]},overrides.tokenStatus??201);
   }
   assert.equal(options.headers.Authorization,"Bearer private-installation-token");
   if(url.includes("/installation/repositories"))return json({
     total_count:1,repositories:[{id:overrides.actualId??91,
-      full_name:"octocat/atlas-test",owner:{login:"octocat"}}]});
+      full_name:"octocat/atlas-test",owner:{login:"octocat"}}]},overrides.listStatus??200);
   if(url.endsWith("/actions/runs?per_page=20&page=1"))return json({
     total_count:1,workflow_runs:[makeRun()],
   });
   if(url.endsWith("/actions/runs/204"))return json({...makeRun(),repository:{id:91}});
   if(url.endsWith("/actions/runs/204/jobs?per_page=100&filter=latest"))return json({
-    total_count:1,jobs:[{id:401,name:"build",status:"completed",conclusion:"failure",
+    total_count:1,jobs:[{id:401,run_id:overrides.jobRunId??204,name:"build",status:"completed",conclusion:"failure",
       started_at:"2026-10-24T19:00:00Z",completed_at:"2026-10-24T19:02:00Z",
       steps:[{name:"npm test",number:2,conclusion:"failure"},
         {name:"Check out",number:1,conclusion:"success"}]}],
@@ -77,4 +77,20 @@ test("invalid repository input never mints a token",async()=>{
   request:async()=>{n++;throw Error("must not call");}
  }),e=>e.code==="INVALID_INPUT");
  assert.equal(n,0);
+});
+
+test("Actions reader rejects unexpected write permissions even if GitHub reports broader access",async()=>{
+ const f=mock({permission:"write"});
+ await assert.rejects(create(f.request),(e)=>e.code==="PERMISSION_DENIED");
+ assert.equal(f.calls.length,1);
+});
+test("job responses cannot mix a different run identity",async()=>{
+ const f=mock({jobRunId:205});
+ const reader=await create(f.request);
+ await assert.rejects(reader.listJobs(204),(e)=>e.code==="INVALID_RESPONSE");
+});
+test("GitHub App token 403 is never retried or replaced with a public fallback",async()=>{
+ const f=mock({tokenStatus:403});
+ await assert.rejects(create(f.request),(e)=>e.code==="PERMISSION_DENIED");
+ assert.equal(f.calls.length,1);
 });

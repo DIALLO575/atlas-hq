@@ -18,6 +18,7 @@ async function json(request, url, options) {
   if (!response?.ok) {
     const status = response?.status;
     if (status === 401) fail("AUTH_REQUIRED");
+    if (status === 403 && (response.headers?.get?.("x-ratelimit-remaining") === "0" || response.headers?.has?.("retry-after"))) fail("RATE_LIMITED");
     if (status === 403 || status === 422) fail("PERMISSION_DENIED");
     if (status === 404) fail("NOT_FOUND_OR_HIDDEN");
     if (status === 429) fail("RATE_LIMITED");
@@ -77,7 +78,7 @@ export async function createGitHubActionsReader({
     });
   if (typeof minted?.token !== "string" || !minted.token ||
       !Number.isFinite(Date.parse(minted.expires_at)) || Date.parse(minted.expires_at) <= now() ||
-      !["read","write"].includes(minted.permissions?.actions)) fail("PERMISSION_DENIED");
+      minted.permissions?.actions !== "read") fail("PERMISSION_DENIED");
   if (Array.isArray(minted.repositories) &&
       (minted.repositories.length !== 1 || minted.repositories[0]?.id !== repositoryId)) {
     fail("PERMISSION_DENIED");
@@ -122,6 +123,9 @@ export async function createGitHubActionsReader({
         method:"GET",headers:headers(minted.token),
       });
     if (!Array.isArray(data?.jobs) || !Number.isSafeInteger(data.total_count)) fail("INVALID_RESPONSE");
+    if (data.jobs.slice(0,100).some((job)=>job?.run_id !== undefined && job.run_id !== runId)) {
+      fail("INVALID_RESPONSE");
+    }
     return Object.freeze({
       run:normalizeRun(run,fullName),
       jobs:data.jobs.slice(0,100).map((j)=>normalizeJob(j,fullName,runId)),

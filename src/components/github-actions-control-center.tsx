@@ -20,6 +20,8 @@ const errors:Record<string,string>={
   WORKSPACE_FORBIDDEN:"Vous n'avez pas accès à ce workspace.",
   GITHUB_NOT_AUTHORIZED:"Ce dépôt n'est pas autorisé pour votre installation GitHub.",
   PERMISSION_DENIED:"La GitHub App doit recevoir « Actions: Read », puis être réapprouvée par le propriétaire de l'installation.",
+  PROVIDER_UNAVAILABLE:"GitHub est temporairement indisponible. Réessayez.",
+  INVALID_RESPONSE:"GitHub a renvoyé un résultat incomplet. Aucune action n’a été effectuée.",
   NOT_FOUND_OR_HIDDEN:"Cette exécution est introuvable ou inaccessible.",
   GITHUB_NOT_CONFIGURED:"La connexion GitHub doit être configurée côté serveur.",
   RATE_LIMITED:"Limite GitHub atteinte. Réessayez plus tard.",
@@ -37,7 +39,7 @@ async function actionsRequest<T>(params:Record<string,string>,signal:AbortSignal
 const badge=(run:Pick<Run,"status"|"conclusion">)=>{
   if(run.status!=="completed")return {name:"En cours",kind:"running"};
   if(run.conclusion==="success")return {name:"Réussi",kind:"success"};
-  if(run.conclusion==="failure"||run.conclusion==="timed_out")return {name:"Échec",kind:"failure"};
+  if(["failure","timed_out","action_required"].includes(run.conclusion??""))return {name:"Échec",kind:"failure"};
   if(run.conclusion==="cancelled")return {name:"Annulé",kind:"neutral"};
   return {name:run.conclusion??"Terminée",kind:"neutral"};
 };
@@ -69,12 +71,16 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
     ? repositoryId : repositories[0]?.id??null;
   const selectedRepo=repositories.find(r=>r.id===activeRepo);
   const selectedRun=runs.find(r=>r.id===selectedRunId);
+  const orderedJobs=useMemo(()=>[...jobs].sort((a,b)=>{
+    const bad=(j:Job)=>["failure","timed_out","action_required"].includes(j.conclusion??"");
+    return Number(bad(b))-Number(bad(a));
+  }),[jobs]);
   const visible=useMemo(()=>runs.filter(run=>
     filter==="all" || (filter==="failure"
-      ? ["failure","timed_out","cancelled"].includes(run.conclusion??"")
+      ? ["failure","timed_out","action_required"].includes(run.conclusion??"")
       : run.conclusion==="success")), [runs,filter]);
   const summary=useMemo(()=>({
-    failures:runs.filter(r=>["failure","timed_out"].includes(r.conclusion??"")).length,
+    failures:runs.filter(r=>["failure","timed_out","action_required"].includes(r.conclusion??"")).length,
     success:runs.filter(r=>r.conclusion==="success").length,
     active:runs.filter(r=>r.status!=="completed").length,
   }),[runs]);
@@ -145,7 +151,9 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
     <div className="atlas-gh-actions-toolbar">
       <label>Dépôt
         <select value={activeRepo??""} disabled={loading!==null || !ready || !repositories.length}
-          onChange={event=>{jobsController.current?.abort();runsController.current?.abort();setRepositoryId(Number(event.target.value));}}>
+          onChange={event=>{jobsController.current?.abort();runsController.current?.abort();
+            setRuns([]);setJobs([]);setSelectedRunId(null);setError(null);setTruncated(false);
+            setRepositoryId(Number(event.target.value));}}>
           {repositories.map(repo=><option value={repo.id} key={repo.id}>{repo.fullName}</option>)}
         </select>
       </label>
@@ -165,7 +173,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
         <div><strong>{summary.active}</strong><span>En cours</span></div>
       </div>
       <div className="atlas-gh-actions-content">
-        <section className="atlas-gh-actions-feed" aria-label="Exécutions GitHub">
+        <section className="atlas-gh-actions-feed" aria-label="Exécutions GitHub" aria-busy={loading==="runs"}>
           <header><div><h3>Historique des workflows</h3>
             <p>{selectedRepo?.fullName??"Dépôt"} · 20 exécutions maximum</p></div>
             <div className="atlas-gh-actions-filters">
@@ -193,7 +201,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
           </div>
           {truncated && <p className="atlas-gh-actions-message">Liste limitée aux 20 dernières exécutions. Voir GitHub pour l&apos;historique complet.</p>}
         </section>
-        <aside className="atlas-gh-actions-inspector" aria-label="Diagnostic de workflow">
+        <aside className="atlas-gh-actions-inspector" aria-label="Diagnostic de workflow" aria-busy={loading==="jobs"}>
           <span className="atlas-gh-actions-overline">INSPECTEUR DE CI</span>
           {!selectedRun && <div className="atlas-gh-actions-placeholder">
             <span><Icon name="activity"/></span>
@@ -211,13 +219,13 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
             {loading==="jobs" && <p className="atlas-gh-actions-message" role="status">Analyse des jobs…</p>}
             {loading!=="jobs" && !jobs.length && <p className="atlas-gh-actions-message">Aucun job à afficher.</p>}
             <div className="atlas-gh-actions-job-list">
-              {jobs.map(job=><article key={job.id} className="atlas-gh-actions-job">
+              {orderedJobs.map(job=><article key={job.id} className="atlas-gh-actions-job">
                 <div className="atlas-gh-actions-job-head">
                   <strong>{job.name||"Job"}</strong>
                   <span className={"atlas-gh-actions-status is-"+badge(job).kind}>{badge(job).name}</span>
                 </div>
                 {job.failedSteps.length>0 && <div className="atlas-gh-actions-failed-steps">
-                  <span>Étapes à examiner</span>
+                  <span>{job.failedSteps.length} étape{job.failedSteps.length>1?"s":""} à examiner</span>
                   {job.failedSteps.map((step,i)=><p key={step.number??i}>
                     <Icon name="activity"/> {step.name||"Étape en échec"}
                   </p>)}
@@ -229,7 +237,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
             </div>
             {jobsTruncated && <p className="atlas-gh-actions-message">Liste de jobs partielle ; voir GitHub pour l&apos;ensemble.</p>}
           </>}
-          <p className="atlas-gh-actions-safety">Lecture seule. Relancer un workflow nécessite une permission Actions: Write et un accord explicite, non activés ici.</p>
+          <p className="atlas-gh-actions-safety">Lecture seule : aucun workflow n’est relancé. Une intervention future nécessitera une permission Actions: Write distincte et une approbation.</p>
         </aside>
       </div>
     </>}
