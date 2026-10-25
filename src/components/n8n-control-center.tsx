@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
+import { N8nWorkflowRegistry } from "@/components/n8n-workflow-registry";
 import type { Workspace } from "@/lib/workspaces/contract";
 
 type Instance = {
@@ -169,6 +170,8 @@ export function N8nControlCenter({ workspaces, initialWorkspaceId, workspaceLoad
       {!mayRegister && workspace && <p className="n8n-note">Votre rôle peut consulter le registre.
         Seuls les propriétaires et administrateurs enregistrent une instance.</p>}
     </section>
+
+    <N8nWorkflowRegistry workspaceId={workspaceId} />
 
     <section className="n8n-surfaces" aria-label="Surfaces techniques n8n">
       <article><span className="n8n-surface-icon" aria-hidden="true">01</span><h2>API REST</h2>
