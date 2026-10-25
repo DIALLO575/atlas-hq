@@ -8,6 +8,8 @@ import { MAUSBOT_PRIMITIVES, MAUSBOT_FUTURE_SURFACES, validateMausbotPrimitive, 
 import { MAUSBOT_NATIVE_CAPABILITIES, nativeCoverageSummary } from "../../../../../../packages/engine-core/src/native-capabilities.mjs";
 import { mausbotReleasePermission, mausbotReleaseState } from "../../../../../../packages/engine-core/src/release-gates.mjs";
 import { mausbotOwnerControlPermission } from "../../../../../../packages/engine-core/src/mausbot-owner-control.mjs";
+import { MAUSBOT_GUARDED_SEND_PRIMITIVES, mausbotSendKillSwitchActive, sharedMausbotSendGuard } from "../../../../../../packages/engines/mausbot/src/send-guard.mjs";
+import type { MausbotSendDecision } from "../../../../../../packages/engines/mausbot/src/send-guard.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,6 +68,35 @@ export async function POST(request: NextRequest) {
     });
   if (!gate.allowed && !ownerControl.allowed) return engineFailure(gate.code, gate.status);
 
+  // Send dispatcher guard: kill switch, max active bots, cooldowns, duplicates.
+  // Evaluated BEFORE the audit reservation so a throttled click burns no action id.
+  let sendSlot: Extract<MausbotSendDecision, { allowed: true }> | null = null;
+  if (MAUSBOT_GUARDED_SEND_PRIMITIVES.includes(normalized.def.id)) {
+    if (mausbotSendKillSwitchActive(process.env)) return engineFailure("MAUSBOT_SEND_KILL_SWITCH", 423);
+    const guardConfig = resolveMausbotConfig(process.env, input.workspaceId);
+    if (!guardConfig) return engineFailure("MAUSBOT_NOT_CONFIGURED", 503);
+    let fleet: { agents: unknown[]; channels?: unknown[] } | null = null;
+    try {
+      const agents = await executeMausbotPrimitive(guardConfig, "agents.list");
+      const channels = normalized.def.id === "channels.messages.send"
+        ? await executeMausbotPrimitive(guardConfig, "channels.list") : null;
+      fleet = Array.isArray(agents?.agents) ? {
+        agents: agents.agents,
+        ...(Array.isArray(channels?.channels) ? { channels: channels.channels } : {}),
+      } : null;
+    } catch { fleet = null; }
+    const decision = sharedMausbotSendGuard().reserve({
+      env: process.env, primitive: normalized.def.id, args: normalized.args, fleet,
+      initiator: { kind: "owner" }, idempotencyKey: request.headers.get("idempotency-key"),
+    });
+    if (!decision.allowed) {
+      const response = engineFailure(decision.code, decision.status);
+      if (decision.retryAfterSeconds) response.headers.set("Retry-After", String(decision.retryAfterSeconds));
+      return response;
+    }
+    sendSlot = decision;
+  }
+
   // The owner explicitly clicked an action. Reserve its ID before any upstream
   // mutation: after a timeout/crash it MUST NOT be dispatched again automatically.
   // No bearer, raw prompt, or external response is stored in this audit record.
@@ -76,9 +107,9 @@ export async function POST(request: NextRequest) {
       return engineFailure("MAUSBOT_ACTION_ID_REQUIRED", 400);
     }
     const supabase = await createSupabaseServerClient();
-    if (!supabase) return engineFailure("MAUSBOT_AUDIT_UNAVAILABLE", 503);
+    if (!supabase) { sendSlot?.release(); return engineFailure("MAUSBOT_AUDIT_UNAVAILABLE", 503); }
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return engineFailure("AUTH_REQUIRED", 401);
+    if (authError || !user) { sendSlot?.release(); return engineFailure("AUTH_REQUIRED", 401); }
     const digest = createHash("sha256").update(JSON.stringify({
       workspaceId: input.workspaceId, primitive: normalized.def.id, args: normalized.args,
     })).digest("hex");
@@ -86,8 +117,8 @@ export async function POST(request: NextRequest) {
       p_action_id: actionId, p_workspace_id: input.workspaceId,
       p_primitive: normalized.def.id, p_hash: digest,
     });
-    if (reserved.error) return engineFailure("MAUSBOT_AUDIT_UNAVAILABLE", 503);
-    if (reserved.data !== true) return engineFailure("MAUSBOT_ACTION_ALREADY_RESERVED", 409);
+    if (reserved.error) { sendSlot?.release(); return engineFailure("MAUSBOT_AUDIT_UNAVAILABLE", 503); }
+    if (reserved.data !== true) { sendSlot?.release(); return engineFailure("MAUSBOT_ACTION_ALREADY_RESERVED", 409); }
     audit = { id: actionId, supabase };
   }
   const finalize = async (state: "accepted" | "unknown") => {
@@ -99,7 +130,7 @@ export async function POST(request: NextRequest) {
   };
   try {
     const config = resolveMausbotConfig(process.env, input.workspaceId);
-    if (!config) return engineFailure("MAUSBOT_NOT_CONFIGURED", 503);
+    if (!config) { sendSlot?.release(); return engineFailure("MAUSBOT_NOT_CONFIGURED", 503); }
     const result = await executeMausbotPrimitive(config, normalized.def.id, normalized.args);
     if (["conversations.messages.list", "channels.messages.list"].includes(normalized.def.id) && result && typeof result === "object") {
       const record = result as Record<string, unknown>;
@@ -141,6 +172,8 @@ export async function POST(request: NextRequest) {
     return engineSuccess({ primitive: normalized.def.id, result },
       normalized.def.mode === "read" ? 200 : 202);
   } catch (error) {
+    // Validation refusals happen before any upstream POST: nothing was delivered.
+    if (error instanceof PrimitiveInputError) sendSlot?.release();
     if (!await finalize("unknown")) return engineFailure("MAUSBOT_ACTION_OUTCOME_UNKNOWN", 503);
     if (error instanceof PrimitiveInputError) return engineFailure(error.code, 400);
     if (error instanceof MausbotAdapterError) return engineFailure(error.code, error.status);

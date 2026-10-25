@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
+import { MausbotTeamOverview } from "@/components/mausbot-team-overview";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import type { WorkspaceResult } from "@/lib/workspaces/contract";
 import { mergeMausbotMessages, lastMausbotMessageId, rememberMausbotThread, MAUSBOT_THREAD_CACHE_TTL_MS } from "../../packages/engines/mausbot/src/message-updates.mjs";
@@ -325,6 +326,7 @@ export function AgentsWorkspace() {
           <div><p className="atlas-people-overline">VOS ÉQUIPES</p><h2>Les équipes du moteur</h2></div>
           <span>{inventory.groups.length} équipe{inventory.groups.length > 1 ? "s" : ""}</span>
         </div>
+        <MausbotTeamOverview workspaceId={workspaceId} revision={inventoryRevision} />
         {!!inventory.groups.length && <label className="atlas-people-search atlas-team-search">
           <Icon name="search" />
           <span className="sr-only">Chercher une équipe ou un membre</span>
