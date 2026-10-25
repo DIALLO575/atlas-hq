@@ -7,7 +7,7 @@ const page=readFileSync(new URL("src/app/apps/notion/page.tsx",root),"utf8");
 const css=readFileSync(new URL("src/app/apps/notion/notion-console.css",root),"utf8");
 test("library filters only already-loaded resources with explicit selection",()=>{
  assert.match(ui,/resourceFilters\.map\(filter=>/);
- assert.match(ui,/resources\.filter\(item=>item\.kind===resourceFilter\)/);
+ assert.match(ui,/resources\.filter\(item=>resourceFilter===/);
  assert.match(ui,/aria-pressed=\{resourceFilter===filter\.id\}/);
  assert.match(ui,/visibleResources\.map\(item/);
  assert.doesNotMatch(ui,/const mockResources|const demoResources|fakeNotionData/i);
@@ -37,14 +37,15 @@ test("partial content warns explicitly and pagination remains manual",()=>{
  assert.match(ui,/sourceLimited/);
 });
 test("native views remain scoped and do not impersonate full Kanban",()=>{
- assert.match(ui,/sourceKind:selected\.kind,resourceId:selected\.id/);
+ assert.match(ui,/sourceKind:scope\.kind,resourceId:scope\.id/);
  assert.match(ui,/metadata\.hasFilter/);
  assert.match(ui,/metadata\.sortCount/);
  assert.match(ui,/ATLAS ne reproduit ni la mise en page complète/);
 });
 test("unconnected state links to setup and never invents user resources",()=>{
  assert.match(page,/authorized\.length > 0 \? <NotionResourcesClient/);
- assert.match(page,/Aucun jeu de données fictif/);
+ assert.match(page,/Connectez Notion pour retrouver vos pages et vos bases/);
+ assert.doesNotMatch(page,/demoResources|mockResources/);
  assert.match(page,/href="#notion-connections"/);
  assert.match(page,/id="notion-connections"/);
  assert.match(page,/!configured/);

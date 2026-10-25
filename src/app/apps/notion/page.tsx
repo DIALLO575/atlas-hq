@@ -5,10 +5,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notionConnectSettings, notionTokenVault } from "@/lib/notion/connect";
 import "./notion-console.css";
 import "./notion-mobile-workspace.css";
+import "./notion-minimal.css";
 
 export const dynamic = "force-dynamic";
 const feedback: Record<string,string> = {
-  connected: "Connexion enregistrée. Vérifiez les ressources pour confirmer les droits réels chez Notion.",
+  connected: "Notion connecté.",
   "invalid-state": "Cette tentative OAuth a expiré ou n'est pas valide.",
   denied: "Autorisation Notion annulée.",
   unavailable: "Connexion non confirmée. Aucun accès Notion n'est présumé.",
@@ -55,7 +56,7 @@ export default async function NotionPage({
       </Link>
       <span className="nt-phone-brand-mark" aria-hidden="true">N</span>
       <div className="nt-phone-app-name"><strong>Notion</strong>
-        <small>dans ATLAS · Lecture seule</small></div>
+        <small>Lecture seule</small></div>
       <a className="nt-phone-app-settings" href="#notion-connections">
         Connexion
       </a>
@@ -64,58 +65,26 @@ export default async function NotionPage({
       <Link href="/apps">Mes Apps</Link><span aria-hidden="true">/</span>
       <strong>Notion</strong>
     </nav>
-    <header className="nt-hero">
-      <div className="nt-hero-mark" aria-hidden="true">N</div>
-      <div className="nt-hero-copy">
-        <span className="nt-kicker">MES APPS / CENTRE DE CONTRÔLE</span>
-        <h1>Notion, sous contrôle.</h1>
-        <p>Retrouvez vos ressources et vos vraies vues Notion depuis ATLAS.
-          Consultez les aperçus, vérifiez les accès et ouvrez les vues originales —
-          sans recopier vos bases de données.</p>
-        <div className="nt-hero-tags"><span>Pages et documents</span>
-          <span>Images et PDF</span><span>Bases et vues</span>
-          <span>Lecture seule</span></div>
-      </div>
-      <div className="nt-hero-badge"><span className="nt-hero-dot"/>
-        {authorized.length > 0 ? "Connexion ATLAS enregistrée" : "Aucun accès fournisseur confirmé"}</div>
+    <header className="nt-workspace-header">
+      <div className="nt-wordmark"><span aria-hidden="true">N</span><h1>Notion</h1></div>
+      <a className="nt-button nt-button-quiet" href="#notion-connections">Connexions</a>
     </header>
     {params.notion && feedback[params.notion] &&
       <p className="nt-banner" role="status">{feedback[params.notion]}</p>}
     {membershipError && <p className="nt-banner" role="alert">Impossible de lire vos workspaces ATLAS.</p>}
     {connectionsError && <p className="nt-banner" role="alert">Le statut des connexions ne peut pas être vérifié.</p>}
-    <section className="nt-summary" aria-label="État de l’intégration">
-      <div><span className="nt-kicker">CONNEXIONS ENREGISTRÉES</span>
-        <strong>{authorized.length}</strong><p>L&apos;accès réel reste à vérifier.</p></div>
-      <div><span className="nt-kicker">VUES ET APERÇUS</span>
-        <strong>À la demande</strong><p>Résultats Notion, sans import.</p></div>
-      <div><span className="nt-kicker">MODE D&apos;ACCÈS</span>
-        <strong>REST · Lecture</strong><p>Pas d’écriture, webhook ou agent actif.</p></div>
-    </section>
     {authorized.length > 0 ? <NotionResourcesClient connections={authorized}/> :
       <section className="nt-empty-hub" aria-label="Intégration en attente">
-        <div className="nt-empty-art" aria-hidden="true"><span>N</span><i/><i/><i/></div>
-        <div><span className="nt-kicker">APERÇU NON DISPONIBLE</span>
-          <h2>Votre espace Notion apparaîtra ici.</h2>
-          <p>Une fois l&apos;OAuth REST activé et une connexion de test autorisée, ATLAS
-            affichera uniquement les pages, bases et vues que Notion partage réellement
-            avec cette connexion. Aucun jeu de données fictif n’est présenté.</p>
-          <div className="nt-empty-features" aria-label="Fonctions accessibles après autorisation">
-            <span>▤ Pages et documents</span><span>▧ Images et fichiers</span>
-            <span>▦ Bases et vues enregistrées</span>
-          </div>
-          <a href="#notion-connections" className="nt-button nt-button-dark">
-            Gérer les connexions ↓</a>
-          <p className="nt-empty-note">{!configured
-            ? "Configuration OAuth serveur désactivée ou incomplète."
-            : "Aucune connexion Notion personnelle active pour cet espace ATLAS."}</p>
+        <div><h2>Votre espace Notion</h2>
+          <p>Connectez Notion pour retrouver vos pages et vos bases.</p>
+          <a href="#notion-connections" className="nt-button nt-button-dark">Connecter Notion ↗</a>
+          {!configured && <p className="nt-empty-note">Connexion momentanément indisponible.</p>}
         </div>
       </section>}
-    <section id="notion-connections" className="nt-setup" aria-label="Gestion des connexions Notion">
-      <div><span className="nt-kicker">CONNEXIONS ET AUTORISATIONS</span>
-        <h2>Gérer les espaces accessibles</h2>
-        <p>Seuls les propriétaires et administrateurs ATLAS peuvent créer une connexion.
-          Le partage des pages et bases se règle directement dans Notion.</p>
-      </div>
+    <details id="notion-connections" className="nt-connection-settings">
+      <summary>Connexions et accès</summary>
+      <div className="nt-setup">
+      <div><h2>Espaces connectés</h2><p>Gérez ici vos connexions Notion.</p></div>
       <div className="nt-workspaces">{workspaces.length === 0 ?
         <p>Aucun workspace ATLAS disponible pour ce compte.</p> :
         workspaces.map(workspace => <div className="nt-workspace" key={workspace.id}>
@@ -129,8 +98,7 @@ export default async function NotionPage({
           </form>
         </div>)}
       </div>
-    </section>
-    <p className="nt-footer-note">Notion reste la source de vérité. ATLAS ne duplique
-      ni les bases, ni les vues et ne lance aucun synchroniseur en arrière-plan.</p>
+      </div>
+    </details>
   </main></AppShell>;
 }
