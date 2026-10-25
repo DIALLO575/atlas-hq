@@ -72,7 +72,7 @@ test("engine listing shows n8n as preconnection but never configured or online",
     read("../src/components/engines-hub.tsx"),
   ]);
   assert.match(route, /requireEngineWorkspace\(workspaceId\)/);
-  assert.match(route, /resolveN8nReadOnlyConfig\(process\.env, workspaceId\)/);
+  assert.match(route, /resolveN8nReadOnlyConfig\(process\.env, workspaceId \?\? ""\)/);
   assert.match(route, /engine\.id === "n8n" \? \(n8nConfigured \? "preconnection" : "not-configured"\)/);
   assert.doesNotMatch(route, /testN8nConnection|listN8nWorkflows|n8nRequest/);
   assert.match(hub, /engine\.id === "n8n"/);
