@@ -55,11 +55,14 @@ jobs:
           -f tests/sql/engine-outbox-fencing-checks.sql
           -f supabase/proposals/engine-agent-request-v1.sql
           -f tests/sql/engine-agent-request-checks.sql
+          -f tests/sql/engine-team-request-checks.sql
 
       - name: Verify concurrent agent-profile request idempotence
         env:
           ATLAS_ENGINE_DISPOSABLE_TEST: "1"
-        run: bash tests/sql/engine-agent-request-concurrency.sh
+        run: |
+          bash tests/sql/engine-agent-request-concurrency.sh
+          bash tests/sql/engine-team-request-concurrency.sh
 
   github-studio-ledger-postgres:
     runs-on: ubuntu-latest

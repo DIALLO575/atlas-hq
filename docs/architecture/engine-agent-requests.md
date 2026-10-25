@@ -67,3 +67,10 @@ champs forgés, profils invalides, gate membership, paramètres RPC exacts et er
 expurgées. PG17 jetable vérifie digest/résumé immuables, rejeu, cross-tenant,
 reviewer distinct, décision PR40 sans dispatch, sessions révoquées/expirées, rôle
 retiré, rollback d'audit et concurrence deux connexions. Pas de test live MAUSBOT.
+
+## Extension équipes en proposition
+
+La tranche SHA128 réutilise la transaction des demandes via des wrappers à
+primitive fixe et ajoute une validation profonde des profils d'équipe.
+Voir [Préparation d'équipe](engine-team-requests.md). Cette extension dépend
+de PR51 ; elle ne constitue pas une migration supplémentaire déjà appliquée.
