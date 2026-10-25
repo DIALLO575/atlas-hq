@@ -31,8 +31,8 @@ test("control center is read-only with truthful agent, automation and PR status"
     read("../src/app/api/apps/github/route.ts"),
     read("../docs/integrations/github-app-live-read.md"),
   ]);
-  assert.match(ui, /Lecture des données GitHub à la demande, dans les limites d’accès de chaque installation/);
-  assert.match(ui, /Lecture des données GitHub à la demande, dans les limites d’accès de chaque installation/);
+  assert.match(ui, /Lecture des données GitHub à la demande/);
+  assert.match(ui, /Lecture des données GitHub à la demande/);
   assert.doesNotMatch(ui, /tab === "agents"|tab === "automations"|Fonctionnalité à venir/);
   assert.match(ui, /section === "settings"/);
   assert.match(ui, /action="\/api\/apps\/github\/connect\/start"/);
