@@ -1,3 +1,5 @@
+> **Mise à jour du 25/10/2026 :** les primitives avancées Notion V2 sont dans un **candidat détaché testé localement**, non fusionné, non déployé, sans OAuth réel. Voir le [bilan actuel, les limites et la recette](../operations/notion-v2-etat-reel-et-recette-2026-10-25.md). Les étapes historiques ci-dessous restent datées.
+
 > **Release update (2026-10-24):** All four migrations have now been applied on the official ATLAS Supabase project with the user's authorization. Earlier entries in this document describe pre-release states; the authoritative release record is [the Notion Supabase/Main release note](../operations/notion-supabase-main-release-2026-10-24.md). Notion OAuth live testing is still outstanding.
 
 # ATLAS × Notion — implementation contract (SHA-111 / SHA-121)
