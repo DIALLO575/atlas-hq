@@ -145,7 +145,8 @@ test("network failure and hanging requests are normalized and bounded", async ()
 });
 
 test("response shape, item types, content-type, cursor and size are strict", async () => {
-  await assert.rejects(listN8nWorkflows(config,{limit:1},mk(good({data:[wf("w1"),wf("w2")],nextCursor:null}))),isError("N8N_RESPONSE_INVALID"));\n  for (const payload of [[], null, {data:{}}, {data:[{}]}, {data:Array(101).fill(wf())}, {data:[], nextCursor:23}, {data:[],nextCursor:"evil\n"}]) {
+  await assert.rejects(listN8nWorkflows(config,{limit:1},mk(good({data:[wf("w1"),wf("w2")],nextCursor:null}))),isError("N8N_RESPONSE_INVALID"));
+  for (const payload of [[], null, {data:{}}, {data:[{}]}, {data:Array(101).fill(wf())}, {data:[], nextCursor:23}, {data:[],nextCursor:"evil\n"}]) {
     await assert.rejects(listN8nWorkflows(config,{},mk(good(payload))),isError("N8N_RESPONSE_INVALID"));
   }
   await assert.rejects(listN8nWorkflows(config,{},mk(new Response("not json",{headers:{"content-type":"text/plain"}}))),isError("N8N_RESPONSE_INVALID"));
