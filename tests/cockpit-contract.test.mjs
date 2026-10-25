@@ -19,6 +19,7 @@ const [shell, apps, agents, search, loading, errors, demoData, workspaces, missi
   read("../src/app/settings/page.tsx"),
 ]);
 const workspacesDashboard = await read("../src/components/workspaces-dashboard.tsx");
+const agentsWorkspace = await read("../src/components/agents-workspace.tsx");
 
 test("cockpit navigation exposes six primary destinations and transversal access", () => {
   for (const route of ["/", "/workspaces", "/missions", "/agents", "/apps", "/inbox"]) assert.ok(shell.includes(`href: "${route}"`));
@@ -54,9 +55,12 @@ test("premium Mes Apps preserves its directory and offers the real GitHub connec
   assert.match(apps, /<AppsDirectory/);
   assert.match(apps, /<AppsDirectory githubConfigured/);
   assert.doesNotMatch(apps, /<GitHubWorkspacePicker|from\("workspace_members"\)|auth\.getUser\(\)/);
-  assert.match(agents, /description="Inventaire live des bots, groupes et modèles d’équipe MAUSBOT/);
-  assert.match(agents, /<AgentRequestForm\s*\/>/);
-  assert.match(agents, /href="\/engines"/);
+  assert.match(agents, /<AgentsWorkspace/);
+  assert.match(agentsWorkspace, /view=inventory/);
+  assert.ok(agentsWorkspace.includes("channels.messages.list"));
+  assert.match(agentsWorkspace, /<AgentRequestForm/);
+  assert.ok(agentsWorkspace.includes('href="/engines"'));
+  assert.match(agentsWorkspace, /HTTP 423/);
   assert.match(demoData, /export const demoApps/);
   assert.match(demoData, /Google Calendar/);
 });
