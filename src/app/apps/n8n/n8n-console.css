@@ -251,3 +251,20 @@
   .n8n-status-tag[data-status="error"],.n8n-status-tag[data-status="missing"]{background:#542c34;color:#ffbec5}
   .n8n-status-tag[data-status="running"],.n8n-status-tag[data-status="waiting"]{background:#554027;color:#ffdaa3}
 }
+
+
+/* API Admin n8n : propriétaire Atlas, passerelle HTTP publique. */
+.n8n-admin-presets{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 20px;}
+.n8n-admin-form{display:flex;flex-direction:column;gap:14px;}
+.n8n-admin-form label{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:600;}
+.n8n-admin-row{display:grid;grid-template-columns:minmax(110px,1fr) minmax(0,4fr);gap:12px;}
+.n8n-admin-form input,.n8n-admin-form select,.n8n-admin-form textarea{
+box-sizing:border-box;width:100%;padding:10px 12px;border-radius:9px;
+border:1px solid var(--border,#ded0d1);background:var(--surface,#fff);color:inherit;font:inherit;font-size:14px;}
+.n8n-admin-form textarea{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;}
+.n8n-admin-form .n8n-primary-cta{align-self:start;}
+.n8n-admin-response{margin-top:18px;min-width:0;}
+.n8n-admin-response pre{overflow:auto;max-height:55vh;white-space:pre;padding:18px;
+background:var(--surface-secondary,#f9f4f4);border-radius:12px;font-size:12px;}
+.n8n-admin-response small{display:block;margin-top:10px;}
+@media(max-width:640px){.n8n-admin-row{grid-template-columns:1fr;}}

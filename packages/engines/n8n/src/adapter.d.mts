@@ -47,3 +47,16 @@ export function getN8nExecutionStatus(
   config: N8nReadOnlyConfig, workflowId: string, executionId: string,
   deps?: N8nReadOnlyDeps,
 ): Promise<N8nExecutionStatus>;
+
+export type N8nPublicAdminMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type N8nPublicAdminRequest = Readonly<{
+  method: N8nPublicAdminMethod;
+  path: string;
+  query?: Readonly<Record<string, string | number | boolean>>;
+  body?: Record<string, unknown> | unknown[];
+}>;
+
+/** Public /api/v1 only; caller must verify owner workspace & mutation consent. */
+export function callN8nPublicAdminApi(
+ config: N8nReadOnlyConfig, input: N8nPublicAdminRequest, deps?: N8nReadOnlyDeps
+): Promise<Record<string, unknown>>;

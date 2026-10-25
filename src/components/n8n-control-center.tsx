@@ -6,10 +6,11 @@ import { BrandLogo } from "@/components/brand-logo";
 import { Icon } from "@/components/icon";
 import { N8nWorkflowRegistry } from "@/components/n8n-workflow-registry";
 import { N8nExecutionRegistry } from "@/components/n8n-execution-registry";
+import { N8nAdminStudio } from "@/components/n8n-admin-studio";
 import type { N8nCoordinationView } from "../../packages/engines/n8n/src/coordination.mjs";
 import type { Workspace } from "@/lib/workspaces/contract";
 
-type Tab = "overview" | "workflows" | "executions" | "connection";
+type Tab = "overview" | "workflows" | "executions" | "connection" | "admin";
 type Instance = { id: string; label: string; transport: string; registryState: string; createdAt: string };
 type Snapshot = {
   engine: "n8n"; state: "not-configured" | "preconnection" | "configuration-error";
@@ -24,6 +25,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "workflows", label: "Workflows" },
   { id: "executions", label: "Exécutions" },
   { id: "connection", label: "Connexion & sécurité" },
+  { id: "admin", label: "API Admin" },
 ];
 const errorMessages: Record<string, string> = {
   AUTH_REQUIRED: "Votre session a expiré. Reconnectez-vous à Atlas.",
@@ -139,8 +141,8 @@ export function N8nControlCenter({ workspaces, initialWorkspaceId, workspaceLoad
           <div><p className="n8n-eyebrow">ATLAS / MES APPS / AUTOMATISATION</p>
             <h1>n8n <span>Operations Studio</span></h1></div>
         </div>
-        <p className="n8n-hero-description">Retrouvez vos instances, explorez les workflows référencés et
-          suivez les exécutions enregistrées, depuis une interface Atlas unifiée.</p>
+        <p className="n8n-hero-description">Retrouvez vos instances, consultez les registres Atlas et pilotez directement l’API publique
+          de votre propre n8n depuis la console administrateur.</p>
         <div className="n8n-hero-actions">
           <button className="n8n-primary-cta" type="button" onClick={() => setActiveTab("connection")}>
             <Icon name="settings" /> Gérer l’instance <Icon name="arrow-right" />
@@ -150,7 +152,7 @@ export function N8nControlCenter({ workspaces, initialWorkspaceId, workspaceLoad
           </button>
         </div>
         <div className="n8n-hero-proof"><Icon name="shield-check" />
-          Registre Atlas authentifié · Exécution n8n verrouillée</div>
+          Registre Atlas authentifié · API Admin propriétaire · exécution autonome verrouillée</div>
       </div>
       <div className="n8n-hero-diagram" aria-label="Architecture préparatoire, moteur non connecté">
         <span className="n8n-diagram-kicker">ARCHITECTURE / PRÉCONNEXION</span>
@@ -219,6 +221,11 @@ export function N8nControlCenter({ workspaces, initialWorkspaceId, workspaceLoad
             <strong>Exécutions</strong><small>Examiner les statuts et missions liées</small>
             <span className="n8n-capability-link">Voir l’historique <Icon name="arrow-right" /></span>
           </button>
+          <button type="button" onClick={() => setActiveTab("admin")}>
+            <span className="n8n-capability-icon"><Icon name="settings" /></span>
+            <strong>API Admin</strong><small>Appeler votre n8n avec les droits du propriétaire</small>
+            <span className="n8n-capability-link">Console API <Icon name="arrow-right" /></span>
+          </button>
           <button type="button" onClick={() => setActiveTab("connection")}>
             <span className="n8n-capability-icon"><Icon name="shield-check" /></span>
             <strong>Connexion</strong><small>Enregistrer l’instance et consulter la sécurité</small>
@@ -257,6 +264,10 @@ export function N8nControlCenter({ workspaces, initialWorkspaceId, workspaceLoad
               <Icon name="arrow-up-right" /></Link>)}
         </div>
       </section>
+    </div>}
+
+    {activeTab === "admin" && <div className="n8n-workarea" role="tabpanel">
+      <N8nAdminStudio workspaceId={workspaceId} isOwner={workspace?.role === "owner"} />
     </div>}
 
     {activeTab === "workflows" && <div className="n8n-workarea" role="tabpanel">
