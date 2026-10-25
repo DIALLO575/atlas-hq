@@ -51,14 +51,14 @@ test("missions and inbox are real workflow pages; transversal demos remain hones
   assert.doesNotMatch(chief, /<DemoNotice\/>|<EmptyPanel/);
 });
 
-test("premium Mes Apps preserves its directory and offers the real GitHub connector", () => {
+test("premium Mes Apps preserves its directory and offers the real GitHub connector", async () => {
   assert.match(apps, /<AppsDirectory/);
   assert.match(apps, /<AppsDirectory githubConfigured/);
   assert.doesNotMatch(apps, /<GitHubWorkspacePicker|from\("workspace_members"\)|auth\.getUser\(\)/);
   assert.match(agents, /<AgentsWorkspace/);
   assert.match(agentsWorkspace, /view=inventory/);
   assert.ok(agentsWorkspace.includes("/api/engines/mausbot/updates?"));
-  const updates = readFileSync(new URL("../src/app/api/engines/mausbot/updates/route.ts", import.meta.url), "utf8");
+  const updates = await read("../src/app/api/engines/mausbot/updates/route.ts");
   assert.ok(updates.includes("channels.messages.list"));
   assert.match(agentsWorkspace, /atlas-team-grid/);
   assert.match(agentsWorkspace, /atlas-team-member-grid/);
