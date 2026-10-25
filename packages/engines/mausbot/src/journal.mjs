@@ -1,6 +1,7 @@
 // WORLD RADAR "journal du matin" — pure read-side parsing. No network, no secrets.
 export const JOURNAL_CATEGORIES = Object.freeze([
   { id: "ia", label: "IA & outils" },
+  { id: "ia-sur-x", label: "IA sur X" },
   { id: "commerce", label: "Commerce & logistique" },
   { id: "guinee", label: "Guinée" },
   { id: "afrique", label: "Afrique" },
@@ -10,14 +11,16 @@ export const JOURNAL_CATEGORIES = Object.freeze([
 const CERTAINTY = ["elevee", "moyenne", "faible"];
 const STATUS = ["confirme", "rapporte", "a_verifier"];
 const ID = /^[A-Za-z0-9._:-]{1,120}$/;
+export function journalItemKey(editionId, itemId) { return JSON.stringify([editionId, itemId]); }
 
 function fold(value) {
   return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
-/** Map a free topic (JSON enum or Markdown heading) to one of six categories, or null. */
+/** Map a free topic (JSON enum or Markdown heading) to one of the journal categories, or null. */
 export function normalizeJournalTopic(raw) {
   const t = fold(raw);
   if (!t) return null;
+  if (/^ia[- ]sur[- ]x$|^x$|^twitter(?:\s*\/\s*x)?$/.test(t)) return "ia-sur-x";
   if (/\b(ia|ai|intelligence artificielle|llm|outils?|tech|technolog)/.test(t)) return "ia";
   if (/guinee|conakry/.test(t)) return "guinee";
   if (/afrique|africa|cedeao|ecowas/.test(t)) return "afrique";
@@ -49,7 +52,7 @@ function prose(value, max) {
 function hostName(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return null; } }
 
 export const JOURNAL_SCHEMA_VERSION = "1";
-export const JOURNAL_TOPICS = Object.freeze(["ia", "commerce", "guinee", "afrique", "monde", "geopolitique", "economie", "tech"]);
+export const JOURNAL_TOPICS = Object.freeze(["ia", "ia-sur-x", "commerce", "guinee", "afrique", "monde", "geopolitique", "economie", "tech"]);
 export const JOURNAL_PRODUCERS = Object.freeze(["morgans", "grok-bot"]);
 export const COVER_PATH = /^[A-Za-z0-9._-]{1,120}\/[A-Za-z0-9._-]{1,150}\.(webp|png|jpg|jpeg)$/;
 /** cover = { storage_path, generated, alt, credit, source_name } — storage_path is relative to the private bucket. */

@@ -35,6 +35,8 @@ test("journal-mcp v1 schema: 6 tools, checks enum and SQL aligned", () => {
   const s = JSON.parse(readFileSync(new URL("../packages/engines/mausbot/schema/journal-mcp.v1.schema.json", import.meta.url), "utf8"));
   assert.deepEqual(Object.keys(s.tools), ["publish_edition", "get_edition", "search_items", "set_item_state", "correct_item", "edition_status"]);
   assert.deepEqual(s["x-producers"], ["morgans", "grok-bot"]);
+  assert.deepEqual(s.tools.search_items.input.properties.topic.enum, ["ia", "ia-sur-x", "commerce", "guinee", "afrique", "monde", "geopolitique", "economie", "tech"]);
+  assert.deepEqual(s.tools.correct_item.input.properties.changes.properties.topic.enum, ["ia", "ia-sur-x", "commerce", "guinee", "afrique", "monde", "geopolitique", "economie", "tech"]);
   assert.deepEqual(s.tools.publish_edition.output.oneOf[0].properties.checks.items.properties.check.enum, [...QUALITY_CHECKS]);
   const sql = readFileSync(new URL("../supabase/migrations/20261025223000_atlas_journal_audit.sql", import.meta.url), "utf8");
   for (const c of QUALITY_CHECKS) assert.match(sql, new RegExp("'" + c + "'"));

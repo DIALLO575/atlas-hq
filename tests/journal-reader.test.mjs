@@ -54,8 +54,11 @@ test("reading helpers", () => {
   assert.equal(swipeDirection(-100, 90), 0); assert.equal(swipeDirection(-30, 0), 0);
   const list = [{ id: "a" }, { id: "b" }];
   assert.equal(neighbor(list, "a", 1).id, "b"); assert.equal(neighbor(list, "a", -1), null);
+  const editions = [{ id: "same", key: "m:same", editionId: "m", category: "ia", state: "new" }, { id: "same", key: "g:same", editionId: "g", category: "ia", state: "read" }];
+  assert.equal(neighbor(editions, "g:same", -1).editionId, "m");
+  assert.deepEqual(bulkDonePlan(editions, "ia"), [{ key: "m:same", id: "same", editionId: "m", previous: "new" }, { key: "g:same", id: "same", editionId: "g", previous: "read" }]);
   const plan = bulkDonePlan([{ id: "a", editionId: "e", category: "ia", state: "new" }, { id: "b", editionId: "e", category: "ia", state: "done" }, { id: "c", editionId: "e", category: "monde", state: "read" }], "ia");
-  assert.deepEqual(plan, [{ id: "a", editionId: "e", previous: "new" }]);
+  assert.deepEqual(plan, [{ key: JSON.stringify(["e", "a"]), id: "a", editionId: "e", previous: "new" }]);
 });
 
 test("contract v1: optional featured is backward compatible", () => {

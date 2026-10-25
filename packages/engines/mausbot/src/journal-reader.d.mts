@@ -9,5 +9,5 @@ export const FONT_STEPS: readonly number[];
 export function stepFont(index: number, delta: number): number;
 export const READER_THEMES: readonly ("light" | "sepia" | "dark")[];
 export function swipeDirection(dx: number, dy: number, opts?: { min?: number }): -1 | 0 | 1;
-export function neighbor<T extends { id: string }>(list: T[], id: string, dir: number): T | null;
-export function bulkDonePlan<T extends { id: string; editionId: string; category: string; state: "new" | "read" | "done" }>(items: T[], category: string): { id: string; editionId: string; previous: "new" | "read" }[];
+export function neighbor<T extends { id: string; key?: string }>(list: T[], id: string, dir: number): T | null;
+export function bulkDonePlan<T extends { id: string; key?: string; editionId: string; category: string; state: "new" | "read" | "done" }>(items: T[], category: string): { key: string; id: string; editionId: string; previous: "new" | "read" }[];

@@ -212,6 +212,7 @@
           "topic": {
             "enum": [
               "ia",
+              "ia-sur-x",
               "commerce",
               "guinee",
               "afrique",
@@ -283,6 +284,7 @@
                 "topic": {
                   "enum": [
                     "ia",
+                    "ia-sur-x",
                     "commerce",
                     "guinee",
                     "afrique",
@@ -443,6 +445,7 @@
               "topic": {
                 "enum": [
                   "ia",
+                  "ia-sur-x",
                   "commerce",
                   "guinee",
                   "afrique",
