@@ -36,3 +36,9 @@ Versions en mémoire seulement, historiques CLI et navigateur distincts; perdues
 Prochain petit pas : revue de cette frontière et CI, puis transport authentifié workspace/page/acteur + stockage versionné et audit, avec tests de deux utilisateurs/workspaces et refus d’activation hors rôle; ensuite brancher explicitement la capacité à un runtime agent autorisé sans affaiblir les gates existants. Élargir le catalogue aux composants métier Atlas uniquement avec accès aux données déjà contrôlé. Hors catalogue : branche/PR de code distincte.
 
 Aucun merge, achat, crédit, secret prod, migration ou déploiement production.
+
+## Tranche primitives seulement — 25 octobre 15h UTC
+
+Instruction actuelle : aucun Browser, aucune recette visuelle, aucun ajout runtime/persistance. Main revérifié c7ec18e, tête de départ b26a0bd (CI 40202324129 success). Deux défauts corrigés : diff retourné partageait ses blocs avec les versions internes; comparaison des props dépendait de leur ordre. Ajout contrat de commande et union typée des blocs/props; catalogue et référence gelés récursivement; rejet des tableaux creux, objets non simples et clés symboles. Aucun fichier de rendu ou runtime changé dans cette tranche.
+
+Tests ciblés : 11/11. Couvrent frontière CLI, composition/add/remove/restore, validations négatives, snapshots et diff détachés, comparaison indépendante de l’ordre des propriétés, échec atomique sans incrément de version, limite de texte/historique, isolation de sessions, catalogue immuable, CLI malformé/trop volumineux. git diff --check OK. Typecheck/lint locaux toujours indisponibles sans dépendances; aucune installation ni build VPS. CI nouvelle tête à consulter. Les limites de persistance/autorisation et rendu non vérifié restent inchangées.
