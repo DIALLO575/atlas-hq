@@ -31,3 +31,7 @@ Les planchers d'outils définis dans `packages/engines/n8n/src/mcp-client.mjs` n
 Le merge peut déclencher Vercel automatiquement selon la configuration du projet. Vérifier séparément le SHA build READY, les pages du domaine approprié, les permissions RLS et la présence persistante du verrou SQL. Aucun GO ni activation automatique n’est produit par cette PR. Aucune migration SQL nouvelle exécutée et aucun secret n’est ajouté au dépôt.
 
 Lien de certification : `docs/integrations/n8n-pr10-certification.md`. Runbook de rollback : `docs/runbooks/n8n-pr10-rollout-rollback.md`.
+
+### Réconciliation postérieure : nouvelle expérience Agents / Engine Hub (#78)
+
+`main` a avancé après la première CI, avec un nouvel `AgentsWorkspace` à sélection de workspace côté client et un Engine Hub visuel modernisé. La consolidation préserve **intégralement** le nouveau `src/app/agents/page.tsx`, sa navigation et ses contrats, et place le panneau n8n **dans le même `AgentsWorkspace` sous le workspace effectivement sélectionné**. Le contrôle de changement de tenant reste dans le composant n8n (annulation des requêtes précédentes). Le Hub conserve ses logos MAUSBOT/Hermes et ajoute une tuile n8n plus un lien vers Mes Apps, sans le rendre disponible à l'exécution. Les tests de coordination n8n ciblent désormais ce composant partagé, et les tests existants MAUSBOT doivent rester verts.

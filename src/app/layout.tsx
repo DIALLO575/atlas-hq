@@ -14,6 +14,7 @@ import "./dock-studio.css";
 import "./route-performance.css";
 import "./chief-command-deck.css";
 import "./engine-hub.css";
+import "./mausbot-needs-you.css";
 
 export const metadata: Metadata = {
   title: "Atlas — Agents, apps et missions",

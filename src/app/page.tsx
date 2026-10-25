@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
 import { ChiefComposer } from "@/components/chief-composer";
 import { BrandLogo } from "@/components/brand-logo";
+import { MausbotNeedsYou } from "@/components/mausbot-needs-you";
 import { atlasApps } from "@/lib/app-catalog";
 
 const summaries = [
@@ -42,12 +43,8 @@ export default function Home() {
               <div className="atlas-panel-heading-title"><span className="atlas-heading-icon atlas-icon-rose"><Icon name="inbox" /></span><h2 id="atlas-attention-heading">Besoin de vous</h2></div>
               <Link className="atlas-subtle-link" href="/inbox">Tout voir <Icon name="arrow-right" /></Link>
             </div>
-            <div className="atlas-attention-empty">
-              <span className="atlas-empty-symbol"><Icon name="inbox" /></span>
-              <strong>Vos approbations arriveront ici.</strong>
-              <p>Accès demandés, validations et décisions des agents : rien ne sera approuvé sans votre action.</p>
-            </div>
-            <div className="atlas-panel-footer"><span className="atlas-footnote-dot" /> Aucune source d’approbation connectée <Link href="/apps">Connecter <Icon name="arrow-right" /></Link></div>
+            <MausbotNeedsYou mode="home" />
+            <div className="atlas-panel-footer"><span className="atlas-footnote-dot" /> Besoins MAUSBOT en lecture privée · validations ATLAS distinctes <Link href="/inbox">Inbox <Icon name="arrow-right" /></Link></div>
           </section>
 
           <ChiefComposer />

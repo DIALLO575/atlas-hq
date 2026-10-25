@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
+import { MausbotNeedsYou } from "@/components/mausbot-needs-you";
 import { decideAtlasMissionReview } from "@/app/missions/actions";
 import { readAtlasWorkflow, type AtlasReview } from "@/lib/atlas-workflow";
 
@@ -63,7 +64,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     <header className="atlas-flow-hero">
       <div><p className="atlas-overline">CENTRE DE DÉCISIONS / ATLAS HQ</p>
         <h1>Inbox <span aria-hidden="true">✦</span></h1>
-        <p>Les validations qui ont besoin de vous. Rien de plus.</p></div>
+        <p>Vos décisions ATLAS et les points MAUSBOT qui requièrent votre attention, avec leurs sources et permissions distinctes.</p></div>
       {data.status === "ready" && data.selected && <Link href={"/missions?workspaceId=" + encodeURIComponent(data.selected.id)}
         className="atlas-flow-primary"><Icon name="activity"/> Voir les missions <Icon name="arrow-right"/></Link>}
     </header>
@@ -80,6 +81,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
             aria-current={space.id === data.selected?.id ? "page" : undefined}
             href={inboxPath(space.id)}>{space.name}</Link>)}</div>
         <Link className="atlas-flow-workspace-all" href="/workspaces">Gérer <Icon name="arrow-up-right"/></Link></div>
+      <MausbotNeedsYou workspaceId={data.selected.id} />
       {params.result && <div role="status" className={"atlas-flow-feedback" + (params.result === "error" ? " is-error" : "")}>
         {params.result === "decided" ? "Votre décision a été enregistrée." : "Impossible de traiter la demande. Elle a peut-être déjà été résolue."}</div>}
       {(() => {
@@ -100,7 +102,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           </section>
           <div className="atlas-flow-columns atlas-flow-inbox-columns">
             <section className="atlas-flow-main">
-              <div className="atlas-flow-section-heading"><div><h2>Centre de validation</h2>
+              <div className="atlas-flow-section-heading"><div><h2>Validations ATLAS</h2>
                 <p>Demandes issues de vraies missions, selon vos droits.</p></div>
                 <span className="atlas-flow-count">{visible.length} élément{visible.length > 1 ? "s" : ""}</span>
               </div>
@@ -134,7 +136,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                 <Link href={"/missions?workspaceId=" + encodeURIComponent(data.selected.id)}>
                   Ouvrir Missions <Icon name="arrow-right"/></Link>
               </section>
-              <p className="atlas-flow-footnote">Les notifications d’agents et les événements d’applications seront ajoutés lorsqu’un service réel les alimentera.</p>
+              <p className="atlas-flow-footnote">Les besoins MAUSBOT sont consultés séparément via une route privée. Les validations ATLAS gardent leurs propres droits et décisions.</p>
             </aside>
           </div>
           {data.reviews.length === 200 && <p className="atlas-flow-footnote">Les validations affichées sont limitées aux 200 plus récentes.</p>}

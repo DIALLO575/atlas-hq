@@ -138,16 +138,16 @@ test("shared BFF authenticates workspace, limits queries and avoids provider cal
 test("Chief, Agents and Missions all use the same component and endpoint",async()=>{
  const [chief,agents,missions,ui]=await Promise.all([
   read("../src/app/chief/page.tsx"),
-  read("../src/app/agents/page.tsx"),
+  read("../src/components/agents-workspace.tsx"),
   read("../src/app/missions/page.tsx"),
   read("../src/components/n8n-coordination-panel.tsx"),
  ]);
  assert.match(chief,/<N8nCoordinationPanel workspaceId=\{data\.selected\.id\} scope="chief"/);
- assert.match(agents,/<N8nCoordinationPanel workspaceId=\{data\.selected\.id\} scope="agents"/);
+ assert.match(agents,/<N8nCoordinationPanel workspaceId=\{workspaceId\} scope="agents"/);
  assert.match(missions,/<N8nCoordinationPanel workspaceId=\{data\.selected\.id\} scope="missions"/);
  assert.match(missions,/data\.missions\.some\(m => m\.id === params\.missionId\)/);
- assert.match(agents,/readAtlasWorkflow\(params\.workspaceId\)/);
- assert.match(agents,/Liaisons Agents ↔ Moteurs à certifier/);
+ assert.match(agents,/listWorkspaces\(\)/);
+ assert.match(agents,/<AgentRequestForm/);
  assert.match(ui,/fetch\("\/api\/apps\/n8n\/coordination\?"/);
  assert.match(ui,/credentials:"same-origin"/);
  assert.match(ui,/controller\.abort\(\)/);
