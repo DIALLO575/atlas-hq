@@ -7,16 +7,23 @@ modèle/outil et ne provisionne aucune équipe. KMS toujours différé.
 ## État de livraison
 
 Code proposé : formulaire `/agents`, API `/api/engines/agent-requests`, détails
-lisibles dans l'Inbox existante et SQL dans
-`supabase/proposals/engine-agent-request-v1.sql`.
-**Le SQL est une proposition testée en PostgreSQL jetable, pas une migration
-appliquée à Supabase.** Le POST échoue proprement tant que la RPC n'est pas installée.
-Aucune disponibilité Web ni E2E sur de vraies sessions ne découle du build.
+lisibles dans l'Inbox existante. La source SQL initiale reste dans
+`supabase/proposals/engine-agent-request-v1.sql`; la migration appliquée et
+versionnée est `supabase/migrations/20261025114614_atlas_engine_agent_request_v1.sql`.
 
-Avant application ultérieure : revue SQL, promotion en migration additive avec
-numéro officiel, contrôle du registre/projet cible, sauvegarde/procédure de retour,
-conseillers de sécurité et vérifications de privilèges. Ne pas rejouer aveuglément.
-Ne pas déployer ce parcours en production avant coordination schéma/API.
+**État DB vérifié le 25 octobre 2026 :** cette migration a été appliquée au projet
+Supabase ATLAS désigné comme production via le connecteur Supabase. L'historique
+contient la version `20261025114614`; `request_summary`, les RPC agent/équipe et
+la RPC de détails reviewer existent. Vérifications de privilèges : authenticated
+peut appeler les wrappers publics, anon ne le peut pas, les wrappers sont
+`SECURITY INVOKER`, le cœur générique privé n'est pas exécutable par authenticated,
+et le trigger d'immutabilité est présent. Aucune demande ni outbox n'a été créée
+pendant l'application.
+
+Le code applicatif de PR #60 est encore draft/non fusionné et son déploiement n'est
+pas confirmé. L'application SQL ne prouve ni disponibilité Web ni E2E avec de
+vraies sessions. La proposition est conservée comme référence historique; ne pas
+la rejouer. Les changements futurs passent par la migration versionnée.
 
 ## Parcours
 
@@ -55,7 +62,7 @@ SECURITY DEFINER avec search_path vide, anon sans EXECUTE. Aucun SELECT client
 sur la table privée approvals n'est ajouté. Le BFF utilise le client Supabase
 utilisateur, jamais service_role ; le body ne porte pas d'acteur/approbation.
 
-Restent : revue/application du SQL sur cible identifiée, tests vrais comptes/UI,
+Restent : déploiement coordonné du code, tests vrais comptes/UI,
 contrôle de l'état des ressources au moment de la future exécution, intégration
 avec worker/contexte/droits/outbox et création MAUSBOT autorisée. Les imports
 équipes, canaux et missions exécutables sont des tranches suivantes.

@@ -53,7 +53,7 @@ jobs:
           -f tests/sql/engine-worker-fencing-preflight.sql
           -f supabase/migrations/20261024205621_atlas_engine_outbox_fencing_v1.sql
           -f tests/sql/engine-outbox-fencing-checks.sql
-          -f supabase/proposals/engine-agent-request-v1.sql
+          -f supabase/migrations/20261025114614_atlas_engine_agent_request_v1.sql
           -f tests/sql/engine-agent-request-checks.sql
           -f tests/sql/engine-team-request-checks.sql
           -f supabase/proposals/engine-mission-agent-assignment-v1.sql

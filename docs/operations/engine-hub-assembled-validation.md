@@ -101,3 +101,27 @@ facturation horaire). Ce résultat est une estimation retournée par le fourniss
 pas une facture ni la création d'une ressource. Sa devise et ses conditions
 restent à confirmer dans Supabase avant création. Aucune branche n'a été créée;
 attendre l'accord explicite sur les frais.
+
+## Migration de demandes agent/équipe appliquée en production — 25 octobre 2026
+
+À la demande explicite du Founder, la migration additive
+`20261025114614_atlas_engine_agent_request_v1` a été appliquée au projet Supabase
+ATLAS désigné comme production. L'historique Supabase confirme cette version.
+La colonne `request_summary`, les RPC authentifiées de demande agent/équipe et
+lecture reviewer, ainsi que le trigger d'immutabilité ont été vérifiés après
+l'application. Les wrappers sont `SECURITY INVOKER`; authenticated a EXECUTE,
+anon n'en a pas; le cœur générique privé n'est pas appelable par authenticated.
+Les advisors de sécurité n'ont pas ajouté de nouveau finding (19 avis INFO RLS
+préexistants sur des tables sans policy, y compris des tables privées fail-closed).
+
+Cette migration n'a inséré aucune demande et n'a créé aucun enregistrement
+d'outbox. La création réelle par deux comptes, la recette UI/Auth, l'expiration,
+le retrait de rôle/session, la concurrence et l'audit unique restent à tester.
+Le code PR #60 est encore draft/non fusionné et aucun déploiement n'est confirmé.
+La migration d'affectation mission→agent reste une proposition non appliquée;
+elle est séparée, privée et n'a pas encore de writer.
+
+Pendant le rapprochement, l'historique Supabase a également montré la migration
+`atlas_n8n_automation_registry` en version `20261025114449`, absente de main
+(`9d64498`). Elle n'a pas été appliquée par cette tranche; source et propriétaire
+doivent être rapprochés avant la prochaine synchronisation complète du schéma.

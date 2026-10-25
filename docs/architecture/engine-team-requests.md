@@ -23,8 +23,10 @@ provisionnement générique ou d'activation n'est ajouté.
 
 ## SQL partagé et défense en profondeur
 
-Le fichier **non appliqué** `supabase/proposals/engine-agent-request-v1.sql` est
-étendu plutôt que dupliquer la transaction de PR51. Des wrappers fixent
+La transaction partagée est désormais appliquée dans la migration
+`supabase/migrations/20261025114614_atlas_engine_agent_request_v1.sql`.
+La proposition historique `supabase/proposals/engine-agent-request-v1.sql` est
+étendue plutôt que de dupliquer la transaction de PR51. Des wrappers fixent
 `agents.create` ou `teams.import` ; le cœur privé partagé n'est pas exécutable
 par authenticated/anon. Les wrappers publics sont invoker ; leurs implémentations
 privées definer vérifient l'identité/session actuelle et appellent le cœur.
