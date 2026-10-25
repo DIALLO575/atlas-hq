@@ -1,4 +1,5 @@
 import { NotionBudgetError, waitForNotionBudget } from "./reliability.mjs";
+import { notionPagePropertyRequest, notionDataSourceQueryRequest } from "./read-primitives.mjs";
 /**
  * ATLAS Notion REST adapter — server-side, read-only V1.
  * Does not grant access: caller must obtain a verified provider token
@@ -160,7 +161,7 @@ export function createNotionReadClient({
             throw new NotionReadError("PROVIDER_UNAVAILABLE", 503);
           }
         }
-        const safeRetry = (status === 429 || status === 529 ||
+        const safeRetry = method !== "DELETE" && (status === 429 || status === 529 ||
           (method === "GET" && [500, 502, 503, 504].includes(status)));
         const jitter = Math.min(200, Math.floor(Math.max(0,
           Math.min(1, Number(random()) || 0)) * 200));
@@ -200,6 +201,11 @@ export function createNotionReadClient({
     if (cursor(startCursor)) search.set("start_cursor", startCursor);
     return search;
   }
+  // The pure builders validate inputs before any request reaches the provider.
+  function safeReadRequest(builder, args) {
+    try { return builder(args); }
+    catch { throw new NotionReadError("INVALID_INPUT", 400); }
+  }
   return Object.freeze({
     /** Notion search is by TITLE, not full-text. */
     async searchByTitle({ query = "", startCursor = null, size = 50, signal } = {}) {
@@ -229,10 +235,78 @@ export function createNotionReadClient({
       const result = requireObject(await call("POST", "/v1/views/" + uuid(id) +
         "/queries", { page_size: pageSize(size) }, signal));
       if (result.object !== "view_query" || !Array.isArray(result.results) ||
-          typeof result.has_more !== "boolean") {
+          typeof result.has_more !== "boolean" ||
+          typeof result.id !== "string" ||
+          !/^[a-zA-Z0-9_-]{1,128}$/.test(result.id) ||
+          (result.view_id != null && (typeof result.view_id !== "string" ||
+            result.view_id.replaceAll("-", "").toLowerCase() !==
+            id.replaceAll("-", "").toLowerCase()))) {
         throw new NotionReadError("INVALID_RESPONSE", 502);
       }
       return result;
+    },
+    /**
+     * Free only a short-lived provider view-query snapshot, NOT a view,
+     * database or user content. Notion documents this as a read-capability
+     * cleanup endpoint. Ambiguous DELETE responses are never replayed.
+     */
+    async releaseViewQuery(viewId, queryId, { signal } = {}) {
+      const view = uuid(viewId);
+      if(typeof queryId !== "string" ||
+         !/^[a-zA-Z0-9_-]{1,128}$/.test(queryId)) {
+        throw new NotionReadError("INVALID_INPUT",400);
+      }
+      const response = requireObject(await call("DELETE",
+        "/v1/views/" + view + "/queries/" + queryId,null,signal));
+      if(response.object!=="view_query" || response.deleted!==true ||
+         response.id!==queryId) {
+        throw new NotionReadError("INVALID_RESPONSE",502);
+      }
+      return true;
+    },
+    /**
+     * A property may be a singleton or a paginated list of property items.
+     * Raw provider data remains server-only; never serialize it to a browser.
+     */
+    async getPageProperty(pageId, propertyId, { startCursor = null, size = 30, signal } = {}) {
+      const req = safeReadRequest(notionPagePropertyRequest, {
+        pageId, propertyId, startCursor, size,
+      });
+      const result = await call(req.method, req.path, null, signal);
+      if (result.object === "list") return paginated(result);
+      if (result.object !== "property_item") {
+        throw new NotionReadError("INVALID_RESPONSE", 502);
+      }
+      return result;
+    },
+    /**
+     * Query rows via the current data_source endpoint, not legacy database
+     * query. POST is read-only and must never replay ambiguous 5xx or network.
+     */
+    async queryDataSource(dataSourceId, { startCursor = null, size = 30,
+      filter = null, sorts = [], isArchived = null, signal } = {}) {
+      const req = safeReadRequest(notionDataSourceQueryRequest, {
+        dataSourceId, startCursor, size, filter, sorts, isArchived,
+      });
+      return paginated(await call(req.method, req.path, req.body, signal));
+    },
+    /** Official v1 enhanced Markdown read. Raw provider data is server-only. */
+    async getPageMarkdown(id,{signal}={}) {
+      const requested=uuid(id);
+      const result=await call("GET","/v1/pages/"+requested+"/markdown",null,signal);
+      if(result.object!=="page_markdown" || typeof result.markdown!=="string" ||
+         typeof result.id!=="string" || !UUID.test(result.id) ||
+         result.id.toLowerCase().replaceAll("-","")!==requested.toLowerCase().replaceAll("-","") ||
+         typeof result.truncated!=="boolean" ||
+         !Array.isArray(result.unknown_block_ids) ||
+         result.unknown_block_ids.length>1000 ||
+         result.unknown_block_ids.some(x=>typeof x!=="string"||!UUID.test(x))) {
+        throw new NotionReadError("INVALID_RESPONSE",502);
+      }
+      if(result.markdown.length>64000)
+        throw new NotionReadError("MARKDOWN_TOO_LARGE",413);
+      return {object:"page_markdown",id:result.id,markdown:result.markdown,
+        truncated:result.truncated,unknown_block_ids:result.unknown_block_ids};
     },
     async getPage(id, { signal } = {}) {
       return call("GET", "/v1/pages/" + uuid(id), null, signal);

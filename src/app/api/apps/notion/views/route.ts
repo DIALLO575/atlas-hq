@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { NotionReadError, createNotionReadClient } from "../../../../../../packages/connectors/notion/src/rest-client.mjs";
 import { notionViewPreview, notionViewsList } from "../../../../../../packages/connectors/notion/src/resource-view.mjs";
+import { projectNotionViewMetadata } from "../../../../../../packages/connectors/notion/src/view-metadata.mjs";
 import { NotionRefreshError } from "../../../../../../packages/connectors/notion/src/refresh-token.mjs";
 import { loadNotionPersonalConnection, NotionConnectionAccessError, refreshNotionPersonalConnection } from "@/lib/notion/reader";
 
@@ -32,15 +33,37 @@ export async function GET(request: NextRequest) {
       (mode === "list" && (!UUID.test(resourceId) ||
         !["database", "data_source"].includes(sourceKind) ||
         (cursor !== null && (!cursor || cursor.length > 2048)))) ||
-      (mode === "preview" && !UUID.test(viewId))) {
+      (mode === "preview" && (!UUID.test(viewId) || !UUID.test(resourceId) ||
+        !["database", "data_source"].includes(sourceKind) || cursor !== null))) {
     return reply({ error: "notion-invalid-request" }, 400);
   }
   try {
     const loaded = await loadNotionPersonalConnection({ workspaceId, connectionId });
     const execute = async (client: typeof loaded.client) => {
       if (mode === "preview") {
-        // Saved Notion filters/sorts are applied by the provider itself.
-        return notionViewPreview(await client.previewView(viewId, { size: 12 }));
+        // Bind the selected view to the selected database or data source.
+        // Provider query filters/sorts are applied by Notion, not the client.
+        const detail = await client.getView(viewId);
+        let metadata;
+        try {
+          metadata = projectNotionViewMetadata(detail,{
+            viewId,sourceKind:sourceKind as "database" | "data_source",resourceId,
+          });
+        } catch {
+          throw new NotionReadError("NOT_FOUND_OR_HIDDEN",404);
+        }
+        const snapshot = await client.previewView(viewId,{size:12});
+        let safe;
+        let queryReleased = false;
+        try {
+          safe = notionViewPreview(snapshot);
+        } finally {
+          // Deletes only the short-lived provider query cache, never user
+          // content or the native view. No retries for ambiguous DELETEs.
+          try {queryReleased=await client.releaseViewQuery(viewId,snapshot.id);}
+          catch {queryReleased=false;}
+        }
+        return {...safe,metadata,queryReleased};
       }
       const raw = await client.listViews({
         sourceKind: sourceKind as "database" | "data_source",
@@ -52,13 +75,32 @@ export async function GET(request: NextRequest) {
       for (const ref of raw.results.slice(0, 8)) {
         if (!ref || ref.object !== "view" || typeof ref.id !== "string" ||
             !UUID.test(ref.id)) continue;
-        const detail = typeof ref.name === "string" && typeof ref.type === "string"
-          ? ref : await client.getView(ref.id);
-        if (detail.object === "view" && detail.id === ref.id) views.push(detail);
+        let detail;
+        try {detail=await client.getView(ref.id);}
+        catch(error) {
+          if(error instanceof NotionReadError &&
+             ["PERMISSION_DENIED","NOT_FOUND_OR_HIDDEN"].includes(error.code))continue;
+          throw error;
+        }
+        try {
+          const metadata=projectNotionViewMetadata(detail,{
+            viewId:ref.id,sourceKind:sourceKind as "database" | "data_source",resourceId,
+          });
+          views.push({detail,metadata});
+        } catch {
+          // Provider may return linked views for another source. Never
+          // disclose their names, filters or resource identifiers.
+          continue;
+        }
       }
-      return notionViewsList({
-        results: views, has_more: raw.has_more, next_cursor: raw.next_cursor,
+      const projected=notionViewsList({
+        results:views.map(item=>item.detail),
+        has_more:raw.has_more,next_cursor:raw.next_cursor,
       });
+      const byId=new Map(views.map(item=>[item.detail.id,item.metadata]));
+      return {...projected,results:projected.results.map(item=>({
+        ...item,metadata:byId.get(item.id),
+      }))};
     };
     try {
       return reply(await execute(loaded.client));

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { notionBlockView, notionListView } from "../../../../../../packages/connectors/notion/src/resource-view.mjs";
+import { collectNotionDocument } from "../../../../../../packages/connectors/notion/src/media-content.mjs";
+import { projectNotionMarkdown } from "../../../../../../packages/connectors/notion/src/markdown-preview.mjs";
 import { NotionReadError, createNotionReadClient } from "../../../../../../packages/connectors/notion/src/rest-client.mjs";
 import { NotionRefreshError } from "../../../../../../packages/connectors/notion/src/refresh-token.mjs";
 import { loadNotionPersonalConnection, NotionConnectionAccessError, refreshNotionPersonalConnection } from "@/lib/notion/reader";
 
+const UUID = /^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -24,7 +27,9 @@ export async function GET(request: NextRequest) {
   const query = params.get("query") ?? "";
   const resourceId = params.get("resourceId") ?? "";
   const cursor = params.get("cursor");
-  if (!["search", "blocks"].includes(kind) || query.length > 200 ||
+  if (!["search", "blocks", "document", "markdown"].includes(kind) || query.length > 200 ||
+      (["document", "markdown"].includes(kind) && !UUID.test(resourceId)) ||
+      (kind === "markdown" && (cursor !== null || query !== "")) ||
       (cursor !== null && (cursor.length === 0 || cursor.length > 2048))) {
     return json({ error: "notion-invalid-request" }, 400);
   }
@@ -35,6 +40,16 @@ export async function GET(request: NextRequest) {
         return notionListView(await client.searchByTitle({
           query, startCursor: cursor, size: 30,
         }));
+      }
+      if (kind === "markdown") {
+        // The raw Markdown may contain signed Notion file URLs: NEVER serialize it.
+        return projectNotionMarkdown(await client.getPageMarkdown(resourceId),resourceId);
+      }
+      if (kind === "document") {
+        return collectNotionDocument(client, resourceId, {
+          maxDepth: 2, maxNodes: 35, maxRequests: 7, pageSize: 25,
+          startCursor: cursor,
+        });
       }
       return notionBlockView(await client.listBlockChildren(resourceId, {
         startCursor: cursor, size: 40,
@@ -68,7 +83,9 @@ export async function GET(request: NextRequest) {
       return json({ error: "notion-" + error.code.toLowerCase().replaceAll("_", "-") }, status);
     }
     if (error instanceof NotionReadError) {
-      const status = error.code === "AUTH_REQUIRED" ? 409
+      const status = error.code === "MARKDOWN_TOO_LARGE" ? 413
+        : error.code === "INVALID_INPUT" ? 400
+        : error.code === "AUTH_REQUIRED" ? 409
         : error.code === "PERMISSION_DENIED" ? 403
         : error.code === "NOT_FOUND_OR_HIDDEN" ? 404
         : error.code === "RATE_LIMITED" ? 429
