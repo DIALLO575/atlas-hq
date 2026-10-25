@@ -536,7 +536,7 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
       </form> : <p className="atlas-gh-notice">{!configured ? "La configuration serveur de la GitHub App est requise." :
         "Seuls les propriétaires et admins peuvent installer la GitHub App."}</p>}
     </section>}
-        <p className="atlas-gh-footnote">Lecture des données GitHub à la demande, dans les limites d'accès de chaque installation.</p>
+        <p className="atlas-gh-footnote">Lecture des données GitHub à la demande, dans les limites d’accès de chaque installation.</p>
       </div>
     </div>
   </>;
