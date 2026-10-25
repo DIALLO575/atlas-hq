@@ -10,9 +10,10 @@ const workspaceId = "9e0be460-28de-4e46-86ce-c598f706a54a";
 const env = { ATLAS_MAUSBOT_URL: "https://maus.example.test/", ATLAS_MAUSBOT_TOKEN: "secret", ATLAS_MAUSBOT_WORKSPACE_ID: workspaceId };
 const config = resolveMausbotConfig(env, workspaceId);
 
-test("Engine catalog declares MAUSBOT and leaves Hermes explicitly unimplemented", () => {
-  assert.deepEqual(ENGINE_CATALOG.map((e) => e.id), ["mausbot", "hermes"]);
-  assert.equal(ENGINE_CATALOG[1].capabilities.length, 0);
+test("Engine catalog keeps MAUSBOT, declares n8n preconnection and leaves Hermes unimplemented", () => {
+  assert.deepEqual(ENGINE_CATALOG.map((e) => e.id), ["mausbot", "n8n", "hermes"]);
+  assert.deepEqual(ENGINE_CATALOG.find((e) => e.id === "n8n")?.transports, ["http", "mcp"]);
+  assert.equal(ENGINE_CATALOG.find((e) => e.id === "hermes")?.capabilities.length, 0);
 });
 
 test("MAUSBOT is unavailable to any other workspace, with no fallback", () => {

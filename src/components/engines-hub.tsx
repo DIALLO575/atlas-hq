@@ -180,12 +180,14 @@ export function EnginesHub() {
       <div className="atlas-engine-grid" aria-label="Moteurs disponibles">
         {(engines.length ? engines : [
           { id: "mausbot", name: "MAUSBOT", description: "Premier moteur", phase: "adapter-v0", status: "not-configured", transports: [], capabilities: [] },
+          { id: "n8n", name: "n8n", description: "Automatisations : préconnexion hors ligne", phase: "adapter-v0", status: "not-configured", transports: ["http", "mcp"], capabilities: [] },
           { id: "hermes", name: "Hermes", description: "Futur moteur", phase: "planned", status: "planned", transports: [], capabilities: [] },
         ]).map((engine) => (
           <article className={"atlas-engine-card atlas-engine-card-" + (engine.id === "mausbot" ? "mausbot" : engine.id === "hermes" ? "hermes" : "generic")} key={engine.id}>
             <div className="atlas-engine-card-top">
               <span className="atlas-engine-symbol" aria-hidden="true">
                 {engine.id === "mausbot" ? <Image src="/brands/mausbot.svg" width={72} height={72} alt="" unoptimized />
+                  : engine.id === "n8n" ? <Image src="/brands/n8n.svg" width={72} height={72} alt="" unoptimized />
                   : engine.id === "hermes" ? <Image src="/brands/hermes-agent.svg" width={72} height={72} alt="" unoptimized />
                   : <Icon name="bot" />}
               </span>
@@ -212,6 +214,8 @@ export function EnginesHub() {
               </div>
               {engine.id === "mausbot" ? (
                 <Link href="/agents" className="atlas-engine-card-action">Voir les agents <Icon name="arrow-up-right" /></Link>
+              ) : engine.id === "n8n" ? (
+                <Link href="/apps/n8n" className="atlas-engine-card-action">Piloter la préconnexion n8n <Icon name="arrow-up-right" /></Link>
               ) : engine.id === "hermes" ? (
                 <a href="https://hermes-agent.nousresearch.com/docs" target="_blank" rel="noopener noreferrer" className="atlas-engine-card-action">
                   Découvrir Hermes <Icon name="arrow-up-right" />

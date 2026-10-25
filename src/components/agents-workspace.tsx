@@ -6,6 +6,7 @@ import { Icon } from "@/components/icon";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import type { WorkspaceResult } from "@/lib/workspaces/contract";
 import { AgentRequestForm } from "@/components/agent-request-form";
+import { N8nCoordinationPanel } from "@/components/n8n-coordination-panel";
 
 type Task = { threadId: string; title: string | null; activity: string | null; active: boolean };
 type Agent = { id: string; name: string; title?: string | null; activeTaskId: string | null; tasks: Task[] };
@@ -382,6 +383,7 @@ export function AgentsWorkspace() {
           <Link href="/engines/approvals">Voir les demandes à valider <Icon name="arrow-right" /></Link>
         </section>
       </div>
+      {workspaceId && <N8nCoordinationPanel workspaceId={workspaceId} scope="agents" />}
       {proposalKind && <section className="atlas-people-proposal" id="atlas-people-proposal" aria-label="Formulaire de proposition">
         <div className="atlas-people-bottom-heading"><h2>Préparer une demande</h2><button type="button" onClick={() => setProposalKind(null)} aria-label="Fermer le formulaire"><Icon name="close" /></button></div>
         <AgentRequestForm key={proposalKind} initialKind={proposalKind} />

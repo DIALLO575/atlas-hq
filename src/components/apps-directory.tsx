@@ -97,7 +97,7 @@ export function AppsDirectory({ githubConfigured = false }: { githubConfigured?:
           <span className="atlas-apps-inline-logo"><BrandLogo slug={selected.slug} size={33} /></span>
           <div className="atlas-apps-inline-copy">
             <div className="atlas-apps-inline-title"><h2 id="atlas-app-detail-heading">{selected.name}</h2><span>{selected.category}</span></div>
-          <p>{selected.useCase} {selected.slug === "github" ? <strong>Le Control Center lit les dépôts et PR autorisés.</strong> : selected.slug === "linear" ? <strong>Le pilotage affiche les données de votre connexion personnelle.</strong> : <strong>Connexion à venir.</strong>}</p>
+          <p>{selected.useCase} {selected.slug === "github" ? <strong>Le Control Center lit les dépôts et PR autorisés.</strong> : selected.slug === "linear" ? <strong>Le pilotage affiche les données de votre connexion personnelle.</strong> : selected.slug === "n8n" ? <strong>Operations Studio centralise la gestion hors ligne et les registres de workflows et d’exécutions.</strong> : <strong>Connexion à venir.</strong>}</p>
           </div>
           <div className="atlas-apps-inline-buttons">
             <button type="button" className="atlas-apps-inline-favorite" onClick={() => toggleFavorite(selected.slug)}>
@@ -121,7 +121,7 @@ export function AppsDirectory({ githubConfigured = false }: { githubConfigured?:
               <>
                 <div className="atlas-apps-tiles">
                   {visible.map((app) => (
-                    <article className={"atlas-app-tile" + (selected?.slug === app.slug ? " is-inspected" : "")} key={app.slug}>
+                    <article className={"atlas-app-tile" + (app.slug === "n8n" ? " is-n8n" : "") + (selected?.slug === app.slug ? " is-inspected" : "")} key={app.slug}>
                       <div className="atlas-app-tile-header">
                         <span className="atlas-app-tile-logo"><BrandLogo slug={app.slug} size={38} /></span>
                         <button type="button" className={"atlas-app-favorite" + (favorites.includes(app.slug) ? " is-favorite" : "")}
@@ -134,13 +134,15 @@ export function AppsDirectory({ githubConfigured = false }: { githubConfigured?:
                       <p className="atlas-app-tile-description">{app.description}</p>
                       <div className="atlas-app-tile-meta"><span>{app.category}</span>{app.recommended && <span className="atlas-app-recommend-dot" title="Recommandée">✦</span>}</div>
                       <div className="atlas-app-tile-footer">
-                        <span className="atlas-app-connection-state"><i />{app.slug === "github" ? githubConfigured ? "Control Center" : "À configurer" : app.slug === "linear" ? "Pilotage" : app.slug === "notion" ? "Configuration" : "À venir"}</span>
+                        <span className="atlas-app-connection-state"><i />{app.slug === "github" ? githubConfigured ? "Control Center" : "À configurer" : app.slug === "linear" ? "Pilotage" : app.slug === "notion" ? "Configuration" : app.slug === "n8n" ? "Préconnexion" : "À venir"}</span>
                         {app.slug === "github" ?
                           <Link className="atlas-app-details" href="/apps/github" prefetch={true} aria-label="Ouvrir GitHub Control Center">Piloter <Icon name="arrow-up-right" /></Link> :
                           app.slug === "linear" ?
                           <Link className="atlas-app-details" href="/apps/linear" prefetch={true} aria-label="Ouvrir le pilotage Linear">Piloter <Icon name="arrow-up-right" /></Link> :
                           app.slug === "notion" ?
                           <Link className="atlas-app-details" href="/apps/notion" prefetch={true} aria-label="Ouvrir Notion Control Center">Piloter <Icon name="arrow-up-right" /></Link> :
+                          app.slug === "n8n" ?
+                          <Link className="atlas-app-details" href="/apps/n8n" prefetch={true} aria-label="Ouvrir n8n Operations Studio">Piloter <Icon name="arrow-up-right" /></Link> :
                           <button className="atlas-app-details" type="button" onClick={() => setSelected(selected?.slug === app.slug ? null : app)}
                             aria-label={"Voir les détails de " + app.name} aria-expanded={selected?.slug === app.slug}>
                             Détails <Icon name="arrow-up-right" />

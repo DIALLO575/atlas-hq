@@ -3,8 +3,12 @@ export type EngineCapability =
   | "conversations.messages.list" | "conversations.messages.send" | "conversations.messages.edit"
   | "channels.list" | "channels.create" | "channels.update" | "channels.messages.list" | "channels.messages.send"
   | "tasks.create" | "tasks.activate" | "tasks.rename" | "search.messages"
-  | "jobs.wait" | "jobs.interrupt" | "models.list" | "models.set";
-export type EngineTransport = "http" | "mcp-stdio" | "cli" | "sse";
+  | "jobs.wait" | "jobs.interrupt" | "models.list" | "models.set"
+  | "workflows.list" | "workflows.get" | "executions.list" | "executions.get"
+  | "workflows.import" | "workflows.ai.create" | "workflows.ai.validate"
+  | "workflows.ai.update" | "workflows.publish" | "workflows.ai.test"
+  | "workflows.invoke" | "workflows.invoke_as_tool" | "tools.discover";
+export type EngineTransport = "http" | "mcp" | "mcp-stdio" | "cli" | "sse";
 export type EngineDefinition = {
   readonly id: string;
   readonly name: string;

@@ -393,3 +393,11 @@
 @media(max-width:760px){.atlas-shell .atlas-apps-v2{gap:10px}.atlas-apps-stat{min-height:60px;padding:9px}.atlas-apps-stat-icon{width:30px;height:30px}.atlas-apps-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-apps-v2-intro h1{font-size:23px}}
 @media(max-width:540px){.atlas-apps-v2-intro{align-items:flex-start}.atlas-apps-stats{gap:6px}.atlas-apps-stat{gap:5px;padding:8px;min-height:61px}.atlas-apps-stat-icon{width:26px;height:26px}.atlas-apps-stat-icon svg{width:15px;height:15px}.atlas-apps-stat strong{font-size:16px}.atlas-apps-stat div>span{font-size:9px}.atlas-apps-toolbar{gap:5px}.atlas-apps-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-apps-inline-detail{flex-wrap:wrap;padding:10px}.atlas-apps-inline-buttons{width:100%;justify-content:flex-end}.atlas-apps-reco-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:380px){.atlas-apps-stat{flex-direction:column;justify-content:center;align-items:flex-start}.atlas-apps-tiles{grid-template-columns:1fr}}
+
+/* n8n listing: Atlas card chrome with current n8n pink-coral accents. */
+.atlas-app-tile.is-n8n{border-color:#f5b4ba;background:linear-gradient(147deg,#fff 70%,#fff4f6 100%)}
+.atlas-app-tile.is-n8n .atlas-app-tile-logo{background:#fff0f2;border:1px solid #ffd2d7}
+.atlas-app-tile.is-n8n .atlas-app-connection-state{color:#b34e58}
+.atlas-app-tile.is-n8n .atlas-app-details{color:#ae4653}
+.atlas-app-tile.is-n8n .atlas-app-details:hover{background:#fff0f2;color:#96394b}
+@media(prefers-color-scheme:dark){.atlas-app-tile.is-n8n{background:linear-gradient(145deg,#211e2e,#39273a);border-color:#6c4e5d}.atlas-app-tile.is-n8n .atlas-app-details{color:#ffc5cf}}
