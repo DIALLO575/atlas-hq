@@ -30,6 +30,7 @@ export const atlasApps: ReadonlyArray<CatalogApp> = [
   { slug: "calendly", name: "Calendly", category: "Productivité", description: "Prise de rendez-vous", useCase: "Organiser des rendez-vous avec moins d'allers-retours.", recommended: true },
   { slug: "hubspot", name: "HubSpot", category: "CRM", description: "Marketing et CRM", useCase: "Suivre les interactions et le parcours client.", recommended: true },
   { slug: "zapier", name: "Zapier", category: "Productivité", description: "Automatisations", useCase: "Relier différentes tâches dans des scénarios d'automatisation." },
+  { slug: "n8n", name: "n8n", category: "Productivité", description: "Automatisation et workflows", useCase: "Suivre le registre des workflows et préparer la connexion au moteur n8n." },
   { slug: "clickup", name: "ClickUp", category: "Développement", description: "Gestion de projets", useCase: "Structurer tâches et livrables de l'équipe." },
 ];
 

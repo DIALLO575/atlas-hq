@@ -174,11 +174,12 @@ export function EnginesHub() {
       <div className="atlas-engine-grid">
         {(engines.length ? engines : [
           { id: "mausbot", name: "MAUSBOT", description: "Premier moteur", phase: "adapter-v0", status: "not-configured", transports: [], capabilities: [] },
+          { id: "n8n", name: "n8n", description: "Workflows : préconnexion seulement", phase: "adapter-v0", status: "not-configured", transports: ["http", "mcp"], capabilities: [] },
           { id: "hermes", name: "Hermes", description: "Futur moteur", phase: "planned", status: "planned", transports: [], capabilities: [] },
         ]).map((engine) => (
           <article className="atlas-engine-card" key={engine.id}>
             <div className="atlas-engine-card-top">
-              <span className="atlas-engine-symbol" aria-hidden="true">{engine.id === "mausbot" ? "M" : "H"}</span>
+              <span className="atlas-engine-symbol" aria-hidden="true">{engine.id === "mausbot" ? "M" : engine.id === "n8n" ? "n" : "H"}</span>
               <span className="atlas-engine-status" data-state={engine.id === "mausbot" && engineOnline ? "online" : engine.status}>
                 {engine.id === "mausbot" && engineOnline ? "En ligne"
                   : engine.status === "configured" ? "Configuré · à vérifier"
@@ -188,6 +189,7 @@ export function EnginesHub() {
             </div>
             <h2>{engine.name}</h2>
             <p>{engine.description}</p>
+            {engine.id === "n8n" && <p><a href="/apps/n8n">Consulter la préconnexion n8n dans Mes Apps</a> — aucun workflow exécuté.</p>}
             <div className="atlas-engine-chips">
               {engine.transports.map((transport) => <span key={transport}>{transport.toUpperCase()}</span>)}
             </div>
@@ -270,7 +272,7 @@ export function EnginesHub() {
           </section>
         </div>
       )}
-      <p className="atlas-engine-footnote">Étape actuelle : HTTP opérationnel après configuration. MCP, CLI, SSE, installations multiples et pilotage Chief seront intégrés progressivement à ce registre commun.</p>
+      <p className="atlas-engine-footnote">Registre partagé Apps et Moteurs : une configuration serveur ne prouve pas une connexion live. MAUSBOT garde son verrou d’exécution ; n8n reste en préconnexion.</p>
     </div>
   );
 }
