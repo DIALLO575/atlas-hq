@@ -5,6 +5,8 @@
  * All destinations must be operator-configured and subject to egress controls.
  */
 import { lookup } from "node:dns/promises";
+import { request as httpsRequest } from "node:https";
+import { Readable } from "node:stream";
 import { BlockList, isIP } from "node:net";
 import { validateN8nRemoteId } from "./contracts.mjs";
 
@@ -102,14 +104,18 @@ function checkPage(options) {
   return { limit, cursor };
 }
 function checkDeps(deps) {
-  if (!isRecord(deps) || Object.keys(deps).some((key) => !["fetchImpl", "dnsLookup", "timeoutMs"].includes(key))) {
+  if (!isRecord(deps) || Object.keys(deps).some((key) => !["fetchImpl", "dnsLookup", "timeoutMs", "httpsRequestImpl"].includes(key))) {
     fail("N8N_DEPS_INVALID", 400);
   }
   const timeoutMs = deps.timeoutMs ?? 8000;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 10000) {
     fail("N8N_TIMEOUT_INVALID", 400);
   }
-  return { fetchImpl: deps.fetchImpl ?? fetch, dnsLookup: deps.dnsLookup ?? lookup, timeoutMs };
+  if (deps.fetchImpl !== undefined && deps.httpsRequestImpl !== undefined) fail("N8N_DEPS_INVALID", 400);
+  if (deps.fetchImpl !== undefined && typeof deps.fetchImpl !== "function") fail("N8N_DEPS_INVALID", 400);
+  if (deps.httpsRequestImpl !== undefined && typeof deps.httpsRequestImpl !== "function") fail("N8N_DEPS_INVALID", 400);
+  return { fetchImpl: deps.fetchImpl, dnsLookup: deps.dnsLookup ?? lookup,
+    httpsRequestImpl: deps.httpsRequestImpl ?? httpsRequest, timeoutMs };
 }
 function goodId(value) {
   // n8n execution IDs have historically been represented as numbers or strings.
@@ -204,11 +210,63 @@ async function bodyJson(response) {
   return parsed;
 }
 
+/**
+ * Native HTTPS transport with a single pinned destination: the connection's
+ * lookup callback CANNOT resolve the name again after the public-IP check.
+ * The original hostname remains in the URL, Host header and TLS servername,
+ * so Node still validates the certificate for that hostname.
+ *
+ * Only server tests may inject httpsRequestImpl. Production does not accept a
+ * dispatcher, arbitrary proxy, forwarded auth, redirect or alternate host.
+ */
+async function pinnedHttpsGet(url, config, address, timeoutMs, requestImpl) {
+  return new Promise((resolve, reject) => {
+    let req;
+    try {
+      req = requestImpl(url, {
+        method: "GET",
+        agent: false,
+        servername: config.hostname,
+        rejectUnauthorized: true,
+        headers: { Accept: "application/json", "X-N8N-API-KEY": config.apiKey },
+        lookup: (hostname, _options, callback) => {
+          if (hostname !== config.hostname) {
+            callback(new Error("N8N_HOSTNAME_DRIFT"));
+            return;
+          }
+          callback(null, address.address, address.family);
+        },
+      }, (response) => {
+        if (!Number.isInteger(response.statusCode) ||
+            response.statusCode < 100 || response.statusCode > 599 ||
+            !response.headers || typeof response.pipe !== "function") {
+          response.destroy?.();
+          reject(new Error("N8N_BAD_HTTP_RESPONSE"));
+          return;
+        }
+        try {
+          resolve({
+            status: response.statusCode,
+            headers: new Headers(response.headers),
+            body: Readable.toWeb(response),
+          });
+        } catch (error) {
+          response.destroy?.();
+          reject(error);
+        }
+      });
+      req.on("error", reject);
+      req.setTimeout(timeoutMs, () => req.destroy(new Error("N8N_TIMEOUT")));
+      req.end();
+    } catch (err) { req?.destroy?.(); reject(err); }
+  });
+}
+
 async function request(config, path, search = {}, deps = {}) {
   trusted(config);
-  const { fetchImpl, dnsLookup, timeoutMs } = checkDeps(deps);
-  // The BFF must still deploy network-level egress pinning: DNS checks alone
-  // cannot eliminate DNS rebinding between lookup and HTTP connection.
+  const { fetchImpl, dnsLookup, httpsRequestImpl, timeoutMs } = checkDeps(deps);
+  // Resolve once, reject *all* non-public answers, pin the chosen IP in TLS.
+  // This is transport-level anti-rebinding, not a substitute for firewall egress.
   let addresses;
   try { addresses = await dnsLookup(config.hostname, { all: true, verbatim: true }); }
   catch { fail("N8N_DNS_UNAVAILABLE", 503); }
@@ -222,12 +280,12 @@ async function request(config, path, search = {}, deps = {}) {
   }
   let response;
   try {
-    response = await fetchImpl(url.toString(), {
+    response = fetchImpl ? await fetchImpl(url.toString(), {
       method: "GET",
       headers: { Accept: "application/json", "X-N8N-API-KEY": config.apiKey },
       cache: "no-store", redirect: "manual", credentials: "omit",
       signal: AbortSignal.timeout(timeoutMs),
-    });
+    }) : await pinnedHttpsGet(url, config, addresses[0], timeoutMs, httpsRequestImpl);
   } catch { fail("N8N_UNREACHABLE", 503); }
   if (!response || typeof response.status !== "number" || !response.headers?.get) {
     fail("N8N_RESPONSE_INVALID");
