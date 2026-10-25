@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { executeSandboxRepositoryCreation } from "@/lib/github/studio-runner";
 import { githubConnectSettings } from "@/lib/github/connect";
+import { checkStudioApprovalReceipt } from "../../../../../../../../packages/connectors/github/src/github-studio-approval.mjs";
 import { readStudioUserGrant, studioOAuthGrantCookie,
 } from "../../../../../../../../packages/connectors/github/src/github-studio-user-oauth.mjs";
 import {
@@ -105,7 +106,17 @@ export async function POST(request: NextRequest) {
   // The browser cannot supply a GitHub user token; only our OAuth callback
   // issues this short-lived, authenticated+encrypted HttpOnly cookie.
   const settings = githubConnectSettings();
-  const grant = settings && readStudioUserGrant({
+  // A signed, five-minute, tenant/actor/draft/idempotency-bound human approval
+  // is MANDATORY in addition to the existing OAuth user grant and confirmation.
+  // Do not infer approval solely from the GitHub App write permission.
+  if (!settings || !checkStudioApprovalReceipt({
+    receipt: request.headers.get("x-studio-approval") ?? undefined,
+    draft, actorId: user.id, idempotencyKey: idempotencyKey!,
+    secret: settings.stateKey,
+  })) {
+    return respond({ error: "STUDIO_APPROVAL_REQUIRED" }, 403);
+  }
+  const grant = readStudioUserGrant({
     cookie: request.cookies.get(studioOAuthGrantCookie)?.value,
     workspaceId: draft.workspaceId, actorId: user.id,
     installationId: draft.installationId, key: settings.stateKey,

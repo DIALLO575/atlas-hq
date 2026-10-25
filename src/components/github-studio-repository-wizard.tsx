@@ -3,152 +3,261 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Icon } from "@/components/icon";
 
-type Draft = {
-  name: string;
-  description: string;
-  private: boolean;
-  autoInit: boolean;
-};
-type PreviewResult = {
-  preview: Draft;
-  canExecute: false;
-  nextStep: string;
-};
-const errors: Record<string, string> = {
-  INVALID_REQUEST: "Vérifiez le nom du dépôt et les valeurs saisies.",
-  INVALID_INPUT: "Nom de dépôt invalide. Utilisez des lettres, chiffres, points, tirets et underscores.",
-  AUTH_REQUIRED: "Votre session Atlas a expiré. Reconnectez-vous.",
-  AUTH_UNAVAILABLE: "Le service d'authentification est indisponible.",
-  WORKSPACE_FORBIDDEN: "Il faut être propriétaire ou administrateur du workspace.",
-  WORKSPACE_UNAVAILABLE: "Les droits du workspace ne peuvent pas être vérifiés.",
-  GITHUB_NOT_AUTHORIZED: "Installation GitHub non autorisée pour ce workspace.",
-  CONNECTIONS_UNAVAILABLE: "La connexion GitHub n'est pas disponible actuellement.",
-  STUDIO_NOT_CONFIGURED: "La prévisualisation Studio n'est pas configurée sur cet environnement.",
-  FORBIDDEN_ORIGIN: "Cette demande doit provenir du site Atlas officiel.",
+type Draft = {name:string;description:string;private:boolean;autoInit:boolean};
+type PermissionState = "granted" | "missing" | "unavailable";
+type PreviewResult = {preview:Draft;canExecute:false;permissionState:PermissionState;nextStep:string};
+type Approval = {approved:true;receipt:string;expiresAt:number;canExecute:false};
+const errors:Record<string,string>={
+  INVALID_REQUEST:"Vérifiez les informations de votre dépôt.",
+  INVALID_INPUT:"Utilisez uniquement lettres, chiffres, points, tirets et underscores.",
+  AUTH_REQUIRED:"Votre session Atlas a expiré. Reconnectez-vous.",
+  AUTH_UNAVAILABLE:"Le service d'authentification est indisponible.",
+  WORKSPACE_FORBIDDEN:"Un rôle propriétaire ou administrateur est requis.",
+  WORKSPACE_UNAVAILABLE:"Impossible de vérifier les droits du workspace.",
+  GITHUB_NOT_AUTHORIZED:"Installation GitHub non vérifiée pour ce workspace.",
+  CONNECTIONS_UNAVAILABLE:"Impossible de lire la connexion GitHub.",
+  STUDIO_NOT_CONFIGURED:"Les secrets Studio ne sont pas disponibles sur cet environnement.",
+  FORBIDDEN_ORIGIN:"La demande doit provenir du domaine Atlas officiel.",
+  STUDIO_APPROVAL_DISABLED:"L'approbation est réservée à une Preview sandbox approuvée.",
+  GITHUB_WRITE_NOT_APPROVED:"GitHub n'a pas encore confirmé la permission Write sur cette installation.",
+  GITHUB_PERMISSION_UNAVAILABLE:"Impossible de revérifier la permission GitHub. Aucun accord enregistré.",
+  APPROVAL_NAME_MISMATCH:"Le nom confirmé doit être exactement celui du dépôt.",
+  APPROVAL_REQUIRED:"Confirmez explicitement votre demande.",
+  SANDBOX_ONLY:"L'approbation n'est possible que pour la sandbox configurée.",
 };
 
-export function GitHubStudioRepositoryWizard({ workspaceId, installationId, canManage, ready }: {
-  workspaceId: string;
-  installationId: number | null;
-  canManage: boolean;
-  ready: boolean;
+export function GitHubStudioRepositoryWizard({workspaceId,installationId,canManage,ready}:{
+  workspaceId:string;installationId:number|null;canManage:boolean;ready:boolean;
 }) {
-  const [draft, setDraft] = useState<Draft>({ name: "", description: "", private: true, autoInit: true });
-  const [preview, setPreview] = useState<PreviewResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [working, setWorking] = useState(false);
-  const pending = useRef<AbortController | null>(null);
+  const [draft,setDraft]=useState<Draft>({name:"",description:"",private:true,autoInit:true});
+  const [preview,setPreview]=useState<PreviewResult|null>(null);
+  const [approval,setApproval]=useState<Approval|null>(null);
+  const [typedName,setTypedName]=useState("");
+  const [consent,setConsent]=useState(false);
+  const [problem,setProblem]=useState<string|null>(null);
+  const [working,setWorking]=useState<"check"|"approve"|null>(null);
+  const requestRef=useRef<AbortController|null>(null);
+  const approvalKey=useRef<string|null>(null);
+  useEffect(()=>()=>requestRef.current?.abort(),[]);
+  const permitted=canManage && ready && installationId!==null;
+  const permission=preview?.permissionState ?? "unavailable";
+  const canApprove=Boolean(permitted && preview && permission==="granted" &&
+    typedName===preview.preview.name && consent && approvalKey.current && !working);
+  const step=approval ? 3 : preview ? 2 : 1;
 
-  useEffect(() => () => pending.current?.abort(), []);
-  const permitted = canManage && ready && installationId !== null;
-
-  function change(next: Partial<Draft>) {
-    pending.current?.abort();
-    setWorking(false);
-    setDraft((current) => ({ ...current, ...next }));
-    setPreview(null);
-    setError(null);
+  function reset(next:Partial<Draft>) {
+    requestRef.current?.abort();
+    approvalKey.current=null;
+    setWorking(null);
+    setDraft(current=>({...current,...next}));
+    setPreview(null);setApproval(null);setTypedName("");setConsent(false);setProblem(null);
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!permitted || working) return;
-    pending.current?.abort();
-    const controller = new AbortController();
-    pending.current = controller;
-    setWorking(true);
-    setError(null);
-    setPreview(null);
+    if(!permitted || working)return;
+    requestRef.current?.abort();
+    const controller=new AbortController();
+    requestRef.current=controller;
+    setWorking("check");setProblem(null);setApproval(null);setPreview(null);setTypedName("");setConsent(false);
+    approvalKey.current=null;
     try {
-      const response = await fetch("/api/apps/github/studio/repositories/preview", {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...draft, workspaceId, installationId }),
-        signal: controller.signal,
+      const response=await fetch("/api/apps/github/studio/repositories/preview",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({...draft,workspaceId,installationId}),signal:controller.signal,
       });
-      const data = await response.json();
-      if (controller.signal.aborted) return;
-      if (!response.ok) {
-        setError(errors[String(data?.error)] ?? "Impossible de vérifier cette configuration.");
+      const data=await response.json();
+      if(controller.signal.aborted)return;
+      if(!response.ok) {
+        setProblem(errors[String(data?.error)]??"La demande ne peut pas être vérifiée.");
         return;
       }
-      if (data?.canExecute !== false || !data?.preview) {
-        setError("La réponse du serveur est inattendue.");
-        return;
+      if(data?.canExecute !== false || !data?.preview ||
+         !["granted","missing","unavailable"].includes(data?.permissionState)) {
+        setProblem("Réponse de vérification inattendue.");return;
       }
+      approvalKey.current=crypto.randomUUID();
       setPreview(data as PreviewResult);
-    } catch {
-      if (!controller.signal.aborted) setError("Impossible de contacter Atlas. Réessayez.");
-    } finally {
-      if (!controller.signal.aborted) setWorking(false);
+    }catch{
+      if(!controller.signal.aborted)setProblem("Atlas ne répond pas. Réessayez.");
+    }finally {
+      if(!controller.signal.aborted)setWorking(null);
+    }
+  }
+
+  async function approve() {
+    if(!canApprove || !preview || !approvalKey.current)return;
+    const controller=new AbortController();
+    requestRef.current?.abort();
+    requestRef.current=controller;
+    setWorking("approve");setProblem(null);
+    try{
+      const response=await fetch("/api/apps/github/studio/repositories/approve",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","idempotency-key":approvalKey.current},
+        body:JSON.stringify({...preview.preview,workspaceId,installationId,typedName,approved:true}),
+        signal:controller.signal,
+      });
+      const data=await response.json();
+      if(controller.signal.aborted)return;
+      if(!response.ok){
+        setProblem(errors[String(data?.error)]??"La confirmation sécurisée est indisponible.");
+        return;
+      }
+      if(data?.approved!==true || data?.canExecute!==false ||
+        typeof data?.receipt!=="string" || !Number.isFinite(data?.expiresAt)){
+        setProblem("Confirmation inattendue : aucun accord enregistré.");return;
+      }
+      setApproval(data as Approval);
+    }catch{
+      if(!controller.signal.aborted)setProblem("Impossible d'enregistrer l'accord temporaire.");
+    }finally{
+      if(!controller.signal.aborted)setWorking(null);
     }
   }
 
   return <section className="atlas-gh-studio" aria-label="GitHub Repository Studio">
     <header className="atlas-gh-studio-head">
-      <div>
-        <p className="atlas-gh-studio-kicker">GITHUB STUDIO / DÉPÔTS</p>
-        <h2>Préparer un nouveau dépôt</h2>
-        <p>Configurez votre futur dépôt, puis vérifiez la demande avec votre workspace Atlas.</p>
+      <div className="atlas-gh-studio-heading">
+        <span className="atlas-gh-studio-kicker"><Icon name="spark"/> ATLAS / GITHUB STUDIO</span>
+        <h2>Donnez vie à votre prochain dépôt<span className="atlas-gh-studio-dot">.</span></h2>
+        <p>{"Un espace clair pour préparer, contrôler et approuver votre projet avant toute action sur GitHub."}</p>
       </div>
-      <span className="atlas-gh-studio-state">Prévisualisation uniquement</span>
+      <div className="atlas-gh-studio-state"><span aria-hidden="true"/> MODE PRÉPARATION</div>
     </header>
+
+    <div className="atlas-gh-studio-steps" aria-label="Progression de la demande">
+      {[
+        {number:1,title:"Configurer",desc:"Définir le dépôt"},
+        {number:2,title:"Vérifier",desc:"Droits & paramètres"},
+        {number:3,title:"Approuver",desc:"Accord explicite"},
+      ].map(item=><div key={item.number} className={"atlas-gh-studio-step "+(step>=item.number?"is-current":"")}>
+        <span className="atlas-gh-studio-step-number">{step>item.number?<Icon name="spark"/>:item.number}</span>
+        <span><strong>{item.title}</strong><small>{item.desc}</small></span>
+      </div>)}
+    </div>
+
     <div className="atlas-gh-studio-layout">
-      <form className="atlas-gh-studio-form" onSubmit={(event) => void submit(event)}>
-        <label>Nom du dépôt
-          <input name="repositoryName" value={draft.name} required maxLength={100}
-            pattern="[A-Za-z0-9_.-]+" placeholder="mon-nouveau-projet"
-            autoComplete="off" onChange={(event) => change({ name: event.target.value })}/>
-        </label>
-        <label>Description
-          <textarea name="description" value={draft.description} maxLength={350} rows={3}
-            placeholder="Que va contenir ce dépôt ?"
-            onChange={(event) => change({ description: event.target.value })}/>
-        </label>
-        <fieldset className="atlas-gh-studio-visibility">
-          <legend>Visibilité</legend>
-          <label><input type="radio" name="visibility" checked={draft.private}
-            onChange={() => change({ private: true })}/> Privé
-            <small>Accessible uniquement aux personnes autorisées.</small></label>
-          <label><input type="radio" name="visibility" checked={!draft.private}
-            onChange={() => change({ private: false })}/> Public
-            <small>Visible sur GitHub par tout le monde.</small></label>
-        </fieldset>
-        <label className="atlas-gh-studio-check"><input type="checkbox" checked={draft.autoInit}
-          onChange={(event) => change({ autoInit: event.target.checked })}/> Initialiser avec un README</label>
-        {!canManage && <p className="atlas-gh-studio-caution" role="status">
-          Seuls les propriétaires et administrateurs du workspace peuvent préparer un dépôt.
-        </p>}
-        {canManage && !ready && <p className="atlas-gh-studio-caution" role="status">
-          Connectez et vérifiez une installation GitHub avant de prévisualiser.
-        </p>}
-        <button className="atlas-gh-primary-action" type="submit" disabled={!permitted || working}>
-          <Icon name="spark"/> {working ? "Vérification…" : "Vérifier la configuration"}
-        </button>
-      </form>
+      <div className="atlas-gh-studio-workspace">
+        <div className="atlas-gh-studio-panel-title"><span className="atlas-gh-studio-panel-icon"><Icon name="layers"/></span>
+          <div><h3>Configuration</h3><p>Personnalisez votre dépôt GitHub.</p></div>
+          <span className="atlas-gh-studio-index">01 / 03</span></div>
+        <form className="atlas-gh-studio-form" onSubmit={(event)=>void submit(event)}>
+          <label className="atlas-gh-studio-field">Nom du dépôt <span>*</span>
+            <input name="repositoryName" value={draft.name} required maxLength={100}
+              pattern="[A-Za-z0-9_.-]+" placeholder="ex. atlas-projet"
+              autoComplete="off" onChange={event=>reset({name:event.target.value})}/>
+            <small>Un nom court, unique et facile à retrouver.</small>
+          </label>
+          <label className="atlas-gh-studio-field">Description
+            <textarea name="description" value={draft.description} maxLength={350} rows={3}
+              placeholder="Une phrase pour présenter votre idée..."
+              onChange={event=>reset({description:event.target.value})}/>
+            <small>{draft.description.length} / 350 caractères</small>
+          </label>
+
+          <fieldset className="atlas-gh-studio-visibility">
+            <legend>Visibilité du dépôt</legend>
+            <label className={draft.private?"is-selected":""}>
+              <input type="radio" name="visibility" checked={draft.private}
+                onChange={()=>reset({private:true})}/>
+              <span className="atlas-gh-studio-choice-icon"><Icon name="layers"/></span>
+              <span><strong>Privé</strong><small>Réservé aux personnes autorisées</small></span>
+            </label>
+            <label className={!draft.private?"is-selected":""}>
+              <input type="radio" name="visibility" checked={!draft.private}
+                onChange={()=>reset({private:false})}/>
+              <span className="atlas-gh-studio-choice-icon"><Icon name="grid"/></span>
+              <span><strong>Public</strong><small>Visible par toute la communauté</small></span>
+            </label>
+          </fieldset>
+
+          <label className="atlas-gh-studio-check">
+            <input type="checkbox" checked={draft.autoInit}
+              onChange={event=>reset({autoInit:event.target.checked})}/>
+            <span><strong>Ajouter un README</strong><small>{"Créer un fichier d'accueil dès le départ"}</small></span>
+          </label>
+          {!canManage && <p className="atlas-gh-studio-caution" role="status">
+            Seul un propriétaire ou administrateur peut approuver la demande.
+          </p>}
+          {canManage && !ready && <p className="atlas-gh-studio-caution" role="status">
+            Connectez et vérifiez votre installation GitHub pour continuer.
+          </p>}
+          <button className="atlas-gh-studio-submit" type="submit" disabled={!permitted||Boolean(working)}>
+            <Icon name="spark"/> {working==="check"?"Analyse en cours…":"Vérifier la configuration"}
+            <Icon name="arrow-right"/>
+          </button>
+        </form>
+
+        {preview && <section className="atlas-gh-studio-approval" aria-label="Approbation de la création">
+          <div className="atlas-gh-studio-panel-title">
+            <span className="atlas-gh-studio-panel-icon"><Icon name="settings"/></span>
+            <div><h3>Approbation explicite</h3><p>{"Un accord précis pour ce dépôt, jamais une création automatique."}</p></div>
+            <span className="atlas-gh-studio-index">02 / 03</span>
+          </div>
+          <div className={"atlas-gh-studio-permission "+(permission==="granted"?"is-granted":"")}>
+            <span className="atlas-gh-studio-permission-icon"><Icon name={permission==="granted"?"spark":"settings"}/></span>
+            <div><strong>{permission==="granted"?"Permission Write confirmée par GitHub":
+              permission==="missing"?"Permission Write non approuvée pour cette installation":
+              "Permission Write non vérifiable"}</strong>
+              <p>{permission==="granted"?
+                "L'installation accorde la création. Votre confirmation reste indispensable.":
+                permission==="missing"?
+                "Le propriétaire doit accepter les nouveaux droits dans les paramètres GitHub App.":
+                "Atlas ne peut pas encore confirmer les nouveaux droits auprès de GitHub."}</p>
+            </div>
+          </div>
+          <label className="atlas-gh-studio-field">{"Recopiez le nom exact du dépôt pour confirmer"}
+            <input value={typedName} onChange={event=>{setTypedName(event.target.value);setApproval(null);}}
+              placeholder={preview.preview.name} autoComplete="off" disabled={permission!=="granted"}/>
+          </label>
+          <label className="atlas-gh-studio-consent">
+            <input type="checkbox" checked={consent}
+              disabled={permission!=="granted"}
+              onChange={event=>{setConsent(event.target.checked);setApproval(null);}}/>
+            <span>{"J'approuve cette configuration pour un futur essai sandbox. Je comprends qu'aucun dépôt n'est créé maintenant."}</span>
+          </label>
+          <button type="button" className="atlas-gh-studio-approve" onClick={()=>void approve()}
+            disabled={!canApprove}>
+            <Icon name="spark"/> {working==="approve"?"Approbation en cours…":"Approuver la préparation"}
+          </button>
+          {approval && <div className="atlas-gh-studio-ok" role="status">
+            <strong>Préparation approuvée en sandbox</strong>
+            {"Accord temporaire délivré pour ce dépôt uniquement. Aucune création GitHub effectuée."}
+          </div>}
+          <p className="atlas-gh-studio-approval-footnote">
+            {"L'accord serveur expire après cinq minutes et n'active pas la création en Production."}
+          </p>
+        </section>}
+        {problem && <p className="atlas-gh-studio-caution" role="alert">{problem}</p>}
+      </div>
+
       <aside className="atlas-gh-studio-preview" aria-live="polite">
-        <span className="atlas-gh-studio-kicker">VOTRE PROJET</span>
-        <div className="atlas-gh-studio-preview-symbol"><Icon name="layers"/></div>
-        <strong>{draft.name.trim() || "nouveau-depot"}</strong>
-        <span className="atlas-gh-studio-preview-type">{draft.private ? "Dépôt privé" : "Dépôt public"}</span>
-        <p>{draft.description || "Ajoutez une description pour présenter votre projet."}</p>
-        <div className="atlas-gh-studio-preview-facts">
-          <span>Workspace <b>actuel</b></span>
-          <span>Initialisation <b>{draft.autoInit ? "README" : "Aucune"}</b></span>
-          <span>GitHub <b>{preview ? "Demande vérifiée côté Atlas" : "Non vérifié"}</b></span>
+        <div className="atlas-gh-studio-preview-top">
+          <span className="atlas-gh-studio-kicker">APERÇU DU PROJET</span>
+          <span className="atlas-gh-studio-preview-status">{approval?"Pré-approuvé":preview?"Vérifié":"Brouillon"}</span>
         </div>
-        {preview && <div className="atlas-gh-studio-ok" role="status">
-          {"Les champs, vos droits Workspace et l'installation enregistrée ont été vérifiés par Atlas."}
-          <strong>{"Le dépôt n'a pas été créé."}</strong>
-        </div>}
-        {error && <p className="atlas-gh-studio-caution" role="alert">{error}</p>}
+        <div className="atlas-gh-studio-preview-symbol"><Icon name="layers"/></div>
+        <span className="atlas-gh-studio-preview-label">REPOSITORY</span>
+        <strong>{draft.name.trim()||"nouveau-depot"}</strong>
+        <span className="atlas-gh-studio-preview-type"><Icon name={draft.private?"layers":"grid"}/>
+          {draft.private?"Dépôt privé":"Dépôt public"}</span>
+        <p>{draft.description||"Votre prochaine idée mérite un dépôt bien organisé."}</p>
+        <div className="atlas-gh-studio-preview-facts">
+          <span>Workspace <b>Atlas</b></span>
+          <span>README <b>{draft.autoInit?"Inclus":"Non"}</b></span>
+          <span>Contrôle GitHub <b>{permission==="granted"?"Write vérifié":permission==="missing"?"À réapprouver":"À vérifier"}</b></span>
+          <span>Action réelle <b>Non exécutée</b></span>
+        </div>
+        <div className="atlas-gh-studio-preview-divider"/>
         <div className="atlas-gh-studio-unavailable">
           <Icon name="settings"/>
           <div><strong>Création GitHub désactivée</strong>
-          <p>{"En attente des autorisations GitHub App, de l'audit durable et des tests sandbox."}</p></div>
+            <p>{"Le dépôt n'a pas été créé. Vous préparez uniquement l'approbation. L'exécution restera limitée à la sandbox après validation."}</p>
+          </div>
         </div>
+        <span className="atlas-gh-studio-preview-footer"><Icon name="spark"/> PRÉPARATION SÉCURISÉE PAR ATLAS</span>
       </aside>
     </div>
   </section>;

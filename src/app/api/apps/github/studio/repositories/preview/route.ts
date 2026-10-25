@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { githubConnectSettings } from "@/lib/github/connect";
+import { readStudioCreationPermission } from "../../../../../../../../packages/connectors/github/src/github-studio-permission.mjs";
 import {
   GitHubStudioError, parseRepositoryDraft, verifiedPersonalInstallation,
 } from "../../../../../../../../packages/connectors/github/src/github-studio-create.mjs";
@@ -66,16 +68,34 @@ export async function POST(request: NextRequest) {
     .eq("installation_id", draft.installationId)
     .maybeSingle();
   if (installationError) return fail("CONNECTIONS_UNAVAILABLE", 503);
-  if (!verifiedPersonalInstallation(installation && {
+  const binding = installation && {
     workspaceId: installation.workspace_id,
     installationId: Number(installation.installation_id),
     status: installation.status,
     repositorySelection: installation.repository_selection,
     ownershipVerifiedAt: installation.ownership_verified_at,
     repositoriesVerifiedAt: installation.repositories_verified_at,
-  }, draft.workspaceId, draft.installationId)) return fail("GITHUB_NOT_AUTHORIZED", 403);
+  };
+  if (!verifiedPersonalInstallation(binding, draft.workspaceId, draft.installationId)) {
+    return fail("GITHUB_NOT_AUTHORIZED", 403);
+  }
 
-  // No claim is made that creation permission has been granted by GitHub.
+  // Live App GET only. Never interpret an unverified or failed probe as approved.
+  let permissionState: "granted" | "missing" | "unavailable" = "unavailable";
+  const github = githubConnectSettings();
+  if (github) {
+    try {
+      const proof = await readStudioCreationPermission({
+        workspaceId: draft.workspaceId, installationId: draft.installationId,
+        binding, appId: github.appId, privateKey: github.appPrivateKey,
+      });
+      permissionState = proof.status;
+    } catch {
+      // Preview stays usable; approval remains blocked until GitHub can confirm it.
+    }
+  }
+
+  // Read-only preview: no GitHub write, no approval token and no operation reserved.
   return NextResponse.json({
     preview: {
       name: draft.name,
@@ -83,7 +103,8 @@ export async function POST(request: NextRequest) {
       private: draft.private,
       autoInit: draft.autoInit,
     },
+    permissionState,
     canExecute: false,
-    nextStep: "GITHUB_APP_PERMISSION_AND_WRITEBACK_APPROVAL_REQUIRED",
+    nextStep: permissionState === "granted" ? "HUMAN_APPROVAL_REQUIRED" : "GITHUB_PERMISSION_NOT_CONFIRMED",
   }, { headers: { "Cache-Control": "no-store" } });
 }
