@@ -195,7 +195,7 @@ test("simulation of two workers cannot create an actionable dispatch plan",()=>{
 });
 test("SQL receipts are private, tenant-bound and do not change offline gate",async()=>{
  const [migration,ci,baseGate] = await Promise.all([
-  read("../supabase/migrations/20261025133000_atlas_n8n_callback_receipts.sql"),
+  read("../supabase/migrations/20261025133921_atlas_n8n_callback_receipts.sql"),
   read("../.github/workflows/ci.yml"),
   read("../packages/engine-core/src/release-gates.mjs"),
  ]);
