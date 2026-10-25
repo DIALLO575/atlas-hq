@@ -74,3 +74,57 @@ révoquées en conditions réelles, compléter les tests de
 simultanéité multi-processus et un flux contrôlé de création
 de demandes. SHA-149 coffre KMS et SHA-151 worker ne sont
 pas achevés. MAUSBOT reste hard-blocked HTTP 423.
+
+## Reprise vérifiée — 24 octobre 2026 (heure Los Angeles)
+
+PR #40 est fusionnée (`7fe357d`), CI `40128157599` réussie (4 jobs).
+Le registre Supabase ATLAS contient maintenant **sept** migrations Engines :
+PR #41 a ajouté `20261024205621_atlas_engine_outbox_fencing_v1`.
+La CI `40132269678` de cette fondation SQL est également réussie.
+Les cinq compteurs instances/runs/approvals/outbox/audit étaient tous nuls
+à la lecture du 25 octobre à 06:48 UTC. Aucun SQL de fixture n'a été appliqué
+au projet connecté pendant cette reprise.
+
+Vercel annonce `dpl_BvT5x7ufB7YXsuBb4xPgQ8ac9S4e` READY, commit
+`e30817996a334381b65fe862c01d996d835d4d05`, avec alias
+`atlas-hq-preview.vercel.app`. La tête GitHub lue est
+`571f1fe1b6fd1c6571112693322b38c48f0c77f0` : cela ne prouve ni une
+publication de cette dernière tête, ni le parcours authentifié des approbations.
+
+### Concurrence PostgreSQL reproductible
+
+Après les fixtures/migrations du job `engine-foundation-postgres` :
+
+```sh
+ATLAS_ENGINE_DISPOSABLE_TEST=1 PGHOST=127.0.0.1 node tests/approval-decision-concurrency.mjs
+```
+
+Le script exige un hôte local et le schéma Auth minimal de la fixture.
+Deux reviewers distincts utilisent deux processus `psql` et deux connexions.
+Le premier laisse décision et audit non commités. Le test attend que le second
+soit effectivement bloqué sur un verrou PostgreSQL avant de commiter le premier.
+Il vérifie approve/reject, reject/approve et approve/approve : un seul gagnant,
+un seul audit corrélé, `can_dispatch=false`, run toujours draft, outbox inchangée.
+Les délais sont bornés ; absence de contention ou erreur inattendue font échouer
+le test. Ce test SQL n'est pas une preuve de vraie session Supabase Auth.
+
+### Préconditions de recette staging encore manquantes
+
+Aucune branche Supabase de développement n'a été trouvée sur le projet ATLAS.
+Avant de créer des demandes : identifier un projet de staging isolé, son
+application et son SHA, puis deux comptes de test réellement authentifiés
+(demandeur et reviewer distincts). Ne jamais réutiliser les JWT fictifs des tests
+SQL ni insérer leurs fixtures dans la base connectée.
+
+La création contrôlée doit vérifier la session et le rôle demandeur sous
+transaction, charger une mission du même workspace, fixer instance offline,
+primitive et hash serveur, créer run + demande pending + audit atomiquement,
+retourner uniquement les identifiants/empreinte et conserver zéro outbox.
+Ce chemin reste à implémenter et à tester ; aucun endpoint générique d'insertion
+ni activation de moteur ne fait partie de ce lot de tests.
+
+Rapport staging obligatoire : SHA servi, versions SQL, identités pseudonymisées,
+session supprimée/expirée, rôle retiré, expiration de demande, auto-review,
+cross-tenant, décisions concurrentes, rollback audit et compte outbox inchangé.
+SHA-150 reste In Progress ; coffre réel SHA-149, processus worker SHA-151 et
+GO SHA-133 restent nécessaires avant toute exécution.
