@@ -1,0 +1,12 @@
+.agent-request-panel { margin-block: 1.5rem; padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--border, #d8dce3); border-radius: 1rem; }
+.agent-request-panel form { margin-top: 1rem; max-width: 44rem; }
+.agent-request-panel fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: .6rem; min-width: 0; }
+.agent-request-panel legend { margin-bottom: .75rem; font-weight: 600; }
+.agent-request-panel label { display: block; margin-top: .6rem; font-weight: 500; }
+.agent-request-panel input, .agent-request-panel textarea, .agent-request-panel select { display: block; width: 100%; max-width: 44rem; box-sizing: border-box; padding: .75rem; border: 1px solid var(--border, #b8bec8); border-radius: .5rem; background: var(--surface, transparent); color: inherit; font: inherit; }
+.agent-request-panel textarea { resize: vertical; }
+.agent-request-panel button { margin-top: .8rem; padding: .75rem 1rem; cursor: pointer; }
+.agent-request-panel button:disabled { cursor: wait; opacity: .6; }
+.agent-request-panel code { overflow-wrap: anywhere; }
+.agent-request-panel [role="alert"] { margin-top: 1rem; }
+.agent-request-panel :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }

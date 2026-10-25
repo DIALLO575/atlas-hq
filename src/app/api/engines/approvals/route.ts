@@ -18,8 +18,22 @@ export async function GET(request: NextRequest) {
     p_workspace_id: workspaceId,
   });
   if (error || !Array.isArray(data)) return engineFailure("APPROVAL_INBOX_UNAVAILABLE", 503);
+  const visible = data.slice(0, 50);
+  let summaries: Record<string, {name:string;title:string;description:string}> = {};
+  if (visible.some(item => item.primitive_id === "agents.create")) {
+    const details = await supabase.rpc("atlas_engine_pending_agent_profiles", { p_workspace_id: workspaceId });
+    if (details.error || !Array.isArray(details.data)) return engineFailure("APPROVAL_DETAILS_UNAVAILABLE", 503);
+    const rows = details.data as Array<{run_id?: unknown; request_summary?: unknown}>;
+    summaries = Object.fromEntries(rows.flatMap(row => {
+      const summary = row.request_summary;
+      if (typeof row.run_id !== "string" || !summary || typeof summary !== "object" || Array.isArray(summary)) return [];
+      const profile = summary as Record<string, unknown>;
+      if (typeof profile.name !== "string" || typeof profile.title !== "string" || typeof profile.description !== "string") return [];
+      return [[row.run_id, { name: profile.name.slice(0,100), title: profile.title.slice(0,200), description: profile.description.slice(0,1000) }]];
+    }));
+  }
   return engineSuccess({
-    approvals: data.slice(0, 50),
+    approvals: visible.map(item => ({...item, agentProfile: summaries[item.run_id] ?? null})),
     readOnly: true,
     canApprove: false,
     canDispatch: false,

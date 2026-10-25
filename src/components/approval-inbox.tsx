@@ -12,6 +12,7 @@ type Pending = {
   intent_digest: string;
   requested_at: string;
   expires_at: string;
+  agentProfile?: { name:string; title:string; description:string } | null;
 };
 
 export function ApprovalInbox() {
@@ -59,6 +60,9 @@ export function ApprovalInbox() {
 
   async function decide(item: Pending, decision: "approved" | "rejected") {
     if (decisionRun || busy || !selected) return;
+    if (decision === "approved" && item.primitive_id === "agents.create" && !item.agentProfile) {
+      setError("Profil proposé indisponible : approbation impossible."); return;
+    }
     const actionLabel = decision === "approved" ? "approuver" : "refuser";
     if (!window.confirm(`Confirmer : ${actionLabel} ${item.primitive_id} pour la mission ${item.mission_id} ? Aucune exécution moteur ne sera déclenchée.`)) return;
     setDecisionRun(item.run_id);
@@ -98,10 +102,12 @@ export function ApprovalInbox() {
         : items.length === 0 ? <p>Aucune demande visible pour ce workspace.</p>
         : <ul>{items.map(item=><li key={item.run_id}>
           <strong>{item.primitive_id}</strong>
+          {item.agentProfile ? <div><p>Agent : <strong>{item.agentProfile.name}</strong></p>
+            <p>Rôle : {item.agentProfile.title}</p><p>{item.agentProfile.description}</p></div> : null}
           <p>Mission : <code>{item.mission_id}</code></p>
           <p>Empreinte exacte : <code className="break-all">{item.intent_digest}</code></p>
           <p>Expire : <time dateTime={item.expires_at}>{item.expires_at}</time></p>
-          <button type="button" disabled={!!decisionRun || busy}
+          <button type="button" disabled={!!decisionRun || busy || (item.primitive_id === "agents.create" && !item.agentProfile)}
             onClick={() => void decide(item, "approved")}>Approuver</button>
           <button type="button" disabled={!!decisionRun || busy}
             onClick={() => void decide(item, "rejected")}>Refuser</button>
