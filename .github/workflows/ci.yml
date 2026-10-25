@@ -226,6 +226,8 @@ jobs:
           -f tests/sql/n8n-automation-registry-checks.sql
           -f supabase/migrations/20261025120150_atlas_n8n_runtime_offline_gate.sql
           -f tests/sql/n8n-runtime-gate-checks.sql
+          -f supabase/migrations/20261025133000_atlas_n8n_callback_receipts.sql
+          -f tests/sql/n8n-callback-receipts-checks.sql
 
   validate:
     runs-on: ubuntu-latest
