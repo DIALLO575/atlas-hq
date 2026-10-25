@@ -112,7 +112,7 @@ test("version contradiction is explicitly listed, not silently treated as compat
 test("runbook includes safe rollback that preserves DB metadata and audit",async()=>{
  const doc=await read("../docs/runbooks/n8n-pr10-rollout-rollback.md");
  for(const key of ["Vercel","SIGKILL","429","401","403","5xx","HMAC",
-  "license","approbation","service_role","replay","workflow","restore"])
+  "licence","approbation","service_role","replay","workflow","restore"])
   assert.ok(doc.toLowerCase().includes(key.toLowerCase()),key);
  assert.match(doc,/Ne jamais supprimer/);
  assert.match(doc,/NO-GO/);
