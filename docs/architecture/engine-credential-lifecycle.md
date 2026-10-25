@@ -56,3 +56,10 @@ workspace/instance data, denied sessions, audit rollback and CAS failures.
 operations with HTTP 423. No new Supabase migrations are required for these
 offline interfaces; versions \`20261024161305\` and \`20261024163943\`
 are already applied and must not be rerun.
+
+## Mise à jour Founder : KMS différé
+
+Le premier périmètre utilise désormais un [secret serveur explicitement lié au
+workspace et à l'instance](engine-server-secret.md). Ce mode est distinct du
+coffre SQL chiffré décrit ci-dessus ; le module de cycle de vie chiffré n'est pas
+branché à un faux KMS. Aucun verrou MAUSBOT n'est levé.

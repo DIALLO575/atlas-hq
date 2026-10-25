@@ -1,9 +1,11 @@
 # SHA-151 — Outbox leases and fencing (preconnection)
 
-Status 2026-10-24: **migration applied and verified on ATLAS Supabase;**
-SQL functions and PostgreSQL disposable tests, but no actual worker.
-No real worker, no MAUSBOT network I/O, no credential/KMS decrypt, no
-session-based approval queueing, no application deployment.
+Status: PR41 SQL foundation is merged/applied. This development tranche adds
+an application-level **simulation runner**, private SQL adapter and independent
+process tests. It is not an installed production worker. No MAUSBOT network I/O,
+credential/payload decrypt, session-based approval queueing or deployment is added.
+KMS is deferred by explicit Founder instruction; the simple server credential
+proposal is PR49. A network token is distinct from encrypted outbox payloads.
 
 ## Private worker foundation
 
@@ -19,7 +21,7 @@ extends `private.atlas_engine_outbox` with:
 - A due-item partial index supports tenant-limited lookups.
 - A migration blocker prevents altering a DB with **active leased rows**.
 
-Three private, `SECURITY INVOKER`, `service_role`-only functions:
+Four private, `SECURITY INVOKER`, `service_role`-only functions:
 
 1. `atlas_engine_worker_claim` reserves a due row with
    `FOR UPDATE OF o SKIP LOCKED` to avoid claiming the same row twice,
@@ -51,9 +53,13 @@ epoch increment on reacquisition, bounded retry/backoff, dead-letter
 after fifth failure, audit and isolation of private payloads. No
 network API or MAUSBOT process is ever started.
 
-These sequential tests do **not** yet prove two truly concurrent
-PostgreSQL connections. Separate process-level concurrency/crash/replay
-tests are a remaining release requirement.
+Those existing SQL checks are sequential. The new
+`tests/engine-worker-processes.mjs` exercises the application runner on separate
+Node processes/connections: one uncommitted claim is held while the other process
+must return idle through SKIP LOCKED; SIGKILL before/after a simulated effect;
+expired lease recovery; stale process resumption; instance revocation after claim;
+fifth-attempt failure and idempotent crash reaping. CI runs it on disposable PG17.
+This is simulation evidence only, not real provider idempotence or Auth E2E.
 
 ## Before SHA-151 Done
 
@@ -64,8 +70,10 @@ tests are a remaining release requirement.
 - Build trusted server-side worker with narrowly scoped DB identity.
   Service-role access must never be exposed to HTTP/browser; prefer a
   dedicated role/least-privilege internal adapter during review.
-- Integrate SHA-149 KMS so only a worker with verified entitlement can
-  decrypt one payload; no plaintext in logs, metrics, API or audit.
+- KMS is deferred. Review the simple server-token scope (PR49) separately from
+  payload decryption/storage. This simulation reads neither credentials nor
+  ciphertext/plaintext payloads; it must not be presented as an outbox decryptor.
+  Secrets must stay out of logs, metrics, browser APIs and plaintext SQL.
 - Enforce capability-specific human approval and immutable run intent
   again at send time, **after** lease and before network dispatch.
 - Add distributed integration tests with **two database sessions**,
@@ -73,3 +81,45 @@ tests are a remaining release requirement.
   idempotency across external side effects and durable SSE receipts.
 - Obtain SHA-133 review and GO/NO-GO for a sandbox engine.
   The MAUSBOT `write/execute` hard gate (HTTP 423) remains unchanged.
+
+
+## Simulation runner and private SQL adapter
+
+`packages/engine-core/src/outbox-worker.mjs` exports a parameterized query adapter
+around the four existing SQL functions and one-step `runEngineSimulationOnce`.
+The application adapter returns only lease metadata, never outbox payloads.
+The supplied query executor must be server-only and enforce DB connection/query
+timeouts; SQL transitions and audit remain in the existing atomic functions.
+No DB URL, token or SQL role is provisioned by this code.
+
+Only a transport created by `createEngineSimulationTransport` is accepted.
+It has no URL, credential, payload or HTTP/fetch option. Its trusted injected
+receipt store must atomically deduplicate `(workspace, instance, outboxId)`.
+The stable simulation operation key is the outbox UUID, independent of lease
+owner/epoch. This key is internal simulation protocol; no claim is made that
+MAUSBOT supports it. The receipt callback is trusted server/test code, not user input.
+
+The runner requires `private.atlas_engine_disposable_worker_fixture` and a
+one-column fake `auth.users` schema before claiming anything. The process harness
+also requires `ATLAS_ENGINE_DISPOSABLE_TEST=1` and a localhost PGHOST before any
+fixture writes. This marker table exists only in disposable tests and is not a
+migration to apply on Supabase. Simulation does not activate an offline instance;
+only test fixtures deliberately fabricate a connected instance/authorized run.
+
+A simulated effect is capped at five seconds (less than the minimum lease).
+Heartbeats revalidate SQL conditions before and after it. A missing lease stops
+finalization. A failed/uncertain receipt or finalization leaves `recovery-required`
+for lease expiry and fenced retry, without leaking raw error messages. Explicit
+retryable simulation failures use the existing bounded SQL backoff/dead-letter.
+Cancellation stops new work; an already-completed effect cannot be undone.
+
+The integration receipt ledger is a **fake provider**, deliberately stored in the
+same disposable PostgreSQL for reproducibility. A crash after recording an effect
+and before finishing the outbox is recovered with the same key and one receipt.
+This demonstrates handling of the uncertain interval for an idempotent provider;
+it is not an exactly-once guarantee for MAUSBOT or arbitrary network side effects.
+
+Still absent: production loop/scheduler, least-privilege DB identity provisioning,
+real credential/payload resolution, full session/role/mission/tool revalidation,
+network timeout reconciliation, durable SSE/webhook receipt handling and deployment.
+The simulation must never be modified into a real worker by merely removing a flag.
