@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import type { WorkspaceResult } from "@/lib/workspaces/contract";
+import { mergeMausbotMessages, lastMausbotMessageId, rememberMausbotThread, MAUSBOT_THREAD_CACHE_TTL_MS } from "../../../packages/engines/mausbot/src/message-updates.mjs";
 
 type Task = { threadId: string; title: string | null; activity: string | null; active: boolean };
 type Agent = { id: string; name: string; title?: string | null; section?: string | null; chiefOfStaff?: boolean; hasAvatar?: boolean; activeTaskId: string | null; tasks: Task[] };
@@ -76,7 +77,26 @@ export function AgentsWorkspace() {
   const [sending, setSending] = useState(false);
   const [sendIssue, setSendIssue] = useState("");
   const [openTeamId, setOpenTeamId] = useState<string | null>(null);
+  const [fullscreenChat, setFullscreenChat] = useState(false);
+  const threadCache = useRef(new Map<string,{messages: Message[]; updatedAt:number}>());
+  const activeMessageKey = useRef("");
   const scrollRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    threadCache.current.clear();
+    setFullscreenChat(false);
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (!fullscreenChat) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const esc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFullscreenChat(false);
+    };
+    window.addEventListener("keydown",esc);
+    return () => { document.body.style.overflow = previous; window.removeEventListener("keydown",esc); };
+  }, [fullscreenChat]);
 
   useEffect(() => {
     let mounted = true;
@@ -141,6 +161,15 @@ export function AgentsWorkspace() {
   const activeWorkspace = spaces.status === "ready" ? spaces.workspaces.find(space => space.id === workspaceId) : null;
   const canReadMessages = activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
   const canSend = inventory?.canWrite === true && activeWorkspace?.role === "owner" && !!selected && !!threadId;
+  const messageKey = workspaceId && selection && threadId
+    ? [workspaceId,selection.kind,selection.id,threadId].join("|") : "";
+  activeMessageKey.current = messageKey;
+
+  function restoreCachedMessages(key: string) {
+    const entry = threadCache.current.get(key);
+    return entry && Date.now() - entry.updatedAt < MAUSBOT_THREAD_CACHE_TTL_MS
+      ? entry.messages : [];
+  }
 
   async function sendMessage() {
     if (!canSend || sending || !draft.trim() || !selection || !threadId) return;
@@ -169,7 +198,9 @@ export function AgentsWorkspace() {
     setDraft(""); setSendIssue("");
     setSelection(next);
     setThreadId(tasks.find(task => task.active)?.threadId ?? tasks[0]?.threadId ?? "");
-    setMessages([]);
+    const chosenTaskId = tasks.find(task => task.active)?.threadId ?? tasks[0]?.threadId ?? "";
+    const key = next && chosenTaskId ? [workspaceId,next.kind,next.id,chosenTaskId].join("|") : "";
+    setMessages(restoreCachedMessages(key));
     setMessagesIssue("");
     setMessagesBusy(false);
     if (next?.kind === "agent" && window.matchMedia("(max-width:700px)").matches) {
@@ -178,45 +209,60 @@ export function AgentsWorkspace() {
   }
 
   useEffect(() => {
-    if (!workspaceId || !selection || !threadId || !canReadMessages) return;
+    if (!workspaceId || !selection || !threadId || !canReadMessages || !messageKey) return;
     const abort = new AbortController();
     let reading = false;
+    const key = messageKey;
+    const cached = restoreCachedMessages(key);
+    setMessages(cached);
+    setMessagesIssue("");
     const load = async () => {
-      if (reading || abort.signal.aborted || document.visibilityState === "hidden") return;
+      if (reading || abort.signal.aborted || document.visibilityState === "hidden" ||
+          navigator.onLine === false) return;
       reading = true;
-      setMessagesBusy(true);
+      if (!threadCache.current.has(key)) setMessagesBusy(true);
       try {
-        const response = await fetch("/api/engines/mausbot/primitives", {
-          method: "POST", credentials: "same-origin", cache: "no-store", signal: abort.signal,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            workspaceId,
-            primitive: selection.kind === "team" ? "channels.messages.list" : "conversations.messages.list",
-            args: selection.kind === "team"
-              ? { channel_id: selection.id, task_id: threadId, limit: 50 }
-              : { bot_id: selection.id, task_id: threadId, limit: 50 },
-          }),
+        const previous = threadCache.current.get(key);
+        const cursor = previous ? lastMausbotMessageId(previous.messages) : null;
+        const params = new URLSearchParams({workspaceId,kind:selection.kind,
+          targetId:selection.id,taskId:threadId});
+        if (cursor) params.set("afterId",cursor);
+        const response = await fetch("/api/engines/mausbot/updates?" + params.toString(), {
+          credentials:"same-origin",cache:"no-store",signal:abort.signal,
         });
-        const data = await response.json();
-        if (!response.ok) throw Error(typeof data.error === "string" ? data.error : "CONVERSATION_UNAVAILABLE");
-        if (!Array.isArray(data.result?.messages)) throw Error("CONVERSATION_INVALID");
-        if (!abort.signal.aborted) { setMessages(data.result.messages); setMessagesIssue(""); }
+        const data = await response.json() as {messages?:Message[];reset?:boolean;error?:string};
+        if (!response.ok) throw Error(data.error ?? "CONVERSATION_UNAVAILABLE");
+        if (!Array.isArray(data.messages) || typeof data.reset !== "boolean") {
+          throw Error("CONVERSATION_INVALID");
+        }
+        if (abort.signal.aborted || activeMessageKey.current !== key) return;
+        const current = threadCache.current.get(key)?.messages ?? [];
+        const next = mergeMausbotMessages(current,data.messages,data.reset);
+        rememberMausbotThread(threadCache.current,key,next);
+        if (next !== current) setMessages(next);
+        setMessagesIssue("");
       } catch (error) {
-        if (!abort.signal.aborted) {
-          setMessages([]);
+        // Keep already loaded messages visible during transient outages.
+        if (!abort.signal.aborted && activeMessageKey.current === key) {
           setMessagesIssue(error instanceof Error ? error.message : "CONVERSATION_UNAVAILABLE");
         }
       } finally {
         reading = false;
-        if (!abort.signal.aborted) setMessagesBusy(false);
+        if (!abort.signal.aborted && activeMessageKey.current === key) setMessagesBusy(false);
       }
     };
     void load();
-    const interval = window.setInterval(() => void load(), 5000);
-    const visible = () => { if (document.visibilityState === "visible") void load(); };
-    document.addEventListener("visibilitychange", visible);
-    return () => { abort.abort(); window.clearInterval(interval); document.removeEventListener("visibilitychange", visible); };
-  }, [workspaceId, selection, threadId, canReadMessages, messagesRevision]);
+    const pollMs = window.matchMedia("(max-width:700px)").matches ? 12000 : 8000;
+    const interval = window.setInterval(() => void load(),pollMs);
+    const onVisible = () => { if (document.visibilityState === "visible") void load(); };
+    document.addEventListener("visibilitychange",onVisible);
+    window.addEventListener("online",onVisible);
+    return () => {
+      abort.abort(); window.clearInterval(interval);
+      document.removeEventListener("visibilitychange",onVisible);
+      window.removeEventListener("online",onVisible);
+    };
+  }, [workspaceId,selection?.kind,selection?.id,threadId,canReadMessages,messagesRevision,messageKey]);
 
   useEffect(() => {
     if (!scrollRef.current || messagesBusy) return;
@@ -314,7 +360,7 @@ export function AgentsWorkspace() {
       {inventory && openedTeam && <section className="atlas-team-detail" aria-label={"Équipe " + openedTeam.name}>
         <header className="atlas-team-detail-header">
           <button type="button" className="atlas-team-back" onClick={() => {
-            setOpenTeamId(null); setSelection(null); setThreadId(""); setMessages([]); setDraft(""); setSendIssue("");
+            setFullscreenChat(false); setOpenTeamId(null); setSelection(null); setThreadId(""); setMessages([]); setDraft(""); setSendIssue("");
           }}><Icon name="arrow-left" /> Toutes les équipes</button>
           <div className="atlas-team-detail-title">
             <span className="atlas-team-detail-mark"><Icon name="layers" /></span>
@@ -355,7 +401,7 @@ export function AgentsWorkspace() {
           </div>
         </section>
 
-        <section className="atlas-people-console atlas-people-console-team" aria-label="Conversation MAUSBOT de l’équipe">
+        <section className={"atlas-people-console atlas-people-console-team" + (fullscreenChat ? " is-chat-fullscreen" : "")} aria-label="Conversation MAUSBOT de l’équipe">
         <div className="atlas-people-chat" id="atlas-people-conversation">
           <div className="atlas-people-chat-heading">
             <AgentPortrait agent={selectedAgent ?? (selection?.kind === "team" ? chief?.agent : null)} workspaceId={workspaceId}
@@ -364,12 +410,26 @@ export function AgentsWorkspace() {
               <strong>{selectedName || "Conversations"}</strong>
               <small>{selection?.kind === "team" ? "Canal d’équipe MAUSBOT" : selectedAgent ? selectedAgent.title || "Agent MAUSBOT" : "Choisissez une équipe ou un agent"}</small>
             </div>
-            {selected && <button type="button" className="atlas-people-icon-button" title="Actualiser les messages"
-              aria-label="Actualiser les messages" disabled={!threadId || messagesBusy || !canReadMessages}
-              onClick={() => setMessagesRevision(value => value + 1)}><Icon name="rotate-ccw" /></button>}
+            <div className="atlas-people-chat-controls">
+              {selected && <button type="button" className="atlas-people-icon-button" title="Actualiser les messages"
+                aria-label="Actualiser les messages" disabled={!threadId || messagesBusy || !canReadMessages}
+                onClick={() => setMessagesRevision(value => value + 1)}><Icon name="rotate-ccw" /></button>}
+              <button type="button" className="atlas-people-icon-button atlas-people-fullscreen-toggle"
+                aria-pressed={fullscreenChat} aria-label={fullscreenChat ? "Quitter le plein écran" : "Afficher la conversation en plein écran"}
+                title={fullscreenChat ? "Réduire" : "Plein écran"}
+                onClick={() => setFullscreenChat(value => !value)}>
+                <Icon name={fullscreenChat ? "minimize-2" : "maximize-2"} />
+              </button>
+            </div>
           </div>
           {selected && currentThreads.length > 0 && <label className="atlas-people-thread-picker">Fil de conversation
-            <select value={threadId} onChange={event => { setThreadId(event.target.value); setMessages([]); setMessagesIssue(""); }}>
+            <select value={threadId} onChange={event => {
+              const id = event.target.value;
+              setThreadId(id);
+              const key = selection ? [workspaceId,selection.kind,selection.id,id].join("|") : "";
+              setMessages(restoreCachedMessages(key));
+              setMessagesIssue("");
+            }}>
               {currentThreads.map(task => <option value={task.threadId} key={task.threadId}>
                 {task.title || task.threadId}{task.active ? " · actif" : ""}
               </option>)}
@@ -396,13 +456,13 @@ export function AgentsWorkspace() {
               <strong>Lecture restreinte</strong><p>Les messages sont réservés aux propriétaires et administrateurs du workspace.</p>
             </div>}
             {selected && threadId && canReadMessages && <>
-              {messagesIssue && <p className="atlas-people-message-error" role="alert">Lecture impossible : {messagesIssue}. Aucun historique non vérifié n’est affiché.</p>}
+              {messagesIssue && <p className="atlas-people-message-error" role="alert">Actualisation indisponible : {messagesIssue}. Les messages déjà reçus restent visibles.</p>}
               {messagesBusy && !messages.length && !messagesIssue && <p className="atlas-people-loading" role="status">Chargement des messages réels…</p>}
               {!messagesBusy && !messagesIssue && !messages.length && <div className="atlas-people-zero-state">
                 <span className="atlas-people-zero-symbol"><Icon name="inbox" /></span>
                 <strong>Ce fil est vide</strong><p>Aucun message n’a été retourné par MAUSBOT.</p>
               </div>}
-              {!!messages.length && !messagesIssue && <ol className="atlas-people-messages" ref={scrollRef} aria-label="Messages du fil" aria-live="polite" aria-relevant="additions">
+              {!!messages.length && <ol className="atlas-people-messages" ref={scrollRef} aria-label="Messages du fil" aria-live="polite" aria-relevant="additions">
                 {messages.map((message, index) => <li key={message.id ?? (message.at ?? "message") + "-" + index}
                   data-speaker={message.role === "user" ? "user" : message.role === "assistant" ? "assistant" : "event"}>
                   <div className="atlas-people-message-avatar">{message.role === "assistant"
