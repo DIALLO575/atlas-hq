@@ -67,6 +67,9 @@ contrôle de l'état des ressources au moment de la future exécution, intégrat
 avec worker/contexte/droits/outbox et création MAUSBOT autorisée. Les imports
 équipes, canaux et missions exécutables sont des tranches suivantes.
 
+La séquence de recette live, ses participants et ses vérifications sont décrits
+dans [le runbook SHA-150](../operations/engine-agent-request-live-recipe.md).
+
 ## Vérification
 
 Tests BFF exécutent la route compilée avec stubs des frontières auth/DB : origine,

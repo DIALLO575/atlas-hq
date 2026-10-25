@@ -121,7 +121,18 @@ Le code PR #60 est encore draft/non fusionné et aucun déploiement n'est confir
 La migration d'affectation mission→agent reste une proposition non appliquée;
 elle est séparée, privée et n'a pas encore de writer.
 
-Pendant le rapprochement, l'historique Supabase a également montré la migration
-`atlas_n8n_automation_registry` en version `20261025114449`, absente de main
-(`9d64498`). Elle n'a pas été appliquée par cette tranche; source et propriétaire
-doivent être rapprochés avant la prochaine synchronisation complète du schéma.
+Pendant le rapprochement, la migration `atlas_n8n_automation_registry` a été
+retrouvée dans le fichier `supabase/migrations/20261025114449_atlas_n8n_automation_registry.sql`
+de la PR #61. Cette PR est en brouillon/non fusionnée et empilée sur #59, qui dépend
+de #58 puis #57; les quatre PR sont ouvertes. La CI push du HEAD PR61
+`d77bd2f` (run `40190238572`) est verte. L'historique Supabase et le nom du fichier
+source concordent sur la version `20261025114449`. La description de PR61 mentionne
+ailleurs `20261025114500`; cette valeur ne concorde pas et reste à corriger par le
+propriétaire de la PR avant fusion. En base, les deux tables n8n ont RLS et policy
+de lecture workspace; anon n'a pas SELECT, authenticated n'a pas INSERT/UPDATE,
+service_role a mutation metadata. Le contenu n8n est une tranche séparée de MAUSBOT;
+ne pas merger les PR empilées hors ordre.
+
+Le runbook [SHA-150](engine-agent-request-live-recipe.md) prépare les vérifications
+à deux/ trois comptes sans lancer de demande réelle tant que la cible n'est pas
+isolée et autorisée.
