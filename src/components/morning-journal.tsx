@@ -11,7 +11,7 @@ type Item = {
   certainty: "elevee" | "moyenne" | "faible" | null; status: "confirme" | "rapporte" | "a_verifier" | null;
   sourceUrl: string | null; sourceName: string | null; extraSources: { url: string; name: string | null }[];
   publishedAt: string | null; authorBot: string | null; state: ReadState;
-  cover: { url: string | null; generated: boolean; origin: string };
+  cover: { file: string; generated: boolean; alt: string; credit: string | null } | null;
 };
 type Payload = { source: "live-read-only"; demo: boolean; editionId: string; generatedAt: string | null;
   categories: { id: Category; label: string; count: number }[]; items: Item[]; stateAvailable: boolean };
@@ -32,13 +32,16 @@ function dateLabel(v: string | null) {
   return Number.isNaN(d.getTime()) ? null : new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-function Cover({ item, large }: { item: Item; large?: boolean }) {
-  return <figure className={"mj-cover is-" + item.category + (large ? " is-large" : "")}>
-    {item.cover.url
+function Cover({ item, ws, large }: { item: Item; ws: string; large?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const src = item.cover && !failed ? "/api/engines/mausbot/journal/cover?workspaceId=" + encodeURIComponent(ws) + "&file=" + encodeURIComponent(item.cover.file) : null;
+  return <figure className={"mj-cover" + (large ? " is-large" : "")}>
+    {src
       // eslint-disable-next-line @next/next/no-img-element
-      ? <img src={item.cover.url} alt="" loading="lazy" referrerPolicy="no-referrer" />
-      : <span className="mj-cover-fallback" aria-hidden>{item.title.slice(0, 1)}</span>}
-    {item.cover.generated && <figcaption className="mj-generated">Illustration générée</figcaption>}
+      ? <img src={src} alt={item.cover?.alt ?? ""} loading="lazy" onError={() => setFailed(true)} />
+      : <span className="mj-cover-fallback" aria-hidden />}
+    {item.cover?.generated && <figcaption className="mj-generated">Illustration générée</figcaption>}
+    {item.cover?.credit && !item.cover.generated && <figcaption className="mj-credit">{item.cover.credit}</figcaption>}
   </figure>;
 }
 function Badges({ item }: { item: Item }) {
@@ -121,7 +124,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
       {!view.data.stateAvailable && <p className="mj-state is-warn">Suivi lu/terminé indisponible (migration feed_item_state non appliquée).</p>}
       <section className="mj-grid">
         {items.map((item, idx) => <article key={item.id} className={"mj-card" + (idx === 0 && filter === "all" ? " is-lead" : "") + " is-state-" + item.state}>
-          <button className="mj-card-open" onClick={() => open(item)} aria-label={"Lire : " + item.title}><Cover item={item} /></button>
+          <button className="mj-card-open" onClick={() => open(item)} aria-label={"Lire : " + item.title}><Cover item={item} ws={ws} /></button>
           <div className="mj-card-body">
             <p className={"mj-cat is-" + item.category}>{view.data!.categories.find(c => c.id === item.category)?.label}{item.state === "new" && <i className="mj-dot" aria-label="nouveau" />}</p>
             <h2><button onClick={() => open(item)}>{item.title}</button></h2>
@@ -141,7 +144,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     {reading && <div className="mj-reader" role="dialog" aria-modal="true" aria-label={reading.title}>
       <div className="mj-reader-inner">
         <button className="mj-close" onClick={() => setReading(null)} aria-label="Fermer"><Icon name="close" /></button>
-        <Cover item={reading} large />
+        <Cover item={reading} ws={ws} large />
         <p className={"mj-cat is-" + reading.category}>{view.data?.categories.find(c => c.id === reading.category)?.label}{reading.authorBot && " · " + reading.authorBot}</p>
         <h2>{reading.title}</h2>
         <Badges item={reading} />

@@ -1,11 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { normalizeJournalTopic, parseJournalJson, parseJournalMarkdown, groupJournal, JOURNAL_CATEGORIES } from "../packages/engines/mausbot/src/journal.mjs";
-import { isPrivateAddress, assertPublicUrl, safeFetch, extractOgImage, resolveCover } from "../packages/engines/mausbot/src/journal-images.mjs";
-import { resolveJournalSource, readJournalEdition, validateJournalStateInput, JOURNAL_FIXTURE } from "../packages/engines/mausbot/src/journal-source.mjs";
+import { normalizeCover, normalizeJournalTopic, parseJournalJson, parseJournalMarkdown, groupJournal, JOURNAL_CATEGORIES } from "../packages/engines/mausbot/src/journal.mjs";
+import { resolveJournalSource, readJournalEdition, readJournalCover, validateJournalStateInput, JOURNAL_FIXTURE } from "../packages/engines/mausbot/src/journal-source.mjs";
 
-const pub = async () => [{ address: "93.184.216.34" }];
 
 test("topics normalize to six categories, unknown → null", () => {
   assert.equal(JOURNAL_CATEGORIES.length, 6);
@@ -22,15 +20,16 @@ test("topics normalize to six categories, unknown → null", () => {
 
 test("JSON edition: strict envelope, bad items skipped, unsafe URLs dropped", () => {
   const e = parseJournalJson({ edition_id: "2026-10-25_matin", generated_at: "2026-10-25T13:00:00Z", items: [
-    { id: "a", topic: "ia", title: "T", summary: "S", certainty: "elevee", status: "confirme", source_url: "https://x.com/a", image_url: "javascript:alert(1)", extra_sources: [{ url: "file:///etc/passwd" }, { url: "https://y.org/b", name: "Y" }] },
+    { id: "a", topic: "ia", title: "T", summary: "S", certainty: "elevee", status: "confirme", source_url: "https://x.com/a", cover: { file: "../etc/passwd.png", generated: true }, extra_sources: [{ url: "file:///etc/passwd" }, { url: "https://y.org/b", name: "Y" }] },
     { id: "b", topic: "sport", title: "ignored" },
     { id: "a", topic: "ia", title: "dup" },
     { id: "bad id!", topic: "ia", title: "x" },
-    { id: "c", topic: "economie", title: "E", certainty: "wat", unknownField: 1 },
+    { id: "c", topic: "economie", title: "E", certainty: "wat", unknownField: 1, cover: { file: "radar-c.webp", generated: true, alt: "A", credit: "Reuters" } },
   ] });
   assert.equal(e.items.length, 2);
   assert.equal(e.skipped, 3);
-  assert.equal(e.items[0].imageUrl, null);
+  assert.equal(e.items[0].cover, null);
+  assert.deepEqual(e.items[1].cover, { file: "radar-c.webp", generated: true, alt: "A", credit: "Reuters" });
   assert.equal(e.items[0].sourceName, "x.com");
   assert.deepEqual(e.items[0].extraSources, [{ url: "https://y.org/b", name: "Y" }]);
   assert.equal(e.items[1].certainty, null);
@@ -57,36 +56,25 @@ test("Markdown fallback splits on ## Thème — Titre and extracts sources", () 
   assert.equal(g.certainty, "faible");
 });
 
-test("SSRF: private, loopback, metadata, mapped and non-http targets refused", async () => {
-  for (const ip of ["127.0.0.1", "10.0.0.1", "172.16.5.4", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1"])
-    assert.equal(isPrivateAddress(ip), true, ip);
-  assert.equal(isPrivateAddress("93.184.216.34"), false);
-  for (const u of ["ftp://x.com/a", "http://localhost/a", "http://127.0.0.1/", "http://[::1]/", "https://u:p@x.com/", "http://x.com:8080/"])
-    await assert.rejects(assertPublicUrl(u, { lookup: pub }), u);
-  await assert.rejects(assertPublicUrl("https://evil.example/", { lookup: async () => [{ address: "10.1.2.3" }] }));
-  await assertPublicUrl("https://news.example/a", { lookup: pub });
+test("cover: MausBot attachment names only, generated flag strict", () => {
+  assert.equal(normalizeCover({ file: "https://evil.example/x.png" }), null);
+  assert.equal(normalizeCover({ file: "a/b.png" }), null);
+  assert.equal(normalizeCover({ file: "x.svg" }), null);
+  assert.equal(normalizeCover({ file: "x.jpeg", generated: "true" }).generated, false);
+  assert.equal(normalizeCover(null), null);
 });
 
-test("safeFetch re-validates redirects and caps size", async () => {
-  const redirect = async () => new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest" } });
-  await assert.rejects(safeFetch("https://news.example/", { fetchImpl: redirect, lookup: async h => h === "news.example" ? pub() : [{ address: h }] }));
-  const big = async () => new Response("x".repeat(2000), { status: 200 });
-  await assert.rejects(safeFetch("https://news.example/", { fetchImpl: big, lookup: pub, maxBytes: 100 }), /TOO_LARGE/);
-});
-
-test("og:image extraction and cover fallback chain", async () => {
-  const html = `<html><head><meta content="/img/cover.jpg?a=1&amp;b=2" property="og:image"></head></html>`;
-  assert.equal(extractOgImage(html, "https://news.example/a"), "https://news.example/img/cover.jpg?a=1&b=2");
-  assert.equal(extractOgImage(`<meta property="og:image" content="javascript:x">`, "https://n.example/"), null);
-  const fetchImpl = async url => url.includes("/img/")
-    ? new Response("img", { headers: { "content-type": "image/jpeg" } })
-    : new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
-  const item = { imageUrl: null, sourceUrl: "https://news.example/a", title: "T", category: "ia", summary: "" };
-  assert.deepEqual(await resolveCover(item, { fetchImpl, lookup: pub }), { url: "https://news.example/img/cover.jpg?a=1&b=2", generated: false, origin: "og" });
-  const notImage = async () => new Response("<html></html>", { headers: { "content-type": "text/html" } });
-  const provider = { name: "t", generate: async () => ({ url: "https://gen.example/x.webp" }) };
-  assert.deepEqual(await resolveCover(item, { fetchImpl: notImage, lookup: pub, provider }), { url: "https://gen.example/x.webp", generated: true, origin: "generated" });
-  assert.deepEqual(await resolveCover(item, { fetchImpl: notImage, lookup: pub }), { url: null, generated: true, origin: "placeholder" });
+test("cover proxy: GET to /api/attachments, image types only, size capped, token stays server-side", async () => {
+  const config = { baseUrl: "https://mausbot.example", token: "SECRET-TOKEN" };
+  let seen;
+  const ok = async (url, init) => { seen = { url, init }; return new Response("img", { headers: { "content-type": "image/webp" } }); };
+  const r = await readJournalCover(config, "radar-1.webp", { fetchImpl: ok });
+  assert.equal(seen.url, "https://mausbot.example/api/attachments/radar-1.webp");
+  assert.equal(seen.init.method, "GET");
+  assert.equal(r.contentType, "image/webp");
+  await assert.rejects(readJournalCover(config, "../x.png", { fetchImpl: ok }), /INVALID/);
+  await assert.rejects(readJournalCover(config, "x.png", { fetchImpl: async () => new Response("<svg>", { headers: { "content-type": "image/svg+xml" } }) }), /NOT_IMAGE/);
+  await assert.rejects(readJournalCover(config, "x.png", { fetchImpl: ok, maxBytes: 1 }), /TOO_LARGE/);
 });
 
 test("source: env-only, https only, token never serialized, demo blocked in production", async () => {
@@ -124,6 +112,9 @@ test("routes: owner-only, GET-only to MausBot, state writes Supabase not MausBot
   assert.doesNotMatch(read, /export async function (POST|PUT|DELETE|PATCH)/);
   assert.match(owner, /role !== "owner"/);
   assert.match(state, /from\("feed_item_state"\)\.upsert/);
+  const cover = readFileSync(new URL("../src/app/api/engines/mausbot/journal/cover/route.ts", import.meta.url), "utf8");
+  assert.match(cover, /requireJournalOwner/);
+  assert.doesNotMatch(read + cover, /og:image|resolveCover/);
   assert.doesNotMatch(state, /mausbotRequest|resolveMausbotConfig/);
   const mig = readFileSync(new URL("../supabase/migrations/20261025220000_atlas_feed_item_state.sql", import.meta.url), "utf8");
   assert.match(mig, /ENABLE ROW LEVEL SECURITY/);

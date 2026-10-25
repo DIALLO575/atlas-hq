@@ -42,6 +42,13 @@ function str(value, max) {
 }
 function hostName(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return null; } }
 
+export const COVER_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,150}\.(webp|png|jpg|jpeg|gif)$/i;
+/** cover = { file, generated, alt, credit } produced by MausBot; file is a MausBot attachment name. */
+export function normalizeCover(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (typeof raw.file !== "string" || !COVER_FILE.test(raw.file) || raw.file.includes("..")) return null;
+  return { file: raw.file, generated: raw.generated === true, alt: str(raw.alt, 300) ?? "", credit: str(raw.credit, 200) };
+}
 function normalizeItem(raw, editionId) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const category = normalizeJournalTopic(raw.topic);
@@ -60,7 +67,7 @@ function normalizeItem(raw, editionId) {
     certainty: CERTAINTY.includes(raw.certainty) ? raw.certainty : null,
     status: STATUS.includes(raw.status) ? raw.status : null,
     sourceUrl, sourceName: str(raw.source_name, 120) ?? (sourceUrl ? hostName(sourceUrl) : null),
-    extraSources: extra, imageUrl: safeHttpUrl(raw.image_url), publishedAt: published,
+    extraSources: extra, cover: normalizeCover(raw.cover), publishedAt: published,
     authorBot: str(raw.author_bot, 60),
   };
 }
@@ -118,7 +125,7 @@ export function parseJournalMarkdown(markdown, editionId) {
       status: /confirm/.test(certaintyText) ? "confirme" : /verifier/.test(certaintyText) ? "a_verifier" : /rapport/.test(certaintyText) ? "rapporte" : null,
       sourceUrl: pick[0]?.url ?? null, sourceName: pick[0] ? (pick[0].name ?? hostName(pick[0].url)) : null,
       extraSources: pick.slice(1, 8).map(l => ({ url: l.url, name: l.name ?? hostName(l.url) })),
-      imageUrl: null, publishedAt: null, authorBot: null,
+      cover: null, publishedAt: null, authorBot: null,
     });
   }
   return { editionId: eid, generatedAt: null, format: "markdown", items, skipped: 0 };

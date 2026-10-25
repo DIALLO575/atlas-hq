@@ -2,6 +2,10 @@
 
 Statut : **PR brouillon, non déployée.** Lecture seule côté MausBot ; l’état lu/terminé vit dans Supabase.
 
+**Partage des rôles (décision de Paul) :** toute l’intelligence — tri, thèmes, dédoublonnage, recherche de l’image réelle
+de l’article, génération d’illustration — se fait **côté MausBot** (MORGANS et son équipe). ATLAS **récupère et affiche** :
+aucun fetch d’article, aucun og:image, aucun générateur d’image, aucun stockage d’image dans ATLAS.
+
 ## Parcours
 `/journal` (lien « Journal » dans la navigation) → `GET /api/engines/mausbot/journal?workspaceId=…` → édition triée par thème
 (IA & outils, Commerce & logistique, Guinée, Afrique, Monde / géopolitique, Économie / marchés), cartes avec couverture,
@@ -11,9 +15,9 @@ lecture plein écran, « Marquer lu » / « Marquer terminé », progression X/Y
 | Fichier | Rôle |
 |---|---|
 | `packages/engines/mausbot/src/journal.mjs` | Parseur pur : JSON d’édition (strict) + repli Markdown `## Thème — Titre`, normalisation des thèmes |
-| `packages/engines/mausbot/src/journal-images.mjs` | Couverture : `image_url` → `og:image` de la source (fetch SSRF-safe) → provider d’illustration → placeholder thématique |
 | `packages/engines/mausbot/src/journal-source.mjs` | Source (env serveur uniquement, GET, bearer non sérialisable), fixture de démo, validation de l’état |
 | `src/app/api/engines/mausbot/journal/route.ts` | GET owner-only, `Cache-Control: private, max-age=60` |
+| `src/app/api/engines/mausbot/journal/cover/route.ts` | Proxy image owner-only → MausBot `GET /api/attachments/<file>` (bearer côté serveur) |
 | `src/app/api/engines/mausbot/journal/state/route.ts` | POST owner-only → upsert `feed_item_state` (jamais MausBot) |
 | `supabase/migrations/20261025220000_atlas_feed_item_state.sql` | Table + RLS owner-only — **non appliquée** |
 
@@ -23,13 +27,13 @@ lecture plein écran, « Marquer lu » / « Marquer terminé », progression X/Y
   "id":"[A-Za-z0-9._:-]{1,120}","topic":"ia|commerce|guinee|afrique|monde|geopolitique|economie|tech",
   "title":"…","summary":"…","why_it_matters":"…|null","certainty":"elevee|moyenne|faible","status":"confirme|rapporte|a_verifier",
   "source_url":"https://…","source_name":"…","extra_sources":[{"url":"https://…","name":"…"}],
-  "image_url":"og:image ou null","published_at":"ISO-8601|null","author_bot":"Turing"}]}
+  "cover":{"file":"radar-ia-1.webp","generated":false,"alt":"…","credit":"Reuters"},"published_at":"ISO-8601|null","author_bot":"Turing"}]}
 ```
 Règles : enveloppe invalide → erreur `JOURNAL_EDITION_INVALID` ; items au thème inconnu, sans id/titre, ou en double → ignorés ;
 URLs non http(s) ou avec identifiants → supprimées ; max 200 items lus, 40 affichés ; textes tronqués.
 
 Repli Markdown (`world_radar_final_AAAA-MM-JJ.md`) : découpage sur `## <Thème> — <Titre>`, rubriques `Faits` (résumé),
-`Statut/certitude`, `Intérêt`, `Source(s)` (liens). Pas d’image dans le .md → og:image de la source.
+`Statut/certitude`, `Intérêt`, `Source(s)` (liens). Pas de couverture dans le .md → placeholder neutre.
 
 ## Source MausBot : route Caddy GET à créer (NON faite)
 Aucune route GET existante du gateway (`/mcp`) ou de l’API MausBot ne sert les fichiers d’espace de travail d’un bot.
@@ -55,20 +59,21 @@ Côté ATLAS : `ATLAS_MAUSBOT_JOURNAL_URL=https://mausbot.shadoron.com/journal/l
 via `resolveMausbotConfig` ; si un jeton dédié est préféré, adapter `resolveJournalSource`). Les gates de lecture MausBot
 existants (`mausbotReleasePermission(env,"read")`) s’appliquent. `ATLAS_MAUSBOT_JOURNAL_DEMO=true` sert la fixture hors production.
 
-## Images
-- SSRF : http(s) seulement, ports 80/443, pas d’identifiants, refus localhost/`.local`/`.internal`, résolution DNS et refus
-  de toute adresse privée/loopback/link-local/CGNAT/ULA/mappée, redirections manuelles revalidées (max 3), timeout 4 s,
-  HTML ≤ 1 Mo, image ≤ 5 Mo, content-type `image/(jpeg|png|webp|gif|avif)`. Limite connue : fenêtre de DNS rebinding entre
-  la vérification et la connexion (atténuable avec un agent HTTP à IP épinglée).
-- Illustration générée : interface `ImageProvider.generate({title,category,summary})`. ATLAS n’a pas de générateur configuré
-  → `stubImageProvider` (null) → couverture typographique thématique **marquée « Illustration générée »**. Aucune clé en dur.
-- Stockage prévu (non créé) : bucket Supabase **privé** `journal-covers/<edition_id>/<item_id>.webp` (copie réduite WebP),
-  servi par URL signées courtes (ex. 1 h) générées côté serveur ; usage interne uniquement, nom et lien du média toujours affichés.
-  Aujourd’hui : cache mémoire 6 h par instance, l’image est chargée depuis l’URL du média (`referrerPolicy=no-referrer`).
+## Couvertures
+- `cover.file` = nom d’une pièce jointe MausBot (`^[A-Za-z0-9][A-Za-z0-9._-]{0,150}\.(webp|png|jpg|jpeg|gif)$`, sans `/` ni `..`).
+  Toute autre valeur (URL externe, chemin) est ignorée → placeholder neutre.
+- Le navigateur charge `/api/engines/mausbot/journal/cover?workspaceId=…&file=…` (owner-only). ATLAS appelle
+  `GET <ATLAS_MAUSBOT_URL>/api/attachments/<file>` avec le bearer serveur, accepte seulement `image/(jpeg|png|webp|gif)`,
+  ≤ 5 Mo, renvoie `Cache-Control: private, max-age=3600`, `nosniff`, CSP sandbox. Aucune URL externe non vérifiée côté client.
+- La route Caddy `/api/attachments/*` actuelle accepte png/jpg/gif/webp : **ajouter `jpeg`** au motif si MORGANS produit des `.jpeg`
+  (sinon qu’il nomme ses fichiers `.jpg`).
+- `generated: true` → mention « Illustration générée » ; sinon `credit` (nom du média) affiché sur l’image. Source et lien toujours affichés.
+- C’est MORGANS qui choisit : image réelle de l’article d’abord, illustration générée sinon.
 
 ## Étapes restantes
 1. Valider puis poser la route Caddy GET (ou le mini-endpoint gw.js) — ne pas le faire sans OK.
 2. Appliquer la migration `feed_item_state` en prod Supabase après revue (sinon le journal s’affiche sans suivi lu/terminé).
 3. Définir `ATLAS_MAUSBOT_JOURNAL_URL` sur Vercel, puis un seul preview vérifié (quota, cf. AGENTS.md).
 4. Consigne de format JSON à MORGANS : envoyée par ailleurs.
-5. Optionnel : provider d’image réel, bucket privé + URL signées, épinglage IP anti-rebinding, historique des éditions.
+5. Côté MausBot : MORGANS dépose les couvertures comme pièces jointes et remplit `cover`. Ajouter `jpeg` dans Caddy si besoin.
+6. Optionnel : historique des éditions.
