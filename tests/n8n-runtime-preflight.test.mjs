@@ -214,7 +214,7 @@ test("no n8n network endpoint, worker fork, client elevation or permission flag 
  const [source,gates,sql]=await Promise.all([
   read("../packages/engines/n8n/src/runtime-preflight.mjs"),
   read("../packages/engine-core/src/release-gates.mjs"),
-  read("../supabase/migrations/20261025130000_atlas_n8n_runtime_offline_gate.sql"),
+  read("../supabase/migrations/20261025120150_atlas_n8n_runtime_offline_gate.sql"),
  ]);
  assert.doesNotMatch(source,/\b(fetch|axios|exec|spawn|service_role|NEXT_PUBLIC|setInterval)\s*\(/);
  assert.doesNotMatch(source,/from\s+["'][^"']*outbox-worker/);
