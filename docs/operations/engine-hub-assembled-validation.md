@@ -80,3 +80,17 @@ avec ses PR sources; endpoint et droits d'écriture contrôlés; staging identif
 et vrais demandeur/reviewer distincts; adaptateur réel d'accès aux ressources et
 lecteur SQL privé minimal; worker durable. Aucun ticket n'est clôturé sur cette
 seule preuve CI.
+
+## Recherche de cible staging — Supabase, lecture seule (25 octobre 2026)
+
+L'inventaire connecté trouve un projet actif `DIALLO575's Project` en eu-west-1,
+PostgreSQL 17.11. Il contient les migrations ATLAS et sept migrations Engines,
+dont le fencing. `list_branches` sur ce projet ne retourne aucune branche de
+développement. Son nom ne permet pas de le qualifier comme staging; il reste une
+cible non identifiée pour la recette.
+
+Le projet `VELMO-STAGING` trouvé dans l'autre compte est inactif et associé à
+VELMO. Il n'est pas utilisé pour ATLAS. Cette vérification n'a changé ni lu
+aucune table ou utilisateur. Aucun DDL, réglage ou test Auth n'a été exécuté.
+La création d'une branche Supabase pouvant entraîner des frais, il faudra d'abord
+obtenir un devis et l'accord correspondant; aucune branche n'a été créée.
