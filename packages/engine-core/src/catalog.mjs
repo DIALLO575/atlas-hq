@@ -16,6 +16,19 @@ export const ENGINE_CATALOG = Object.freeze([
     ],
   }),
   Object.freeze({
+    id: "n8n", name: "n8n", phase: "adapter-v0",
+    description: "Moteur de workflows : API REST lecture préparée, MCP et webhooks à certifier.",
+    // SQL engine_instance transports accept http and mcp, not 'webhook'.
+    // This catalog cannot authorize a network call.
+    transports: ["http", "mcp"],
+    capabilities: [
+      "workflows.list", "workflows.get", "executions.list", "executions.get",
+      "workflows.import", "workflows.ai.create", "workflows.ai.validate",
+      "workflows.ai.update", "workflows.publish", "workflows.ai.test",
+      "workflows.invoke", "workflows.invoke_as_tool", "tools.discover",
+    ],
+  }),
+  Object.freeze({
     id: "hermes", name: "Hermes", phase: "planned",
     description: "Futur adaptateur : aucune compatibilite ne doit etre supposee.",
     transports: [], capabilities: [],

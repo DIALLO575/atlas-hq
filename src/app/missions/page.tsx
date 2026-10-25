@@ -4,9 +4,10 @@ import { Icon } from "@/components/icon";
 import { createAtlasMission, requestAtlasMissionReview, updateAtlasMission } from "@/app/missions/actions";
 import { readAtlasWorkflow, type AtlasMission } from "@/lib/atlas-workflow";
 import { NotionObservationsPanel } from "@/components/notion-observations-panel";
+import { N8nCoordinationPanel } from "@/components/n8n-coordination-panel";
 
 export const dynamic = "force-dynamic";
-type Query = { workspaceId?: string; status?: string; q?: string; result?: string };
+type Query = { workspaceId?: string; status?: string; q?: string; result?: string; missionId?: string };
 
 const statusLabels: Record<AtlasMission["status"], string> = {
   planned: "À lancer", active: "En cours", review: "En validation", done: "Terminée",
@@ -29,6 +30,8 @@ export default async function MissionsPage({ searchParams }: { searchParams: Pro
   const data = await readAtlasWorkflow(params.workspaceId);
   const filter = statusOrder.includes(params.status as (typeof statusOrder)[number]) ? params.status ?? "all" : "all";
   const query = (params.q ?? "").trim().slice(0, 100).toLocaleLowerCase("fr");
+  const selectedMissionId = data.status === "ready" && data.missions.some(m => m.id === params.missionId)
+    ? params.missionId : undefined;
   return <AppShell><main className="main-content atlas-workflow-page" id="main-content">
     <header className="atlas-flow-hero">
       <div>
@@ -60,6 +63,7 @@ export default async function MissionsPage({ searchParams }: { searchParams: Pro
          params.result === "requested" ? "Demande envoyée dans Inbox aux administrateurs." :
          "Action impossible : vérifiez les droits ou l’état de la mission."}</div>}
       <NotionObservationsPanel workspaceId={data.selected.id}/>
+      <N8nCoordinationPanel workspaceId={data.selected.id} scope="missions" missionId={selectedMissionId}/>
       <section className="atlas-flow-kpis" aria-label="Résumé de vos missions">
         <div><span className="atlas-flow-kpi-icon"><Icon name="apps"/></span><strong>{data.missions.length}</strong><small>Missions visibles</small></div>
         <div><span className="atlas-flow-kpi-icon is-blue"><Icon name="activity"/></span><strong>{data.missions.filter((m) => m.status === "active").length}</strong><small>En cours</small></div>
@@ -123,6 +127,9 @@ export default async function MissionsPage({ searchParams }: { searchParams: Pro
                   {mission.status === "review" && <Link href={"/inbox?workspaceId=" + encodeURIComponent(mission.workspaceId)}>
                     Consulter la demande <Icon name="arrow-right"/></Link>}
                   {mission.status === "done" && <span className="atlas-flow-finished"><Icon name="layers"/> Mission terminée</span>}
+                  <Link href={path(mission.workspaceId) + "&missionId=" + encodeURIComponent(mission.id)}
+                    aria-label={"Consulter les automatisations enregistrées pour " + mission.title}>
+                    Automatisations liées <Icon name="arrow-up-right"/></Link>
                 </div>
               </article>)}
             </div> : <div className="atlas-flow-empty">

@@ -31,3 +31,15 @@ GitHub Docs :
 https://docs.github.com/en/rest/actions/workflow-runs
 https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs
 Linear : SHA-166 (enfant de SHA-164).
+
+## Correction du message trompeur « Actions: Read » — 2026-10-25
+
+L'ancien message prescrivait une réapprobation de l'App pour tout refus `PERMISSION_DENIED`, y compris un 403/422 sans diagnostic de la cause. Il ne prouvait pas la permission manquante. Le nouveau code distingue :
+- `INSTALLATION_SCOPE_REJECTED` : rejet 403/422 du jeton limité à l'installation et au dépôt. Vérifier leurs identifiants, la sélection de dépôts, les éventuelles demandes GitHub en attente.
+- `ACTIONS_TOKEN_SCOPE_UNVERIFIED` : scope `actions:read` non confirmé dans le jeton restreint; pas de conclusion sur les droits déclarés de l'App.
+- `ACTIONS_API_FORBIDDEN` : appel de consultation des runs/jobs Actions refusé (403/422), alors que le jeton avait été émis.
+- `PERMISSION_DENIED` : refus générique pour une autre étape, notamment la vérification des dépôts accessibles.
+
+Ne réapprouver l'App **que si GitHub présente effectivement une demande en attente**. Vérifier que l'ID d'installation et le dépôt autorisé dans Atlas correspondent à l'installation GitHub réellement active. La correction conserve les contrôles stricts, le jeton scindé `repository_ids:[repositoryId]` et `permissions:{actions:"read"}`, et aucun fallback public. Les messages de GitHub, secrets et jetons ne sont jamais exposés au client. Ce correctif diagnostique ne prouve pas que la connexion du propriétaire est valide en live.
+
+Référence officielle : https://docs.github.com/en/rest/apps/installations?apiVersion=2026-03-10

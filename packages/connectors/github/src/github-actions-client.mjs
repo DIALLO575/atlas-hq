@@ -11,7 +11,7 @@ const headers = (token) => ({
   "X-GitHub-Api-Version": VERSION,
 });
 
-async function json(request, url, options) {
+async function json(request, url, options, context = "generic") {
   let response;
   try { response = await request(url, { ...options, redirect: "error", cache: "no-store" }); }
   catch { fail("PROVIDER_UNAVAILABLE"); }
@@ -19,7 +19,7 @@ async function json(request, url, options) {
     const status = response?.status;
     if (status === 401) fail("AUTH_REQUIRED");
     if (status === 403 && (response.headers?.get?.("x-ratelimit-remaining") === "0" || response.headers?.has?.("retry-after"))) fail("RATE_LIMITED");
-    if (status === 403 || status === 422) fail("PERMISSION_DENIED");
+    if (status === 403 || status === 422) fail(context === "mint" ? "INSTALLATION_SCOPE_REJECTED" : context === "actions" ? "ACTIONS_API_FORBIDDEN" : "PERMISSION_DENIED");
     if (status === 404) fail("NOT_FOUND_OR_HIDDEN");
     if (status === 429) fail("RATE_LIMITED");
     fail(status >= 500 ? "PROVIDER_UNAVAILABLE" : "GITHUB_REJECTED");
@@ -75,10 +75,11 @@ export async function createGitHubActionsReader({
     `${ORIGIN}/app/installations/${installationId}/access_tokens`, {
       method:"POST", headers:{...headers(jwt),"Content-Type":"application/json"},
       body:JSON.stringify({ repository_ids:[repositoryId], permissions:{actions:"read"} }),
-    });
+    }, "mint");
   if (typeof minted?.token !== "string" || !minted.token ||
-      !Number.isFinite(Date.parse(minted.expires_at)) || Date.parse(minted.expires_at) <= now() ||
-      minted.permissions?.actions !== "read") fail("PERMISSION_DENIED");
+      !Number.isFinite(Date.parse(minted.expires_at)) || Date.parse(minted.expires_at) <= now()) fail("INVALID_RESPONSE");
+  // A token scope mismatch does not prove the GitHub App lacks Actions permission.
+  if (minted.permissions?.actions !== "read") fail("ACTIONS_TOKEN_SCOPE_UNVERIFIED");
   if (Array.isArray(minted.repositories) &&
       (minted.repositories.length !== 1 || minted.repositories[0]?.id !== repositoryId)) {
     fail("PERMISSION_DENIED");
@@ -101,7 +102,7 @@ export async function createGitHubActionsReader({
     const data = await json(request,
       `${ORIGIN}/repos/${fullName}/actions/runs?per_page=20&page=1`,{
         method:"GET",headers:headers(minted.token),
-      });
+      }, "actions");
     if (!Array.isArray(data?.workflow_runs) || !Number.isSafeInteger(data.total_count)) {
       fail("INVALID_RESPONSE");
     }
@@ -116,12 +117,12 @@ export async function createGitHubActionsReader({
     // We verify the run belongs to this exact repository before returning jobs.
     const run = await json(request,`${ORIGIN}/repos/${fullName}/actions/runs/${runId}`,{
       method:"GET",headers:headers(minted.token),
-    });
+    }, "actions");
     if (run?.id !== runId || run?.repository?.id !== repositoryId) fail("PERMISSION_DENIED");
     const data = await json(request,
       `${ORIGIN}/repos/${fullName}/actions/runs/${runId}/jobs?per_page=100&filter=latest`,{
         method:"GET",headers:headers(minted.token),
-      });
+      }, "actions");
     if (!Array.isArray(data?.jobs) || !Number.isSafeInteger(data.total_count)) fail("INVALID_RESPONSE");
     if (data.jobs.slice(0,100).some((job)=>job?.run_id !== undefined && job.run_id !== runId)) {
       fail("INVALID_RESPONSE");

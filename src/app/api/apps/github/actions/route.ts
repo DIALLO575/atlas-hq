@@ -67,7 +67,7 @@ export async function GET(request:NextRequest) {
   } catch(error) {
     // Never expose provider bodies, URLs, token values or credentials.
     const code=error instanceof GitHubReadError ? error.code : "GITHUB_UNAVAILABLE";
-    const status=code==="PERMISSION_DENIED"?403
+    const status=["PERMISSION_DENIED","INSTALLATION_SCOPE_REJECTED","ACTIONS_TOKEN_SCOPE_UNVERIFIED","ACTIONS_API_FORBIDDEN"].includes(code)?403
       :code==="NOT_FOUND_OR_HIDDEN"?404:code==="INVALID_INPUT"?400
       :code==="INVALID_RESPONSE"?502:503;
     return fail(code,status);

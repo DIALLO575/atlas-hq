@@ -26,7 +26,7 @@ function mock(overrides={}) {
       full_name:"octocat/atlas-test",owner:{login:"octocat"}}]},overrides.listStatus??200);
   if(url.endsWith("/actions/runs?per_page=20&page=1"))return json({
     total_count:1,workflow_runs:[makeRun()],
-  });
+  },overrides.runsStatus??200);
   if(url.endsWith("/actions/runs/204"))return json({...makeRun(),repository:{id:91}});
   if(url.endsWith("/actions/runs/204/jobs?per_page=100&filter=latest"))return json({
     total_count:1,jobs:[{id:401,run_id:overrides.jobRunId??204,name:"build",status:"completed",conclusion:"failure",
@@ -65,9 +65,9 @@ test("a repo absent from current GitHub App grant is rejected",async()=>{
  await assert.rejects(create(f.request),(e)=>e.code==="PERMISSION_DENIED");
  assert.equal(f.calls.length,2);
 });
-test("missing Actions read permission cannot fall back to PR or public token",async()=>{
+test("unexpected read scope produces a precise token diagnostic without fallback",async()=>{
  const f=mock({permission:"pull_requests"});
- await assert.rejects(create(f.request),(e)=>e.code==="PERMISSION_DENIED");
+ await assert.rejects(create(f.request),(e)=>e.code==="ACTIONS_TOKEN_SCOPE_UNVERIFIED");
  assert.equal(f.calls.length,1);
 });
 test("invalid repository input never mints a token",async()=>{
@@ -81,7 +81,7 @@ test("invalid repository input never mints a token",async()=>{
 
 test("Actions reader rejects unexpected write permissions even if GitHub reports broader access",async()=>{
  const f=mock({permission:"write"});
- await assert.rejects(create(f.request),(e)=>e.code==="PERMISSION_DENIED");
+ await assert.rejects(create(f.request),(e)=>e.code==="ACTIONS_TOKEN_SCOPE_UNVERIFIED");
  assert.equal(f.calls.length,1);
 });
 test("job responses cannot mix a different run identity",async()=>{
@@ -91,6 +91,18 @@ test("job responses cannot mix a different run identity",async()=>{
 });
 test("GitHub App token 403 is never retried or replaced with a public fallback",async()=>{
  const f=mock({tokenStatus:403});
- await assert.rejects(create(f.request),(e)=>e.code==="PERMISSION_DENIED");
+ await assert.rejects(create(f.request),(e)=>e.code==="INSTALLATION_SCOPE_REJECTED");
  assert.equal(f.calls.length,1);
+});
+
+test("token scope 422 is distinguished from an absent Actions permission",async()=>{
+ const f=mock({tokenStatus:422});
+ await assert.rejects(create(f.request),(e)=>e.code==="INSTALLATION_SCOPE_REJECTED");
+ assert.equal(f.calls.length,1);
+});
+test("Actions endpoint 403 is not presented as missing GitHub App configuration",async()=>{
+ const f=mock({runsStatus:403});
+ const reader=await create(f.request);
+ await assert.rejects(reader.listRuns(),(e)=>e.code==="ACTIONS_API_FORBIDDEN");
+ assert.equal(f.calls.length,3);
 });
