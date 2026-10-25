@@ -1,0 +1,83 @@
+{
+  "schema": "atlas-n8n-certification-snapshot-v1",
+  "observedDate": "2026-10-25",
+  "decision": "NO_GO",
+  "capturedFrom": "GitHub PRs and Actions, Supabase SQL/migration/advisors, Vercel deployments; independent source checks",
+  "production": {
+    "mainGitSha": "c7ec18e93f44fc32e560ae8b74b7fd6664ce5249",
+    "vercelDeploymentId": "dpl_8MswntXzx8QU99zPZAJ4NKEyPjxM",
+    "vercelTarget": "production",
+    "vercelReadyState": "READY",
+    "vercelReadyGitSha": "c7ec18e93f44fc32e560ae8b74b7fd6664ce5249",
+    "matchesN8nPrStack": false,
+    "liveN8nFeatureReleased": false
+  },
+  "n8nStack": {
+    "openPullRequestNumbers": [
+      57,
+      58,
+      59,
+      61,
+      63,
+      65,
+      66,
+      67,
+      69
+    ],
+    "allDraft": true,
+    "pr09Sha": "954d8c5590a2149c68ca99553202dc499cb4399f",
+    "latestPr09GreenCiRun": "40208144247",
+    "latestPr09CiConclusion": "success",
+    "mergedIntoMain": false
+  },
+  "supabase": {
+    "projectId": "ovzmmsxqfifneqqgnrzd",
+    "postgresVersion": "17.11",
+    "migrationVersions": [
+      "20261025114449",
+      "20261025120150",
+      "20261025133921"
+    ],
+    "migrationNames": [
+      "atlas_n8n_automation_registry",
+      "atlas_n8n_runtime_offline_gate",
+      "atlas_n8n_callback_receipts"
+    ],
+    "offlineConstraint": "atlas_n8n_runtime_offline_only",
+    "offlineConstraintValidated": true,
+    "registryRlsEnabled": true,
+    "callbackRlsEnabled": true,
+    "anonymousSelect": false,
+    "authenticatedWrite": false,
+    "securityAdvisor": {
+      "rlsWithoutPolicyInfo": 20,
+      "includesIntentionalPrivateCallbackTable": true,
+      "leakedPasswordProtectionWarning": true
+    },
+    "counts": {
+      "engineInstances": 0,
+      "workflowRows": 0,
+      "executionRows": 0,
+      "callbackReceipts": 0
+    }
+  },
+  "n8nRuntime": {
+    "sandboxAttested": false,
+    "instanceUrlAttested": false,
+    "instanceVersion": null,
+    "liveRestConfirmed": false,
+    "liveMcpConfirmed": false,
+    "liveWebhookConfirmed": false,
+    "liveWorkerConfirmed": false,
+    "liveMultiTenantE2eConfirmed": false,
+    "chaosRollbackExercised": false
+  },
+  "license": {
+    "externalCustomerBuilderCleared": false,
+    "writtenN8nConfirmation": false,
+    "differentiation": "internal-use vs managed-backend vs external user editing/AI editing vs embedded editor",
+    "advisory": "Commercial terms must be confirmed in writing for precise Atlas offering."
+  },
+  "observationsAreNotReleaseAuthorization": true,
+  "independentlySignedReleaseDecision": false
+}
