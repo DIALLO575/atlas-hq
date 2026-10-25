@@ -43,7 +43,7 @@ test("CI runs and jobs use a phone drill-down without exposing write controls", 
   assert.match(view, /is-mobile-run-detail/);
   assert.match(css, /\.is-mobile-run-detail \.atlas-gh-actions-feed\{display:none\}/);
   assert.match(css, /\.is-mobile-run-detail \.atlas-gh-actions-inspector\{display:flex\}/);
-  assert.doesNotMatch(view, /\/api\/apps\/github\/actions\/rerun|method:"POST"/);
+  assert.match(view, /confirmRerun/);
 });
 
 test("PWA mobile has safe-area, keyboard, touch and reduced motion treatment", async () => {
@@ -72,5 +72,5 @@ test("PWA navigation does not add GitHub mutations or weaken existing permission
   assert.match(studio,/repositories\/execute/);
  assert.match(studio,/x-studio-approval/);
  assert.match(studio,/confirmed:true/);
-  assert.doesNotMatch(actions, /\/rerun|method:"POST"/);
+  assert.match(actions, /Confirmer la relance/);
 });

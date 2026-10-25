@@ -13,8 +13,8 @@ type Job={
   startedAt:string|null;completedAt:string|null;url:string;
   failedSteps:Array<{number:number|null;name:string;conclusion:string|null}>;
 };
-type RunList={repository:{id:number;fullName:string};runs:Run[];truncated:boolean};
-type JobList={run:Run;jobs:Job[];truncated:boolean};
+type RunList={repository:{id:number;fullName:string};runs:Run[];truncated:boolean;canRerun:boolean};
+type JobList={run:Run;jobs:Job[];truncated:boolean;canRerun:boolean};
 const errors:Record<string,string>={
   AUTH_REQUIRED:"Votre session Atlas a expiré : reconnectez-vous.",
   WORKSPACE_FORBIDDEN:"Vous n'avez pas accès à ce workspace.",
@@ -25,6 +25,14 @@ const errors:Record<string,string>={
   NOT_FOUND_OR_HIDDEN:"Cette exécution est introuvable ou inaccessible.",
   GITHUB_NOT_CONFIGURED:"La connexion GitHub doit être configurée côté serveur.",
   RATE_LIMITED:"Limite GitHub atteinte. Réessayez plus tard.",
+  RERUN_DISABLED:"La relance CI n’est pas encore activée côté Atlas.",
+  RERUN_ALREADY_REQUESTED:"Ce job a déjà fait l’objet d’une demande. Vérifiez GitHub.",
+  RERUN_ALREADY_REQUESTED_OR_UNAVAILABLE:"Ce job est déjà réservé ou le journal est indisponible.",
+  JOB_CHANGED_OR_UNSAFE:"Le job a changé de statut ou ne peut plus être relancé. Actualisez.",
+  RUN_CHANGED_OR_UNSAFE:"Cette exécution ne peut plus être relancée. Actualisez.",
+  CONFIRMATION_MISMATCH:"Recopiez le nom exact du job à relancer.",
+  RERUN_STATE_CONFLICT:"Une autre relance est déjà en cours.",
+  RERUN_RECONCILIATION_REQUIRED:"GitHub a peut-être accepté la relance. Vérifiez le run avant toute nouvelle tentative.",
 };
 
 async function actionsRequest<T>(params:Record<string,string>,signal:AbortSignal):Promise<T> {
@@ -64,6 +72,11 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
   const [mobileRunDetail,setMobileRunDetail]=useState(false);
   const [jobs,setJobs]=useState<Job[]>([]);
   const [jobsTruncated,setJobsTruncated]=useState(false);
+  const [canRerun,setCanRerun]=useState(false);
+  const [confirmJob,setConfirmJob]=useState<Job|null>(null);
+  const [typedJobName,setTypedJobName]=useState("");
+  const [rerunning,setRerunning]=useState(false);
+  const [rerunMessage,setRerunMessage]=useState<string|null>(null);
   const [filter,setFilter]=useState<"all"|"failure"|"success">("all");
   const [loading,setLoading]=useState<"runs"|"jobs"|null>(null);
   const [error,setError]=useState<string|null>(null);
@@ -91,6 +104,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
     jobsController.current?.abort();
     setError(null);setRuns([]);setJobs([]);setSelectedRunId(null);
     setMobileRunDetail(false);
+    setCanRerun(false);setConfirmJob(null);setTypedJobName("");setRerunMessage(null);
     setTruncated(false);setLoading("runs");
     try{
       const data=await actionsRequest<RunList>({
@@ -121,6 +135,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
     const controller=new AbortController();
     jobsController.current=controller;
     setSelectedRunId(run.id);setJobs([]);setJobsTruncated(false);setError(null);setLoading("jobs");
+    setConfirmJob(null);setTypedJobName("");setRerunMessage(null);
     setMobileRunDetail(true);
     try{
       const data=await actionsRequest<JobList>({
@@ -129,7 +144,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
       },controller.signal);
       if(controller.signal.aborted)return;
       if(data.run.id!==run.id || !Array.isArray(data.jobs))throw new Error("Réponse GitHub inattendue.");
-      setJobs(data.jobs);setJobsTruncated(data.truncated);
+      setJobs(data.jobs);setJobsTruncated(data.truncated);setCanRerun(data.canRerun===true);
     }catch(e){
       if(!controller.signal.aborted)setError(e instanceof Error?e.message:"Impossible de lire les jobs.");
     }finally{
@@ -144,6 +159,34 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
     void loadRuns(activeRepo,controller);
   }
 
+  async function confirmRerun(){
+    const job=confirmJob;const run=selectedRun;
+    if(!canRerun||rerunning||!job||!run||!installationId||!activeRepo||
+       typedJobName!==job.name||!run.sha)return;
+    setRerunning(true);setError(null);setRerunMessage(null);
+    try{
+      const response=await fetch("/api/apps/github/actions/rerun",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","idempotency-key":crypto.randomUUID()},
+        body:JSON.stringify({workspaceId,installationId,repositoryId:activeRepo,
+          runId:run.id,jobId:job.id,attempt:run.attempt,sha:run.sha,
+          typedJobName,confirmed:true}),
+      });
+      const result=await response.json();
+      if(response.status===201&&result?.state==="accepted"){
+        setRerunMessage("Relance du job acceptée par GitHub. Vous pouvez consulter son suivi sur GitHub.");
+        setConfirmJob(null);setTypedJobName("");
+      }else if(response.status===202){
+        setRerunMessage("Résultat incertain : vérifiez le run sur GitHub avant toute autre tentative.");
+        setConfirmJob(null);setTypedJobName("");
+      }else{
+        setError(errors[String(result?.error)]??"Impossible de relancer ce job. Vérifiez GitHub.");
+      }
+    }catch{
+      setError("Résultat incertain : vérifiez le run GitHub. Ne relancez pas immédiatement.");
+    }finally{setRerunning(false);}
+  }
+
   return <section className={"atlas-gh-actions"+(mobileRunDetail ? " is-mobile-run-detail" : "")}
     aria-label="GitHub Actions Control Center">
     <header className="atlas-gh-actions-hero">
@@ -151,14 +194,14 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
         <h2>Vos builds, sans zone d&apos;ombre<span>.</span></h2>
         <p>Suivez les exécutions, identifiez les jobs en échec et ouvrez leurs diagnostics détaillés.</p>
       </div>
-      <span className="atlas-gh-actions-readonly"><Icon name="layers"/> Lecture sécurisée</span>
+      <span className="atlas-gh-actions-readonly"><Icon name="layers"/> Diagnostics et relances supervisées</span>
     </header>
     <div className="atlas-gh-actions-toolbar">
       <label>Dépôt
         <select value={activeRepo??""} disabled={loading!==null || !ready || !repositories.length}
           onChange={event=>{jobsController.current?.abort();runsController.current?.abort();
             setRuns([]);setJobs([]);setSelectedRunId(null);setError(null);setTruncated(false);
-            setMobileRunDetail(false);
+            setMobileRunDetail(false);setCanRerun(false);setConfirmJob(null);setTypedJobName("");
             setRepositoryId(Number(event.target.value));}}>
           {repositories.map(repo=><option value={repo.id} key={repo.id}>{repo.fullName}</option>)}
         </select>
@@ -227,6 +270,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
               className="atlas-gh-actions-link">Ouvrir sur GitHub <Icon name="arrow-up-right"/></a>
             {loading==="jobs" && <p className="atlas-gh-actions-message" role="status">Analyse des jobs…</p>}
             {loading!=="jobs" && !jobs.length && <p className="atlas-gh-actions-message">Aucun job à afficher.</p>}
+            {rerunMessage && <p className="atlas-gh-actions-result" role="status">{rerunMessage}</p>}
             <div className="atlas-gh-actions-job-list">
               {orderedJobs.map(job=><article key={job.id} className="atlas-gh-actions-job">
                 <div className="atlas-gh-actions-job-head">
@@ -242,11 +286,39 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
                 <a href={job.url} target="_blank" rel="noopener noreferrer">
                   Consulter les logs GitHub <Icon name="arrow-up-right"/>
                 </a>
+                {canRerun && selectedRun.status==="completed" &&
+                  ["failure","timed_out"].includes(selectedRun.conclusion??"") &&
+                  job.status==="completed" && ["failure","timed_out"].includes(job.conclusion??"") &&
+                  <button type="button" className="atlas-gh-actions-rerun-button"
+                    disabled={rerunning||loading!==null}
+                    onClick={()=>{setConfirmJob(job);setTypedJobName("");setError(null);}}>
+                    <Icon name="rotate-ccw"/> Relancer ce job
+                  </button>}
               </article>)}
             </div>
+            {confirmJob && selectedRun && <div className="atlas-gh-actions-rerun-confirm" role="group"
+              aria-label="Confirmation de relance du job">
+              <strong>Confirmer la relance de {confirmJob.name}</strong>
+              <p>GitHub réexécutera ce job et ses dépendances avec les privilèges du déclencheur
+                initial. Commit : {selectedRun.sha?.slice(0,7)??"indisponible"}.
+                Aucune autre exécution ne sera lancée automatiquement.</p>
+              <label>Recopiez le nom exact du job
+                <input value={typedJobName} maxLength={120} autoComplete="off"
+                  onChange={(e)=>setTypedJobName(e.target.value)}
+                  placeholder={confirmJob.name}/>
+              </label>
+              <div className="atlas-gh-actions-rerun-controls">
+                <button type="button" onClick={()=>{setConfirmJob(null);setTypedJobName("");}}
+                  disabled={rerunning}>Annuler</button>
+                <button type="button" onClick={()=>void confirmRerun()}
+                  disabled={rerunning||typedJobName!==confirmJob.name||!selectedRun.sha}>
+                  {rerunning?"Demande en cours…":"Confirmer la relance"}
+                </button>
+              </div>
+            </div>}
             {jobsTruncated && <p className="atlas-gh-actions-message">Liste de jobs partielle ; voir GitHub pour l&apos;ensemble.</p>}
           </>}
-          <p className="atlas-gh-actions-safety">Lecture seule : aucun workflow n’est relancé. Une intervention future nécessitera une permission Actions: Write distincte et une approbation.</p>
+          <p className="atlas-gh-actions-safety">La lecture reste disponible. Chaque relance exige Actions: Write, un rôle admin Atlas, une confirmation du job et une opération auditée.</p>
         </aside>
       </div>
     </>}

@@ -187,3 +187,20 @@
   .atlas-gh-console .atlas-gh-tabs button,
   .atlas-gh-console .atlas-gh-focus-toggle{transition:none!important;transform:none!important}
 }
+
+
+/* Scoped, confirm-first GitHub Actions write controls. */
+.atlas-gh-console .atlas-gh-actions-rerun-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;align-self:flex-start;min-height:42px;padding:10px 13px;border:1px solid #cfe0d4;border-radius:9px;background:#eef8f0;color:#1a7f37;font-size:11px;font-weight:760;cursor:pointer}
+.atlas-gh-console .atlas-gh-actions-rerun-button svg{width:15px;height:15px}
+.atlas-gh-console .atlas-gh-actions-rerun-button:disabled{opacity:.55;cursor:not-allowed}
+.atlas-gh-console .atlas-gh-actions-rerun-confirm{display:flex;flex-direction:column;gap:12px;border:1px solid #a8d7b6;border-radius:12px;background:#f4fbf6;padding:15px}
+.atlas-gh-console .atlas-gh-actions-rerun-confirm strong{font-size:12px;color:#1a7f37}
+.atlas-gh-console .atlas-gh-actions-rerun-confirm p{margin:0;font-size:11px;line-height:1.7;color:#495c52}
+.atlas-gh-console .atlas-gh-actions-rerun-confirm label{display:flex;flex-direction:column;gap:8px;font-size:11px;font-weight:700;color:#344d3c}
+.atlas-gh-console .atlas-gh-actions-rerun-confirm input{width:100%;min-width:0;min-height:44px;padding:10px 12px;font-size:16px;border-radius:9px;border:1px solid #b7d0bf;background:#fff;color:#24292f}
+.atlas-gh-console .atlas-gh-actions-rerun-controls{display:flex;flex-wrap:wrap;gap:9px}
+.atlas-gh-console .atlas-gh-actions-rerun-controls button{min-height:44px;border-radius:9px;border:1px solid #cbd4dc;background:#fff;color:#344054;padding:9px 13px;font-size:11px;font-weight:750;cursor:pointer}
+.atlas-gh-console .atlas-gh-actions-rerun-controls button:last-child{background:#238636;border-color:#238636;color:#fff}
+.atlas-gh-console .atlas-gh-actions-rerun-controls button:disabled{opacity:.5;cursor:not-allowed}
+.atlas-gh-console .atlas-gh-actions-result{border-radius:9px;border:1px solid #b4dcbe;background:#eff8f1;color:#176834;padding:12px;font-size:11px;line-height:1.6}
+@media(max-width:760px){.atlas-gh-console .atlas-gh-actions-rerun-controls{display:grid;grid-template-columns:1fr 1fr}.atlas-gh-console .atlas-gh-actions-rerun-confirm{padding:13px}}

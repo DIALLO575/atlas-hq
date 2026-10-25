@@ -90,6 +90,7 @@ jobs:
           -f supabase/migrations/20261024225515_github_studio_operation_ledger.sql
           -f tests/sql/github-studio-ledger-checks.sql
           -f tests/sql/github-studio-finalize-atomic-checks.sql
+          -f supabase/migrations/20261025200500_github_actions_rerun_ledger.sql
       - name: Verify concurrent dispatch single winner
         run: bash tests/sql/github-studio-ledger-concurrency.sh
 

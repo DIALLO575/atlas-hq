@@ -58,7 +58,12 @@ export async function GET(request:NextRequest) {
   if (!appId || !privateKey) return fail("GITHUB_NOT_CONFIGURED",503);
   try {
     const client=await createGitHubActionsReader({installationId,repositoryId,appId,privateKey});
-    return ok(view==="runs" ? await client.listRuns() : await client.listJobs(runId!));
+    const canRerun = ["owner","admin"].includes(member.role) && (
+      (process.env.VERCEL_ENV==="production"&&process.env.ATLAS_GITHUB_ACTIONS_RERUN_ENABLED==="production")||
+      (process.env.VERCEL_ENV==="preview"&&process.env.ATLAS_GITHUB_ACTIONS_RERUN_ENABLED==="sandbox")
+    );
+    return ok({...(view==="runs" ? await client.listRuns() : await client.listJobs(runId!)),
+      canRerun});
   } catch(error) {
     // Never expose provider bodies, URLs, token values or credentials.
     const code=error instanceof GitHubReadError ? error.code : "GITHUB_UNAVAILABLE";
