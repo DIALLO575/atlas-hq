@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import {
   N8nReadOnlyError, resolveN8nReadOnlyConfig, testN8nConnection,
   listN8nWorkflows, getN8nWorkflowMetadata,
@@ -153,4 +155,98 @@ test("response shape, item types, content-type, cursor and size are strict", asy
   await assert.rejects(listN8nWorkflows(config,{},mk(new Response("bad json",{headers:{"content-type":"application/json"}}))),isError("N8N_RESPONSE_INVALID"));
   await assert.rejects(listN8nWorkflows(config,{},mk(new Response("x".repeat(1_048_577),{headers:{"content-type":"application/json"}}))),isError("N8N_RESPONSE_TOO_LARGE"));
   await assert.rejects(listN8nWorkflows(config,{},mk(new Response("{}",{headers:{"content-type":"application/json","content-length":"2000000"}}))),isError("N8N_RESPONSE_TOO_LARGE"));
+});
+
+
+test("native HTTPS transport pins DNS-selected public IP while verifying original TLS hostname",async()=>{
+ const observed=[];
+ const httpsRequestImpl=(url,opts,cb)=>{
+   const emitter=new EventEmitter();
+   emitter.setTimeout=(ms,callback)=>{observed.push({timeout:ms,callbackType:typeof callback});return emitter};
+   emitter.destroy=()=>emitter;
+   emitter.end=()=>{
+     const target=new URL(url);
+     opts.lookup(target.hostname,{},(err,address,family)=>{
+       assert.equal(err,null);
+       observed.push({
+         origin:target.origin,pathname:target.pathname,method:opts.method,
+         ip:address,family,servername:opts.servername,
+         tls:opts.rejectUnauthorized,agent:opts.agent,
+         header:opts.headers["X-N8N-API-KEY"],
+       });
+       const response=new PassThrough();
+       response.statusCode=200;
+       response.headers={"content-type":"application/json"};
+       cb(response);
+       response.end(JSON.stringify({data:[wf()],nextCursor:null}));
+     });
+   };
+   emitter.on("error",()=>{});
+   return emitter;
+ };
+ const result=await listN8nWorkflows(config,{limit:1},{
+   dnsLookup:async()=>[{address:"8.8.8.8",family:4}],
+   httpsRequestImpl,timeoutMs:2000,
+ });
+ assert.equal(result.data.length,1);
+ assert.equal(observed.length,2);
+ assert.deepEqual(observed[0],{timeout:2000,callbackType:"function"});
+ assert.deepEqual(observed[1],{
+   origin:"https://atlas-n8n.example.org",
+   pathname:"/api/v1/workflows",
+   method:"GET",ip:"8.8.8.8",family:4,
+   servername:"atlas-n8n.example.org",tls:true,agent:false,header:token,
+ });
+ assert.equal(JSON.stringify(result).includes(token),false);
+});
+test("TLS transport cannot resolve or dial a different hostname after initial DNS validation",async()=>{
+ let called=false;
+ const requestImpl=(url,options,callback)=>{
+   const emitter=new EventEmitter();
+   emitter.setTimeout=()=>emitter;
+   emitter.destroy=()=>emitter;
+   emitter.end=()=>{
+     options.lookup("attacker.example.org",{},(err)=>{
+       assert.match(err.message,/N8N_HOSTNAME_DRIFT/);
+       called=true;
+       emitter.emit("error",err);
+     });
+   };
+   return emitter;
+ };
+ await assert.rejects(listN8nWorkflows(config,{},{
+   dnsLookup:async()=>[{address:"8.8.8.8",family:4}],
+   httpsRequestImpl:requestImpl,
+ }),isError("N8N_UNREACHABLE"));
+ assert.equal(called,true);
+});
+test("private/mixed DNS never invokes native TLS request and injected transports cannot overlap",async()=>{
+ let calls=0;
+ const fake=()=>{calls++;throw Error("should not connect");};
+ await assert.rejects(listN8nWorkflows(config,{},{
+   dnsLookup:async()=>[{address:"8.8.8.8",family:4},{address:"127.0.0.1",family:4}],
+   httpsRequestImpl:fake,
+ }),isError("N8N_NETWORK_DESTINATION_REFUSED"));
+ assert.equal(calls,0);
+ await assert.rejects(listN8nWorkflows(config,{},{
+   ...mk(good({data:[],nextCursor:null})),httpsRequestImpl:fake,
+ }),isError("N8N_DEPS_INVALID"));
+});
+test("TLS redirect remains forbidden even when IP is pinned",async()=>{
+ const stub=(url,opts,cb)=>{
+   const emitter=new EventEmitter();
+   emitter.setTimeout=()=>emitter;
+   emitter.destroy=()=>emitter;
+   emitter.end=()=>{
+     const response=new PassThrough();
+     response.statusCode=302;
+     response.headers={"content-type":"text/plain",location:"http://127.0.0.1/admin"};
+     cb(response);
+     response.end();
+   };
+   return emitter;
+ };
+ await assert.rejects(listN8nWorkflows(config,{},{
+   dnsLookup:async()=>[{address:"8.8.8.8",family:4}],httpsRequestImpl:stub,
+ }),isError("N8N_REDIRECT_REFUSED"));
 });
