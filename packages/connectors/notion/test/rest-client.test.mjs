@@ -245,3 +245,39 @@ test("reporting transient failure outage stops retry and fails closed",async()=>
     !e.message.includes("secret-bearing"));
   assert.equal(requests,1);
 });
+
+test("provider 400 diagnosis retains only a fixed error-code classification", async () => {
+  const expected = [
+    ["validation_error", "PROVIDER_VALIDATION_ERROR"],
+    ["invalid_request_url", "PROVIDER_INVALID_REQUEST_URL"],
+    ["invalid_request", "PROVIDER_UNSUPPORTED_REQUEST"],
+    ["missing_version", "PROVIDER_MISSING_VERSION"],
+    ["invalid_json", "PROVIDER_INVALID_JSON"],
+    ["weird_tainted_value", "PROVIDER_REJECTED_REQUEST"],
+  ];
+  for (const [code, safeCode] of expected) {
+    let calls = 0;
+    const notion = createNotionReadClient({token:"secret",request: async () => {
+      calls++;
+      return response({code,message:"DO_NOT_EXPOSE_PROVIDER_MESSAGE",
+        additional_data:{access_token:"DO_NOT_EXPOSE_TOKEN"}},400);
+    }});
+    await assert.rejects(notion.searchByTitle({query:""}), error => {
+      assert.equal(error.code,safeCode);
+      assert.equal(error.status,400);
+      assert.equal(error.message,safeCode);
+      assert.equal(error.message.includes("DO_NOT_EXPOSE"),false);
+      return true;
+    });
+    assert.equal(calls,1);
+  }
+});
+test("provider malformed 400 body remains safely classified",async()=>{
+  const notion=createNotionReadClient({token:"secret",request: async()=>({
+    ok:false,status:400,headers:new Headers(),
+    json:async()=>{throw Error("SECRET_FROM_JSON_PARSER");},
+  })});
+  await assert.rejects(notion.searchByTitle(),{
+    code:"PROVIDER_REJECTED_REQUEST",status:400,
+  });
+});

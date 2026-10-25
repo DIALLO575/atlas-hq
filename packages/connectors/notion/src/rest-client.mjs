@@ -42,13 +42,28 @@ function retryAfter(headers) {
   if (!raw || !/^\d{1,5}$/.test(raw)) return null;
   return Math.min(Number(raw), 3600);
 }
-function errorForStatus(status, headers) {
-  const code = status === 401 ? "AUTH_REQUIRED"
+const provider400Codes = Object.freeze({
+  validation_error: "PROVIDER_VALIDATION_ERROR",
+  invalid_request_url: "PROVIDER_INVALID_REQUEST_URL",
+  invalid_request: "PROVIDER_UNSUPPORTED_REQUEST",
+  missing_version: "PROVIDER_MISSING_VERSION",
+  invalid_json: "PROVIDER_INVALID_JSON",
+});
+function provider400Code(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "PROVIDER_REJECTED_REQUEST";
+  }
+  // Never return Notion's message, additional_data, request ID, or unknown fields.
+  return Object.hasOwn(provider400Codes, value.code)
+    ? provider400Codes[value.code] : "PROVIDER_REJECTED_REQUEST";
+}
+function errorForStatus(status, headers, providerCode = null) {
+  const code = status === 400 ? providerCode ?? "PROVIDER_REJECTED_REQUEST"
+    : status === 401 ? "AUTH_REQUIRED"
     : status === 403 ? "PERMISSION_DENIED"
     : status === 404 ? "NOT_FOUND_OR_HIDDEN"
     : status === 429 ? "RATE_LIMITED"
     : status === 529 ? "PROVIDER_OVERLOADED"
-    : status === 400 ? "INVALID_REQUEST"
     : status >= 500 ? "PROVIDER_UNAVAILABLE" : "NOTION_REJECTED";
   return new NotionReadError(code, status, retryAfter(headers));
 }
@@ -172,6 +187,12 @@ export function createNotionReadClient({
         // the error with the original header value; do not ignore cooldown.
         if (!safeRetry || attempt >= maxRetries ||
             delayMs > maxAutoWaitMs || signal?.aborted) {
+          if (status === 400) {
+            let providerResponse = null;
+            try { providerResponse = await response.json(); }
+            catch { /* Only the validated enum is propagated; no raw body. */ }
+            throw errorForStatus(status, response.headers, provider400Code(providerResponse));
+          }
           throw errorForStatus(status, response.headers);
         }
         try {
