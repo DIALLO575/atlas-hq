@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Icon } from "@/components/icon";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import type { Workspace, WorkspaceResult } from "@/lib/workspaces/contract";
 
@@ -150,8 +153,11 @@ export function EnginesHub() {
 
   return (
     <div className="atlas-engine-hub">
-      <section className="atlas-engine-toolbar" aria-label="Workspace des moteurs">
-        <div><strong>Registre des moteurs</strong><p>Les moteurs exécutent les agents. Les Apps apportent leurs outils et leur contexte.</p></div>
+      <section className="atlas-engine-toolbar" aria-label="Sélection du workspace et actualisation">
+        <div className="atlas-engine-toolbar-intro">
+          <span className="atlas-engine-toolbar-icon"><Icon name="grid" /></span>
+          <div><strong>Catalogue des moteurs</strong><p>Choisissez un workspace pour consulter sa configuration réelle.</p></div>
+        </div>
         <div className="atlas-engine-toolbar-actions">
           {wsState.status === "ready" && (
             <label>Workspace
@@ -161,7 +167,7 @@ export function EnginesHub() {
             </label>
           )}
           <button type="button" disabled={!workspaceId || loading} onClick={() => setRefreshCounter((x) => x + 1)}>
-            {loading ? "Vérification…" : "Actualiser"}
+            <Icon name="rotate-ccw" />{loading ? "Vérification…" : "Actualiser"}
           </button>
         </div>
       </section>
@@ -169,27 +175,48 @@ export function EnginesHub() {
       {wsState.status === "loading" && <p role="status">Chargement des workspaces…</p>}
       {wsState.status === "error" && <p role="alert">Accès aux workspaces indisponible.</p>}
       {wsState.status === "ready" && !activeWorkspace && <p role="status">Aucun workspace accessible.</p>}
-      {issue && <p className="atlas-engine-warning" role="alert">Connexion ou lecture impossible : {issue}. Aucun agent fictif n’est affiché.</p>}
+      {issue && <p className="atlas-engine-warning" role="alert"><Icon name="activity" /> Connexion ou lecture impossible : {issue}. Aucun agent fictif n’est affiché.</p>}
 
-      <div className="atlas-engine-grid">
+      <div className="atlas-engine-grid" aria-label="Moteurs disponibles">
         {(engines.length ? engines : [
           { id: "mausbot", name: "MAUSBOT", description: "Premier moteur", phase: "adapter-v0", status: "not-configured", transports: [], capabilities: [] },
           { id: "hermes", name: "Hermes", description: "Futur moteur", phase: "planned", status: "planned", transports: [], capabilities: [] },
         ]).map((engine) => (
-          <article className="atlas-engine-card" key={engine.id}>
+          <article className={"atlas-engine-card atlas-engine-card-" + (engine.id === "mausbot" ? "mausbot" : engine.id === "hermes" ? "hermes" : "generic")} key={engine.id}>
             <div className="atlas-engine-card-top">
-              <span className="atlas-engine-symbol" aria-hidden="true">{engine.id === "mausbot" ? "M" : "H"}</span>
+              <span className="atlas-engine-symbol" aria-hidden="true">
+                {engine.id === "mausbot" ? <Image src="/brands/mausbot.svg" width={72} height={72} alt="" unoptimized />
+                  : engine.id === "hermes" ? <Image src="/brands/hermes-agent.svg" width={72} height={72} alt="" unoptimized />
+                  : <Icon name="bot" />}
+              </span>
               <span className="atlas-engine-status" data-state={engine.id === "mausbot" && engineOnline ? "online" : engine.status}>
+                <span className="atlas-engine-status-dot" />
                 {engine.id === "mausbot" && engineOnline ? "En ligne"
                   : engine.status === "configured" ? "Configuré · à vérifier"
-                  : engine.status === "preconnection" ? "Préconnexion · verrouillée"
-                  : engine.status === "planned" ? "Prévu" : "Non connecté"}
+                  : engine.status === "preconnection" ? "Préconnexion verrouillée"
+                  : engine.status === "planned" ? "À venir" : "Non connecté"}
               </span>
             </div>
-            <h2>{engine.name}</h2>
-            <p>{engine.description}</p>
-            <div className="atlas-engine-chips">
-              {engine.transports.map((transport) => <span key={transport}>{transport.toUpperCase()}</span>)}
+            <div className="atlas-engine-card-body">
+              <p className="atlas-engine-card-eyebrow">
+                {engine.id === "mausbot" ? "01 / MOTEUR PRIORITAIRE"
+                  : engine.id === "hermes" ? "02 / FUTURE INTÉGRATION" : "MOTEUR / CATALOGUE"}
+              </p>
+              <h2>{engine.name}</h2>
+              <p>{engine.description}</p>
+            </div>
+            <div className="atlas-engine-card-footer">
+              <div className="atlas-engine-chips">
+                {engine.transports.length ? engine.transports.map((transport) => <span key={transport}>{transport.toUpperCase()}</span>)
+                  : <span>{engine.id === "mausbot" ? "Adaptateur préconnexion" : "Aucune connexion active"}</span>}
+              </div>
+              {engine.id === "mausbot" ? (
+                <Link href="/agents" className="atlas-engine-card-action">Voir les agents <Icon name="arrow-up-right" /></Link>
+              ) : engine.id === "hermes" ? (
+                <a href="https://hermes-agent.nousresearch.com/docs" target="_blank" rel="noopener noreferrer" className="atlas-engine-card-action">
+                  Découvrir Hermes <Icon name="arrow-up-right" />
+                </a>
+              ) : null}
             </div>
           </article>
         ))}
@@ -217,9 +244,14 @@ export function EnginesHub() {
       )}
 
       {(activeEngine?.status === "not-configured" || activeEngine?.status === "preconnection") && (
-        <section className="atlas-engine-panel">
-          <h2>Préconnexion MAUSBOT — accès réel verrouillé</h2>
-          <p>Les contrats sont disponibles hors connexion. Même avec un serveur configuré, les requêtes MAUSBOT ne sont pas lancées tant que les garde-fous serveur et la revue du jalon M0 ne sont pas validés. Aucun secret n’est saisi dans le navigateur.</p>
+        <section className="atlas-engine-panel atlas-engine-safety-panel" aria-label="Verrou de préconnexion">
+          <span className="atlas-engine-safety-icon"><Icon name="shield-check" /></span>
+          <div>
+            <p className="atlas-engine-panel-overline">GARDE-FOU ACTIF</p>
+            <h2>Connexion réelle sous contrôle</h2>
+            <p>Les contrats et l’inventaire sont consultables hors ligne. Aucune mission n’est envoyée au moteur tant que l’instance, les accès et le gate de préconnexion ne sont pas validés. Aucun secret n’est saisi dans le navigateur.</p>
+          </div>
+          <Link href="/engines/approvals" className="atlas-engine-safety-link">Consulter les validations <Icon name="arrow-right" /></Link>
         </section>
       )}
 
@@ -270,7 +302,7 @@ export function EnginesHub() {
           </section>
         </div>
       )}
-      <p className="atlas-engine-footnote">Étape actuelle : HTTP opérationnel après configuration. MCP, CLI, SSE, installations multiples et pilotage Chief seront intégrés progressivement à ce registre commun.</p>
+      <p className="atlas-engine-footnote">Les données « en ligne » proviennent uniquement des diagnostics autorisés du moteur. Une configuration ou une liste de capacités ne prouve pas une connexion réelle. Les écritures et exécutions restent verrouillées (HTTP 423).</p>
     </div>
   );
 }
