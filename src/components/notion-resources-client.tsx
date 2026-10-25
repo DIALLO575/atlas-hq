@@ -6,7 +6,7 @@ type Connection = { id: string; workspaceId: string; label: string };
 type ResourceFilter="all"|"page"|"database";
 type NotionPhoneScreen="library"|"reader"|"views"|"access";
 type WorkSection="projects"|"meetings"|"tasks"|"docs";
-type SectionBinding={id:string;kind:Resource["kind"];viewId?:string};
+type SectionBinding={id:string;kind:Resource["kind"];viewId?:string;sourceId?:string};
 const workSections:{id:WorkSection;label:string;icon:string;hint:string}[]=[
   {id:"projects",label:"Projets",icon:"▦",hint:"Choisissez votre base de projets, puis sa vue de projets actifs."},
   {id:"meetings",label:"Réunions",icon:"◷",hint:"Choisissez votre base ou votre page de réunions."},
@@ -56,6 +56,16 @@ const types: Record<string, string> = {
   form: "Formulaire", chart: "Graphique", map: "Carte",
   dashboard: "Dashboard", unknown: "Vue",
 };
+function WorkSectionIcon({section}:{section:WorkSection}) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {section==="projects" ? <><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 5V3h8v2M3 11h18M10 11v10"/></> :
+      section==="meetings" ? <><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18M8 15h2M14 15h2"/></> :
+      section==="tasks" ? <><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m7 12 3 3 7-7"/></> :
+      <><path d="M6 3h8l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM14 3v5h4M8 12h6M8 16h6"/></>}
+  </svg>;
+}
+
 function date(value: string | null) {
   if (!value) return "—";
   const time = Date.parse(value);
@@ -216,7 +226,9 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       for(const section of workSections){
         const item=value?.[section.id];
         if(item && UUID.test(item.id??"") && ["page","database","data_source"].includes(item.kind))
-          clean[section.id]={id:item.id,kind:item.kind,...(UUID.test(item.viewId??"")?{viewId:item.viewId}:{})};
+          clean[section.id]={id:item.id,kind:item.kind,
+            ...(UUID.test(item.viewId??"")?{viewId:item.viewId}:{}),
+            ...(UUID.test(item.sourceId??"")?{sourceId:item.sourceId}:{})};
       }
       setSectionBindings(clean);
     }catch{ /* Storage is optional; provider permissions remain server-enforced. */ }
@@ -232,6 +244,9 @@ function NotionExplorer({ connection }: { connection: Connection }) {
   const [query, setQuery] = useState("");
   const [resourceFilter,setResourceFilter]=useState<ResourceFilter>("all");
   const [mobileScreen,setMobileScreen]=useState<NotionPhoneScreen>("library");
+  const [settingsReturn,setSettingsReturn]=useState<NotionPhoneScreen>("library");
+  const [sourceLayout,setSourceLayout]=useState<"cards"|"table">("cards");
+  const [readingTrail,setReadingTrail]=useState<Array<{resource:Resource;viewId?:string;sourceId?:string}>>([]);
   const [documentMode,setDocumentMode]=useState<"document"|"markdown">("document");
   const [resources, setResources] = useState<Resource[]>([]);
   const [resourceCursor, setResourceCursor] = useState<string | null>(null);
@@ -317,7 +332,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       setResourceCursor(data.hasMore === true && typeof data.nextCursor === "string" ? data.nextCursor : null);
       if (!more) {
         navigateMobile("library");
-        setSelected(null); setViews([]); setCurrentView(null); setPreview(null); setSourceRefs([]); setSourceColumns([]); setSourceRows([]); setSourceCursor(null); setSourceLimited(false); setMarkdownPreview(null); setDocumentMode("document"); setBlocks([]); setDocumentPartial(false); setDocumentCursor(null);
+        setReadingTrail([]);setSelected(null); setViews([]); setCurrentView(null); setPreview(null); setSourceRefs([]); setSourceColumns([]); setSourceRows([]); setSourceCursor(null); setSourceLimited(false); setMarkdownPreview(null); setDocumentMode("document"); setBlocks([]); setDocumentPartial(false); setDocumentCursor(null);
       }
       setMessage(entries.length ? "Résultats autorisés chargés depuis Notion."
         : "Aucun résultat pour ce titre parmi les ressources partagées.");
@@ -327,20 +342,39 @@ function NotionExplorer({ connection }: { connection: Connection }) {
 
   async function openSection(section:WorkSection) {
     if(busy || disconnected)return;
-    setWorkSection(section);
+    setWorkSection(section);setReadingTrail([]);
     const saved=sectionBindings[section];
     if(saved){
       const resource=resources.find(item=>item.id===saved.id)??
         {id:saved.id,kind:saved.kind,title:workSections.find(item=>item.id===section)!.label,editedAt:null,url:null};
-      await choose(resource,saved.viewId);
+      await choose(resource,saved.viewId,saved.sourceId);
     }else{
       setSelected(null);setCurrentView(null);setPreview(null);setOperationError(false);
       navigateMobile("library");
     }
   }
   function assignResource(item:Resource) {
+    setReadingTrail([]);
     setSectionBindings(previous=>({...previous,[workSection]:{id:item.id,kind:item.kind}}));
     void choose(item);
+  }
+
+  function openDocument(item:Resource) {
+    if(busy || disconnected)return;
+    if(selected)setReadingTrail(previous=>[...previous,{resource:selected,
+      ...(currentView?{viewId:currentView.id}:{}),...(activeSourceId?{sourceId:activeSourceId}:{})}]);
+    void choose(item);
+  }
+  async function goBack() {
+    if(busy || disconnected)return;
+    if(mobileScreen==="access"){navigateMobile(settingsReturn);return;}
+    const parent=readingTrail.at(-1);
+    if(parent){
+      setReadingTrail(previous=>previous.slice(0,-1));
+      await choose(parent.resource,parent.viewId,parent.sourceId);
+    }else{
+      navigateMobile("library");
+    }
   }
 
   async function loadSourceRows(id:string) {
@@ -355,12 +389,16 @@ function NotionExplorer({ connection }: { connection: Connection }) {
     if(busy || disconnected)return;
     setOperationError(false);setBusy("rows");
     setActiveSourceId(null);setSourceRows([]);setSourceColumns([]);setSourceCursor(null);
-    try{await loadSourceRows(id);}
+    try{
+      await loadSourceRows(id);
+      if(selected)setSectionBindings(previous=>previous[workSection]?.id===selected.id?
+        {...previous,[workSection]:{...previous[workSection]!,sourceId:id}}:previous);
+    }
     catch(error){setOperationError(true);setMessage(error instanceof Error?error.message:"Source indisponible.");}
     finally{setBusy("");}
   }
 
-  async function choose(item: Resource, savedViewId?:string) {
+  async function choose(item: Resource, savedViewId?:string, savedSourceId?:string) {
     if (busy || disconnected) return;
     setSelected(item);navigateMobile("reader");
     setViews([]); setViewCursor(null); setCurrentView(null);
@@ -383,6 +421,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
         setMessage("Document chargé en lecture seule, y compris médias et sous-blocs autorisés.");
       } else {
         let contentError:string|null=null;
+        let restoringView=false;
         if (item.kind === "database") {
           const found=await readEndpoint("data",{
             ...binding,mode:"discover",resourceId:item.id,
@@ -391,8 +430,9 @@ function NotionExplorer({ connection }: { connection: Connection }) {
           const sources=found.results.filter((source):source is SourceRef=>
             Boolean(source && UUID.test(source.id??"") && typeof source.name==="string"));
           setSourceRefs(sources);setSourceLimited(found.truncated===true);
-          if(sources[0]){
-            try{await loadSourceRows(sources[0].id);}
+          const source=sources.find(entry=>entry.id===savedSourceId)??sources[0];
+          if(source){
+            try{await loadSourceRows(source.id);}
             catch(error){contentError=error instanceof Error?error.message:"Contenu indisponible.";}
           }
         } else {
@@ -407,16 +447,18 @@ function NotionExplorer({ connection }: { connection: Connection }) {
           const entries=nativeViews(data.results);
           setViews(entries);
           const savedView=entries.find(view=>view.id===savedViewId);
-          if(savedView)await showView(savedView,item,false);
+          if(savedView){restoringView=true;await showView(savedView,item,false);}
           setViewCursor(data.hasMore===true&&typeof data.nextCursor==="string"?
             data.nextCursor:null);
         }catch{
           setViews([]);setViewCursor(null);
         }
+        if(!restoringView){
         if(contentError)setOperationError(true);
         setMessage(contentError??(item.kind==="database"?
           "Sources et vues de cette base chargées, selon les droits Notion.":
           "Colonnes, lignes et vues accessibles chargées en lecture seule."));
+        }
       }
     } catch (error) { setOperationError(true);
       setMessage(error instanceof Error ? error.message : "Ressource indisponible.");
@@ -584,20 +626,41 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       </button>)}
     </nav>
     <div className="nt-phone-viewtop">
-      <div className="nt-phone-viewtitle">
-
-        <strong aria-live="polite">{mobileScreen==="library"?sectionInfo.label:
-          mobileScreen==="reader"?"Lecture":
-          mobileScreen==="views"?"Vues enregistrées":"Accès & droits"}</strong>
-      </div>
-      {mobileScreen==="library" && <button type="button" className="nt-phone-back"
-        aria-label="Actualiser les ressources" disabled={Boolean(busy)||disconnected}
-        onClick={()=>void search()}>Actualiser</button>}
-      {mobileScreen!=="library" && <button type="button"
-        className="nt-phone-back" onClick={()=>navigateMobile("library")}>
-        <span aria-hidden="true">‹</span> Explorer
+      {mobileScreen!=="library" && <button type="button" className="nt-mobile-back"
+        aria-label={mobileScreen==="access"?"Revenir au contenu":
+          readingTrail.length?"Revenir à "+readingTrail.at(-1)!.resource.title:"Revenir à la bibliothèque"}
+        aria-controls={"nt-library-"+connectionId} disabled={Boolean(busy)||disconnected}
+        onClick={()=>void goBack()}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
       </button>}
+      <div className="nt-phone-viewtitle">
+        <strong aria-live="polite">{mobileScreen==="library"?sectionInfo.label:
+          mobileScreen==="access"?"Réglages":selected?.title??sectionInfo.label}</strong>
+        {mobileScreen!=="library" && mobileScreen!=="access" &&
+          <span className="nt-location-label">{readingTrail.length?readingTrail.at(-1)!.resource.title:sectionInfo.label}</span>}
+      </div>
+      <details className="nt-context-menu">
+        <summary aria-label="Actions Notion">•••</summary>
+        <div className="nt-context-actions" onClick={event=>{
+          if((event.target as HTMLElement).closest("button,a"))event.currentTarget.parentElement?.removeAttribute("open");
+        }}>
+          <button type="button" onClick={()=>void search()} disabled={Boolean(busy)||disconnected}>Actualiser la bibliothèque</button>
+          <button type="button" onClick={()=>navigateMobile("library")}
+            disabled={Boolean(busy)||disconnected}>Changer la source</button>
+          {selected?.url && <a href={selected.url} target="_blank" rel="noopener noreferrer">Ouvrir dans Notion ↗</a>}
+          <button type="button" aria-controls={"nt-inspector-"+connectionId}
+            onClick={()=>{setSettingsReturn(mobileScreen);navigateMobile("access");}}>Connexions et accès</button>
+        </div>
+      </details>
     </div>
+    {selected && selected.kind!=="page" && (mobileScreen==="reader"||mobileScreen==="views") &&
+      <div className="nt-content-switch" role="group" aria-label="Afficher la base">
+        <button type="button" aria-pressed={mobileScreen==="reader"}
+          aria-controls={"nt-stage-"+connectionId} onClick={()=>{setCurrentView(null);setPreview(null);navigateMobile("reader");}}>Contenu</button>
+        <button type="button" aria-pressed={mobileScreen==="views"}
+          aria-controls={"nt-stage-"+connectionId} onClick={()=>navigateMobile("views")}>Vues</button>
+      </div>}
     <div className="nt-console-top">
       <span className="nt-toolbar-label">{sectionInfo.label}</span>
       <div className="nt-toolbar-actions">
@@ -739,8 +802,24 @@ function NotionExplorer({ connection }: { connection: Connection }) {
                   aria-pressed={activeSourceId===source.id} disabled={Boolean(busy)||disconnected}
                   onClick={()=>void selectSource(source.id)}>{source.name}</button>)}
               </div>}
-            {activeSourceId && !currentView && <section className="nt-sources" aria-label="Colonnes et lignes de la source">
-              <div className="nt-view-bar"><h4>Contenu</h4><span>{sourceRows.length} lignes</span></div>
+            {activeSourceId && !currentView && <section className={"nt-sources nt-source-layout-"+sourceLayout} aria-label="Colonnes et lignes de la source">
+              <div className="nt-view-bar"><h4>{sourceRows.length} élément{sourceRows.length>1?"s":""}</h4>
+                <div className="nt-source-layout" role="group" aria-label="Présentation du contenu">
+                  <button type="button" aria-pressed={sourceLayout==="cards"} onClick={()=>setSourceLayout("cards")}>Liste</button>
+                  <button type="button" aria-pressed={sourceLayout==="table"} onClick={()=>setSourceLayout("table")}>Tableau</button>
+                </div>
+              </div>
+              <div className="nt-row-cards">
+                {sourceRows.map(row=><article className="nt-row-card" key={row.id}>
+                  <button type="button" className="nt-row-card-title" disabled={Boolean(busy)||disconnected}
+                    onClick={()=>openDocument({id:row.id,kind:"page",title:row.title,url:row.url,editedAt:null})}>
+                    <span>{row.title}</span><span aria-hidden="true">›</span>
+                  </button>
+                  <dl>{sourceColumns.map((column,index)=>({column,value:row.cells[index]?.value}))
+                    .filter(cell=>cell.column.type!=="title" && cell.value).slice(0,2)
+                    .map(({column,value})=><div key={column.key}><dt>{column.name}</dt><dd>{value}</dd></div>)}</dl>
+                </article>)}
+              </div>
               <p className="nt-table-scroll-hint nt-sr-only">Faites défiler horizontalement pour voir toutes les colonnes.</p>
               <div className="nt-source-table-scroll" role="region" tabIndex={0}
                 aria-label="Lignes et propriétés Notion">
@@ -750,9 +829,9 @@ function NotionExplorer({ connection }: { connection: Connection }) {
                   </th>)}</tr></thead><tbody>
                   {sourceRows.map(row=><tr key={row.id}>
                     {sourceColumns.map((column,index)=><td key={column.key}>
-                      {column.type==="title" && row.url ?
+                      {column.type==="title" ?
                         <button type="button" className="nt-preview-open" disabled={Boolean(busy)||disconnected}
-                          onClick={()=>void choose({id:row.id,kind:"page",title:row.title,url:row.url,editedAt:null})}>
+                          onClick={()=>openDocument({id:row.id,kind:"page",title:row.title,url:row.url,editedAt:null})}>
                           {row.cells[index]?.value||row.title}</button>:
                         <span>{column.type==="status"||column.type==="select"?
                           <span className="nt-value-pill">{row.cells[index]?.value||"—"}</span>:
@@ -780,7 +859,8 @@ function NotionExplorer({ connection }: { connection: Connection }) {
                 onClick={()=>{
                   setCurrentView(null);setPreview(null);navigateMobile("reader");
                   setSectionBindings(previous=>previous[workSection]?.id===selected.id?
-                    {...previous,[workSection]:{id:selected.id,kind:selected.kind}}:previous);
+                    {...previous,[workSection]:{id:selected.id,kind:selected.kind,
+                      ...(activeSourceId?{sourceId:activeSourceId}:{})}}:previous);
                 }}
                 disabled={Boolean(busy)}><span aria-hidden="true">▦</span><strong>Tout le contenu</strong></button>}
               {views.map(item => <button type="button" key={item.id}
@@ -823,7 +903,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
                   {preview.totalCount} élément(s) annoncés par Notion.</p>}
                 </details><ul className="nt-preview-items">{preview.results.map(item => <li key={item.id}>
                   <span aria-hidden="true">▤</span><button type="button" className="nt-preview-open"
-                    disabled={Boolean(busy)||disconnected} onClick={()=>void choose(item)}>{item.title}</button>
+                    disabled={Boolean(busy)||disconnected} onClick={()=>openDocument(item)}>{item.title}</button>
                   {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer"
                     aria-label={"Ouvrir " + item.title + " dans Notion"}>↗</a>}
                 </li>)}</ul>
@@ -866,44 +946,13 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       </aside>
     </div>
     <nav className="nt-phone-dock" aria-label="Navigation Notion mobile">
-      <button type="button" className={mobileScreen==="library"?"is-active":""}
-        aria-current={mobileScreen==="library"?"page":undefined}
-        aria-controls={"nt-library-"+connectionId}
-        onClick={()=>navigateMobile("library")}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-          aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/>
-          <path d="M3 10h18M9 10v10"/></svg><span>Explorer</span>
-      </button>
-      <button type="button" className={mobileScreen==="reader"?"is-active":""}
-        aria-current={mobileScreen==="reader"?"page":undefined}
-        aria-controls={"nt-stage-"+connectionId}
-        onClick={()=>navigateMobile("reader")}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-          aria-hidden="true"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
-          <path d="M14 3v5h5M9 12h6M9 16h6"/></svg><span>Lecture</span>
-      </button>
-      <button type="button" className={mobileScreen==="views"?"is-active":""}
-        aria-current={mobileScreen==="views"?"page":undefined}
-        aria-controls={"nt-stage-"+connectionId}
-        onClick={()=>navigateMobile("views")}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-          aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/>
-          <rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/>
-          <rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Vues</span>
-      </button>
-      <button type="button" className={mobileScreen==="access"?"is-active":""}
-        aria-current={mobileScreen==="access"?"page":undefined}
-        aria-controls={"nt-inspector-"+connectionId}
-        onClick={()=>navigateMobile("access")}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-          aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/>
-          <path d="m9 12 2 2 4-4"/></svg><span>Réglages</span>
-      </button>
+      {workSections.map(section=><button type="button" key={section.id}
+        className={workSection===section.id?"is-active":""}
+        aria-current={workSection===section.id?"page":undefined}
+        aria-label={section.label} aria-controls={"nt-stage-"+connectionId}
+        disabled={Boolean(busy)||disconnected} onClick={()=>void openSection(section.id)}>
+        <WorkSectionIcon section={section.id}/><span>{section.id==="docs"?"Docs":section.label}</span>
+      </button>)}
     </nav>
   </div>;
 }
@@ -913,7 +962,7 @@ export function NotionResourcesClient({ connections }: { connections: Connection
   const chosen = connections.find(connection => connection.id === active) ?? connections[0];
   if (!chosen) return null;
   return <section className="nt-hub" aria-label="Poste de pilotage Notion">
-    <div className="nt-hub-switch"><div>
+    <div className={"nt-hub-switch"+(connections.length===1?" nt-single-connection":"")}><div>
       <strong>{chosen.label}</strong></div>
       {connections.length > 1 && <label>Connexion
         <select value={chosen.id} onChange={event => setActive(event.target.value)}>

@@ -7,7 +7,7 @@ test("source selection explicitly distinguishes database and data_source",()=>{
  assert.match(ui,/item\.kind === "database"/);
  assert.match(ui,/mode:"discover"/);
  assert.match(ui,/mode:"rows"/);
- assert.match(ui,/await loadSourceRows\(sources\[0\]\.id\)/);
+ assert.match(ui,/await loadSourceRows\(source\.id\)/);
  assert.match(ui,/setActiveSourceId\(id\)/);
  assert.match(ui,/sourceRefs\.map/);
 });
