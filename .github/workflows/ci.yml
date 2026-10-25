@@ -69,6 +69,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Verify mission-agent context snapshots and concurrent revocation
+        env:
+          ATLAS_ENGINE_DISPOSABLE_TEST: "1"
+        run: node tests/engine-context-postgres.mjs
       - name: Verify simulated workers with concurrent processes and crash recovery
         env:
           ATLAS_ENGINE_DISPOSABLE_TEST: "1"
