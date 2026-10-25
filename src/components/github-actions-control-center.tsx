@@ -137,7 +137,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
   return <section className="atlas-gh-actions" aria-label="GitHub Actions Control Center">
     <header className="atlas-gh-actions-hero">
       <div><span className="atlas-gh-actions-overline"><Icon name="activity"/> GITHUB ACTIONS / CI-CD</span>
-        <h2>Vos builds, sans zone d'ombre<span>.</span></h2>
+        <h2>Vos builds, sans zone d&apos;ombre<span>.</span></h2>
         <p>Suivez les exécutions, identifiez les jobs en échec et ouvrez leurs diagnostics détaillés.</p>
       </div>
       <span className="atlas-gh-actions-readonly"><Icon name="layers"/> Lecture sécurisée</span>
@@ -191,14 +191,14 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
               <Icon name="chevron-right"/>
             </button>)}
           </div>
-          {truncated && <p className="atlas-gh-actions-message">Liste limitée aux 20 dernières exécutions. Voir GitHub pour l'historique complet.</p>}
+          {truncated && <p className="atlas-gh-actions-message">Liste limitée aux 20 dernières exécutions. Voir GitHub pour l&apos;historique complet.</p>}
         </section>
         <aside className="atlas-gh-actions-inspector" aria-label="Diagnostic de workflow">
           <span className="atlas-gh-actions-overline">INSPECTEUR DE CI</span>
           {!selectedRun && <div className="atlas-gh-actions-placeholder">
             <span><Icon name="activity"/></span>
             <h3>Sélectionnez une exécution</h3>
-            <p>Découvrez les jobs, leur état et les étapes responsables d'un échec.</p>
+            <p>Découvrez les jobs, leur état et les étapes responsables d&apos;un échec.</p>
           </div>}
           {selectedRun && <>
             <h3>{selectedRun.name||selectedRun.title||"Workflow"}</h3>
@@ -227,7 +227,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
                 </a>
               </article>)}
             </div>
-            {jobsTruncated && <p className="atlas-gh-actions-message">Liste de jobs partielle ; voir GitHub pour l'ensemble.</p>}
+            {jobsTruncated && <p className="atlas-gh-actions-message">Liste de jobs partielle ; voir GitHub pour l&apos;ensemble.</p>}
           </>}
           <p className="atlas-gh-actions-safety">Lecture seule. Relancer un workflow nécessite une permission Actions: Write et un accord explicite, non activés ici.</p>
         </aside>
