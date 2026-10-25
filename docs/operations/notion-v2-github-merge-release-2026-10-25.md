@@ -1,3 +1,15 @@
+## Bilan final GitHub — 25 octobre 2026
+
+**Fusion confirmée, code non laissé en attente :** `main b4da3a7f3871bb5b50c6b03ca6f92b018f6a3d2e`. Toutes les PR Notion de fonctionnalités livrées ont été mergées : #32, #36, #72, #73, #80, #82. Aucune PR Notion actuellement ouverte. #34 et #35 ne sont pas des oublis : elles ont été fermées individuellement et consolidées dans #36.
+
+**Domaine livré dans le code :** authentification et lecture REST autorisées, pages et blocs, longs documents, texte enrichi et Markdown filtré, images/PDF/audio/vidéo/fichiers dans les limites du proxy, bases/data sources/colonnes/lignes bornées et vues enregistrées, cockpit accessible, et design Notion mobile/tablette plein écran avec navigation Explorer/Lecture/Vues/Accès. Notion mobile monochrome (`#191919`, `#fff`, `#f7f7f5`), jusqu'à 840 px tablette portrait, navigation ARIA et safe areas.
+
+**Preuves :** PR #82 GitHub Actions [40214925549](https://github.com/DIALLO575/atlas-hq/actions/runs/40214925549) **6/6 PASS** ; CI sur `main` [40215066964](https://github.com/DIALLO575/atlas-hq/actions/runs/40215066964) **6/6 PASS** ; dernière validation source **725/725 tests, 9/9 ciblés mobiles, TypeScript/ESLint/Next build PASS**. Aucune modification des secrets, de l'OAuth, du manifeste PWA général, de GitHub ou de Supabase lors des passes d'interface.
+
+**Restant bloquant avant qualification produit :** aucune preuve que l'alias Vercel production sert ce nouveau SHA (candidat preview READY ≠ déploiement production) ; écran mobile non testé dans un navigateur **réel authentifié** ; OAuth Notion propre à ATLAS non consenti/testé ; isolation W1/W2, page non partagée, 403/404, refresh et révocation non vérifiés. **SHA-134 NO-GO**. Il reste en P1 les gros médias/Office et interactions Notion avancées, et en P2 les écritures uniquement sur approbation humaine.
+
+Voir [SHA-182](https://linear.app/shadoron/issue/SHA-182), [SHA-190](https://linear.app/shadoron/issue/SHA-190), [SHA-134](https://linear.app/shadoron/issue/SHA-134). La présente note **met à jour le statut** : les anciennes descriptions « candidat non fusionné » ci-dessous correspondent à des snapshots historiques.
+
 # ATLAS HQ × Notion V2 — intégration GitHub de code et UX
 
 *25 octobre 2026 · publication dans le code source, **pas un GO OAuth fournisseur***.
