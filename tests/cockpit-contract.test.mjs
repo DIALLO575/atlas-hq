@@ -56,6 +56,8 @@ test("premium Mes Apps preserves its directory and offers the real GitHub connec
   assert.doesNotMatch(apps, /<GitHubWorkspacePicker|from\("workspace_members"\)|auth\.getUser\(\)/);
   assert.match(agents, /description="Inventaire live des bots, groupes et modèles d’équipe MAUSBOT/);
   assert.match(agents, /<AgentRequestForm\s*\/>/);
+  assert.match(agents, /readAtlasWorkflow\(params\.workspaceId\)/);
+  assert.match(agents, /<N8nCoordinationPanel workspaceId=\{data\.selected\.id\} scope="agents"/);
   assert.match(agents, /href="\/engines"/);
   assert.match(demoData, /export const demoApps/);
   assert.match(demoData, /Google Calendar/);

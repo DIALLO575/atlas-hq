@@ -16,6 +16,7 @@ export const atlasApps: ReadonlyArray<CatalogApp> = [
   { slug: "notion", name: "Notion", category: "Productivité", description: "Docs, wikis et projets", useCase: "Retrouver les connaissances et le contexte des projets." },
   { slug: "slack", name: "Slack", category: "Communication", description: "Messages et collaboration", useCase: "Suivre les échanges d'équipe et repérer les sujets importants." },
   { slug: "github", name: "GitHub", category: "Développement", description: "Code et dépôts", useCase: "Relier les changements de code aux missions et aux agents." },
+  { slug: "n8n", name: "n8n", category: "Productivité", description: "Automatisation et workflows", useCase: "Gérer l’instance hors ligne, consulter les workflows et suivre les exécutions dans Atlas.", recommended: true },
   { slug: "google-drive", name: "Google Drive", category: "Productivité", description: "Fichiers et documents", useCase: "Centraliser les documents utilisés pendant les missions." },
   { slug: "figma", name: "Figma", category: "Design", description: "Design et prototypes", useCase: "Conserver le contexte des maquettes et de la conception." },
   { slug: "linear", name: "Linear", category: "Développement", description: "Projets et tâches", useCase: "Donner de la visibilité sur les issues et leurs priorités." },
@@ -30,6 +31,7 @@ export const atlasApps: ReadonlyArray<CatalogApp> = [
   { slug: "calendly", name: "Calendly", category: "Productivité", description: "Prise de rendez-vous", useCase: "Organiser des rendez-vous avec moins d'allers-retours.", recommended: true },
   { slug: "hubspot", name: "HubSpot", category: "CRM", description: "Marketing et CRM", useCase: "Suivre les interactions et le parcours client.", recommended: true },
   { slug: "zapier", name: "Zapier", category: "Productivité", description: "Automatisations", useCase: "Relier différentes tâches dans des scénarios d'automatisation." },
+
   { slug: "clickup", name: "ClickUp", category: "Développement", description: "Gestion de projets", useCase: "Structurer tâches et livrables de l'équipe." },
 ];
 
