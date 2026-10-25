@@ -55,16 +55,34 @@ function date(value: string | null) {
     day: "numeric", month: "short", year: "numeric",
   }).format(time) : "—";
 }
-function providerMessage(status: number) {
+function providerMessage(status: number, code: string | null = null) {
   if (status === 403 || status === 404) return "Ressource non accessible avec les droits Notion actuels.";
   if (status === 409) return "Connexion à renouveler ou actualisation déjà en cours.";
   if (status === 429) return "Notion limite les requêtes. Réessayez plus tard.";
-  return "Lecture indisponible. Vérifiez la connexion avant de réessayer.";
+  // The server deliberately returns only safe error codes, never Notion tokens,
+  // private URLs, provider JSON or vault details.
+  const diagnostic = code && /^notion-[a-z-]{1,70}$/.test(code) ? code : "HTTP-" + status;
+  if (status === 503) return "Lecture Notion indisponible (" + diagnostic +
+    "). Vérifiez la configuration du connecteur ou réessayez.";
+  if (status === 502) return "Réponse inattendue de Notion (" + diagnostic +
+    "). Réessayez ou signalez ce code.";
+  return "Lecture Notion impossible (" + diagnostic + "). Réessayez.";
+}
+async function responseFailure(response: Response) {
+  let code: string | null = null;
+  try {
+    const value: unknown = await response.json();
+    if (value && typeof value === "object" && "error" in value &&
+        typeof value.error === "string" && /^notion-[a-z-]{1,70}$/.test(value.error)) {
+      code = value.error;
+    }
+  } catch { /* Malformed or non-JSON errors remain a generic HTTP status. */ }
+  return new Error(providerMessage(response.status, code));
 }
 async function readEndpoint(path: "read" | "views" | "data" | "capabilities", values: Record<string,string>) {
   const response = await fetch("/api/apps/notion/" + path + "?" +
     new URLSearchParams(values), { credentials: "same-origin", cache: "no-store" });
-  if (!response.ok) throw new Error(providerMessage(response.status));
+  if (!response.ok) throw await responseFailure(response);
   const data: unknown = await response.json();
   if (!data || typeof data !== "object") throw new Error("Réponse Notion invalide.");
   return data as Record<string, unknown>;
@@ -201,6 +219,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
   const [busy, setBusy] = useState("");
   const [disconnected, setDisconnected] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError,setLoadError]=useState(false);
   const visibleResources=resourceFilter==="all"?resources:
     resources.filter(item=>item.kind===resourceFilter);
   const mediaCount=(items:Block[]):number=>items.reduce((n,block)=>
@@ -211,22 +230,25 @@ function NotionExplorer({ connection }: { connection: Connection }) {
   useEffect(() => {
     const controller = new AbortController();
     async function initial() {
-      setBusy("search");
+      setBusy("search");setLoadError(false);
       try {
         const response = await fetch("/api/apps/notion/read?" +
           new URLSearchParams({ workspaceId, connectionId, kind: "search", query: "" }),
           { credentials: "same-origin", cache: "no-store", signal: controller.signal });
-        if (!response.ok) throw new Error(providerMessage(response.status));
+        if (!response.ok) throw await responseFailure(response);
         const data = await response.json() as { results?: unknown; hasMore?: boolean; nextCursor?: unknown };
         if (!controller.signal.aborted) {
           const entries = resourceList(data.results);
-          setResources(entries);
+          setResources(entries);setLoadError(false);
           setResourceCursor(data.hasMore && typeof data.nextCursor === "string" ? data.nextCursor : null);
           setMessage(entries.length ? "Choisissez une page ou une base pour explorer ses vues."
             : "Aucune ressource partagée détectée. Partagez une page ou une base avec la connexion dans Notion.");
         }
       } catch (error) {
-        if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Notion indisponible.");
+        if (!controller.signal.aborted) {
+          setLoadError(true);
+          setMessage(error instanceof Error ? error.message : "Notion indisponible.");
+        }
       } finally {
         if (!controller.signal.aborted) { setLoaded(true); setBusy(""); }
       }
@@ -252,6 +274,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       const data = await readEndpoint("read", { ...binding, kind: "search", query: query.slice(0, 200),
         ...(more && resourceCursor ? { cursor: resourceCursor } : {}) });
       const entries = resourceList(data.results);
+      setLoadError(false);
       setResources(previous => more ? [...previous, ...entries] : entries);
       setResourceCursor(data.hasMore === true && typeof data.nextCursor === "string" ? data.nextCursor : null);
       if (!more) {
@@ -260,7 +283,7 @@ function NotionExplorer({ connection }: { connection: Connection }) {
       }
       setMessage(entries.length ? "Résultats autorisés chargés depuis Notion."
         : "Aucun résultat pour ce titre parmi les ressources partagées.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Notion indisponible."); }
+    } catch (error) { setLoadError(true);setMessage(error instanceof Error ? error.message : "Notion indisponible."); }
     finally { setBusy(""); }
   }
 
@@ -526,9 +549,17 @@ function NotionExplorer({ connection }: { connection: Connection }) {
         <p className="nt-results-note">{visibleResources.length} sur {resources.length} ressource(s) chargée(s)</p>
         <div className="nt-resource-list">
           {!loaded && <p className="nt-placeholder">Lecture des ressources autorisées…</p>}
-          {loaded && resources.length === 0 && <p className="nt-placeholder">
-            Aucune ressource visible. Dans Notion, partagez une page ou une base avec l’intégration ATLAS.
-          </p>}
+          {loaded && resources.length === 0 && (loadError ?
+            <div className="nt-placeholder" role="alert">
+              <strong>Impossible de charger la bibliothèque Notion.</strong>
+              <p>Le problème de lecture doit être résolu avant de conclure que les pages ne sont pas partagées.
+                Consultez le diagnostic ci-dessus et réessayez « Actualiser les ressources ».</p>
+            </div> :
+            <p className="nt-placeholder">
+              Aucune ressource renvoyée par Notion. Dans Notion, ouvrez une page,
+              puis « ••• » → « Connexions » → ajoutez l’intégration ATLAS à cette page.
+              Revenez ici et actualisez les ressources.
+            </p>)}
           {loaded && resources.length>0 && visibleResources.length===0 &&
             <p className="nt-placeholder">Aucun élément de ce type parmi les résultats chargés.</p>}
           {visibleResources.map(item => <button type="button" key={item.id}
