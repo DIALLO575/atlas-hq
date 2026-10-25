@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readMausbotServerSecret, serverSecretRecord, validMausbotServerToken } from "./server-secret.mjs";
 import { ATLAS_WORKSPACE_ID, MAUSBOT_OBJECT_ID } from "../../../engine-core/src/catalog.mjs";
 
 export class MausbotAdapterError extends Error {
@@ -16,10 +17,18 @@ export class MausbotAdapterError extends Error {
  * Secrets are not stored in ATLAS, returned to callers, or logged.
  */
 export function resolveMausbotConfig(env, workspaceId) {
+  if (typeof window !== "undefined") throw new MausbotAdapterError("MAUSBOT_SERVER_SECRET_INVALID", 503);
+  if (env.ATLAS_MAUSBOT_TOKEN_REVOKED === "true") return null;
+  if (env.ATLAS_MAUSBOT_TOKEN_REVOKED !== undefined && env.ATLAS_MAUSBOT_TOKEN_REVOKED !== "false")
+    throw new MausbotAdapterError("MAUSBOT_SERVER_SECRET_INVALID", 503);
   if (!ATLAS_WORKSPACE_ID.test(workspaceId ?? "") || env.ATLAS_MAUSBOT_WORKSPACE_ID !== workspaceId) return null;
+  if (env.ATLAS_MAUSBOT_INSTANCE_ID !== undefined && !readMausbotServerSecret(env, {
+    workspaceId, instanceId: env.ATLAS_MAUSBOT_INSTANCE_ID,
+  })) return null;
   const rawUrl = env.ATLAS_MAUSBOT_URL?.trim();
-  const token = env.ATLAS_MAUSBOT_TOKEN?.trim();
+  const token = env.ATLAS_MAUSBOT_TOKEN;
   if (!rawUrl || !token) return null;
+  if (!validMausbotServerToken(token)) throw new MausbotAdapterError("MAUSBOT_SERVER_SECRET_INVALID", 503);
   let url;
   try { url = new URL(rawUrl); } catch { throw new MausbotAdapterError("MAUSBOT_URL_INVALID", 503); }
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
@@ -27,7 +36,20 @@ export function resolveMausbotConfig(env, workspaceId) {
       url.username || url.password || url.search || url.hash || url.pathname !== "/") {
     throw new MausbotAdapterError("MAUSBOT_URL_INVALID", 503);
   }
-  return { baseUrl: url.origin, token };
+  return serverSecretRecord({ baseUrl: url.origin }, token);
+}
+
+/** Future private worker entry point; resolving a credential grants no execution rights. */
+export function resolveMausbotInstanceConfig(env, scope) {
+  const credential = readMausbotServerSecret(env, scope);
+  if (!credential) return null;
+  const config = resolveMausbotConfig(env, scope.workspaceId);
+  if (!config) return null;
+  return serverSecretRecord({
+    baseUrl: config.baseUrl, workspaceId: credential.workspaceId,
+    instanceId: credential.instanceId, credentialVersion: credential.version,
+    source: credential.source, canDispatch: false,
+  }, credential.token);
 }
 
 function objectId(value) {

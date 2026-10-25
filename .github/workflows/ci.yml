@@ -53,6 +53,36 @@ jobs:
           -f tests/sql/engine-worker-fencing-preflight.sql
           -f supabase/migrations/20261024205621_atlas_engine_outbox_fencing_v1.sql
           -f tests/sql/engine-outbox-fencing-checks.sql
+          -f supabase/migrations/20261025114614_atlas_engine_agent_request_v1.sql
+          -f tests/sql/engine-agent-request-checks.sql
+          -f tests/sql/engine-team-request-checks.sql
+          -f supabase/proposals/engine-mission-agent-assignment-v1.sql
+          -f tests/sql/engine-mission-agent-assignment-checks.sql
+
+      - name: Verify concurrent agent-profile request idempotence
+        env:
+          ATLAS_ENGINE_DISPOSABLE_TEST: "1"
+        run: |
+          bash tests/sql/engine-agent-request-concurrency.sh
+          bash tests/sql/engine-team-request-concurrency.sh
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify approval decisions under contending PostgreSQL connections
+        env:
+          ATLAS_ENGINE_DISPOSABLE_TEST: "1"
+        run: node tests/approval-decision-concurrency.mjs
+      - name: Verify mission-agent context snapshots and concurrent revocation
+        env:
+          ATLAS_ENGINE_DISPOSABLE_TEST: "1"
+        run: node tests/engine-context-postgres.mjs
+      - name: Verify simulated workers with concurrent processes and crash recovery
+        env:
+          ATLAS_ENGINE_DISPOSABLE_TEST: "1"
+        run: node tests/engine-worker-processes.mjs
 
   github-studio-ledger-postgres:
     runs-on: ubuntu-latest
@@ -90,7 +120,7 @@ jobs:
           -f supabase/migrations/20261024225515_github_studio_operation_ledger.sql
           -f tests/sql/github-studio-ledger-checks.sql
           -f tests/sql/github-studio-finalize-atomic-checks.sql
-          -f supabase/migrations/20261025200500_github_actions_rerun_ledger.sql
+          -f supabase/migrations/20261025085932_github_actions_rerun_ledger.sql
       - name: Verify concurrent dispatch single winner
         run: bash tests/sql/github-studio-ledger-concurrency.sh
 
