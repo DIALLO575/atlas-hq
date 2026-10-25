@@ -4,7 +4,6 @@ import {
   MausbotAdapterError, resolveMausbotConfig, mausbotHealth, mausbotAgents, mausbotJob,
 } from "../../../../../packages/engines/mausbot/src/adapter.mjs";
 import { executeMausbotPrimitive } from "../../../../../packages/engines/mausbot/src/primitives.mjs";
-import { executeTeamCatalogRead } from "../../../../../packages/engines/mausbot/src/team-channel-contracts.mjs";
 import { mausbotReleasePermission } from "../../../../../packages/engine-core/src/release-gates.mjs";
 import { mausbotOwnerControlPermission } from "../../../../../packages/engine-core/src/mausbot-owner-control.mjs";
 
@@ -29,15 +28,6 @@ export async function GET(request: NextRequest) {
         executeMausbotPrimitive(config, "agents.list"),
         executeMausbotPrimitive(config, "channels.list"),
       ]);
-      let teamTemplates: unknown[] = [];
-      let teamCatalogAvailable = false;
-      try {
-        const catalog = await executeTeamCatalogRead(config, "teams.library.catalog");
-        teamTemplates = Array.isArray(catalog.teams) ? catalog.teams : [];
-        teamCatalogAvailable = true;
-      } catch {
-        // The installed-host inventory remains useful when its optional catalog is absent.
-      }
       const label = (value: unknown, max: number) => typeof value === "string" ? value.slice(0, max) : null;
       const agents = Array.isArray(agentResult.agents) ? agentResult.agents.flatMap((value: unknown) => {
         if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -50,7 +40,7 @@ export async function GET(request: NextRequest) {
           const threadId = label(task.threadId, 120);
           return threadId ? [{ threadId, title: label(task.title, 200), activity: label(task.activity, 40), active: task.active === true }] : [];
         }).slice(0, 50) : [];
-        return [{ id, name, title: label(agent.title, 200), activeTaskId: label(agent.activeTaskId, 120), tasks }];
+        return [{ id, name, title: label(agent.title, 200), section: label(agent.section, 100), chiefOfStaff: agent.chiefOfStaff === true, activeTaskId: label(agent.activeTaskId, 120), tasks }];
       }).slice(0, 200) : [];
       const groups = Array.isArray(groupResult.channels) ? groupResult.channels.flatMap((value: unknown) => {
         if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -66,7 +56,13 @@ export async function GET(request: NextRequest) {
           const threadId = label(task.threadId, 120);
           return threadId ? [{ threadId, title: label(task.title, 200), activity: label(task.activity, 40), active: task.active === true }] : [];
         }).slice(0, 50) : [];
-        return [{ id, name, memberIds, activeTaskId: label(group.activeTaskId, 120), tasks }];
+        const responder = group.defaultResponder && typeof group.defaultResponder === "object" && !Array.isArray(group.defaultResponder)
+          ? group.defaultResponder as Record<string, unknown> : null;
+        const defaultResponder = responder && typeof responder.kind === "string"
+          ? { kind: responder.kind.slice(0, 20), ...(typeof responder.botId === "string" && memberIds.includes(responder.botId)
+            ? { botId: responder.botId } : {}) } : null;
+        return [{ id, name, section: label(group.section, 100), memberIds, defaultResponder,
+          activeTaskId: label(group.activeTaskId, 120), tasks }];
       }).slice(0, 100) : [];
       return engineSuccess({
         engine: "mausbot", source: "live-read-only",
@@ -74,7 +70,6 @@ export async function GET(request: NextRequest) {
           role: access.role, workspaceId, mode: "execute",
         }).allowed,
         agents, groups,
-        teamTemplates, teamCatalogAvailable,
       });
     }
     const threadId = request.nextUrl.searchParams.get("threadId");

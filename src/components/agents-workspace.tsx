@@ -5,19 +5,26 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import type { WorkspaceResult } from "@/lib/workspaces/contract";
-import { AgentRequestForm } from "@/components/agent-request-form";
-import { N8nCoordinationPanel } from "@/components/n8n-coordination-panel";
 
 type Task = { threadId: string; title: string | null; activity: string | null; active: boolean };
-type Agent = { id: string; name: string; title?: string | null; activeTaskId: string | null; tasks: Task[] };
-type Team = { id: string; name: string; memberIds: string[]; activeTaskId?: string | null; tasks?: Task[] };
-type Template = { slug: string; name: string; category: string | null; summary: string | null; members: number | null; featured: boolean; requiredApps: string[] };
-type Inventory = { agents: Agent[]; groups: Team[]; teamTemplates: Template[]; teamCatalogAvailable: boolean; canWrite: boolean };
+type Agent = { id: string; name: string; title?: string | null; section?: string | null; chiefOfStaff?: boolean; activeTaskId: string | null; tasks: Task[] };
+type Team = { id: string; name: string; section?: string | null; memberIds: string[]; defaultResponder?: { kind: string; botId?: string }; activeTaskId?: string | null; tasks?: Task[] };
+type Inventory = { agents: Agent[]; groups: Team[]; canWrite: boolean };
 type Message = { id: string | null; at: string | null; role: string | null; kind: string | null; text: string; hasImage?: boolean; queued?: boolean; steered?: boolean;
   tool?: { name?: string; ok?: boolean; spoken?: string; setup?: string; terminal?: string };
   card?: { title?: string; subtitle?: string; answered?: boolean; dismissed?: boolean; expired?: boolean } };
 type Selection = { kind: "team" | "agent"; id: string } | null;
-type RequestKind = "team" | "agent";
+
+/** A Chief of Staff is shown only when MAUSBOT has explicitly marked a bot.
+ * A channel's default responder is never presented as its Chief. */
+function chiefFor(team: Team, agents: Agent[]) {
+  const direct = agents.find(agent => agent.chiefOfStaff === true && team.memberIds.includes(agent.id));
+  if (direct) return { agent: direct, label: "Chief of Staff" };
+  const section = team.section
+    ? agents.find(agent => agent.chiefOfStaff === true && agent.section === team.section)
+    : null;
+  return section ? { agent: section, label: "Chief de section" } : null;
+}
 
 function readableTime(value: string | null) {
   if (!value) return "";
@@ -52,14 +59,8 @@ export function AgentsWorkspace() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendIssue, setSendIssue] = useState("");
-  const [proposalKind, setProposalKind] = useState<RequestKind | null>(null);
+  const [openTeamId, setOpenTeamId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLOListElement>(null);
-
-  useEffect(() => {
-    if (!proposalKind) return;
-    const frame = window.requestAnimationFrame(() => document.getElementById("atlas-people-proposal")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-    return () => window.cancelAnimationFrame(frame);
-  }, [proposalKind]);
 
   useEffect(() => {
     let mounted = true;
@@ -80,6 +81,7 @@ export function AgentsWorkspace() {
       setInventory(null);
       setInventoryIssue("");
       setSelection(null);
+      setOpenTeamId(null);
       setThreadId("");
       setMessages([]);
       setMessagesIssue("");
@@ -95,8 +97,6 @@ export function AgentsWorkspace() {
         if (!abort.signal.aborted) setInventory({
           agents: data.agents,
           groups: data.groups,
-          teamTemplates: Array.isArray(data.teamTemplates) ? data.teamTemplates : [],
-          teamCatalogAvailable: data.teamCatalogAvailable === true,
           canWrite: data.canWrite === true,
         });
       } catch (error) {
@@ -106,19 +106,25 @@ export function AgentsWorkspace() {
     return () => abort.abort();
   }, [workspaceId, inventoryRevision]);
 
-  const selectedTeam = selection?.kind === "team" ? inventory?.groups.find(team => team.id === selection.id) ?? null : null;
-  const selectedAgent = selection?.kind === "agent" ? inventory?.agents.find(agent => agent.id === selection.id) ?? null : null;
-  const selected = selectedTeam ?? selectedAgent;
+  const openedTeam = inventory?.groups.find(team => team.id === openTeamId) ?? null;
+  const selectedTeam = selection?.kind === "team" ? openedTeam : null;
+  const selectedAgent = selection?.kind === "agent"
+    ? inventory?.agents.find(agent => agent.id === selection.id) ?? null : null;
+  const selected = selectedAgent ?? selectedTeam;
   const currentThreads = useMemo(() => threadsFor(selected), [selected]);
   const selectedName = selected?.name ?? "";
-  const memberAgents = selectedTeam?.memberIds.map(id => inventory?.agents.find(agent => agent.id === id)).filter((agent): agent is Agent => !!agent) ?? [];
+  const memberAgents = openedTeam?.memberIds
+    .map(id => inventory?.agents.find(agent => agent.id === id))
+    .filter((agent): agent is Agent => Boolean(agent)) ?? [];
+  const chief = openedTeam && inventory ? chiefFor(openedTeam, inventory.agents) : null;
   const normalQuery = query.trim().toLocaleLowerCase("fr");
-  const visibleTeams = inventory?.groups.filter(team => team.name.toLocaleLowerCase("fr").includes(normalQuery)) ?? [];
-  const visibleAgents = inventory?.agents.filter(agent =>
-    (agent.name + " " + (agent.title ?? "")).toLocaleLowerCase("fr").includes(normalQuery)) ?? [];
+  const visibleTeams = inventory?.groups.filter(team =>
+    (team.name + " " + (chiefFor(team, inventory.agents)?.agent.name ?? "") + " " +
+      team.memberIds.map(id => inventory.agents.find(agent => agent.id === id)?.name ?? "").join(" "))
+      .toLocaleLowerCase("fr").includes(normalQuery)) ?? [];
   const activeWorkspace = spaces.status === "ready" ? spaces.workspaces.find(space => space.id === workspaceId) : null;
   const canReadMessages = activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
-  const canSend = inventory?.canWrite === true && activeWorkspace?.role === "owner" && !!selection && !!threadId;
+  const canSend = inventory?.canWrite === true && activeWorkspace?.role === "owner" && !!selected && !!threadId;
 
   async function sendMessage() {
     if (!canSend || sending || !draft.trim() || !selection || !threadId) return;
@@ -150,7 +156,7 @@ export function AgentsWorkspace() {
     setMessages([]);
     setMessagesIssue("");
     setMessagesBusy(false);
-    if (window.matchMedia("(max-width:700px)").matches) {
+    if (next?.kind === "agent" && window.matchMedia("(max-width:700px)").matches) {
       window.requestAnimationFrame(() => document.getElementById("atlas-people-conversation")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
   }
@@ -207,16 +213,12 @@ export function AgentsWorkspace() {
     : inventoryIssue ? "Inventaire indisponible : " + inventoryIssue : "L’inventaire sera affiché uniquement après lecture autorisée du moteur.";
 
   return (
-    <div className="atlas-people-space">
-      <header className="atlas-people-hero">
+    <div className="atlas-people-space atlas-people-team-space">
+      <header className="atlas-people-hero atlas-people-hero-compact">
         <div className="atlas-people-hero-copy">
-          <p className="atlas-people-overline"><Icon name="bot" /> ATLAS / COLLABORATION IA</p>
-          <h1>Vos équipes. Vos agents. <span>Un même espace.</span></h1>
-          <p>Parcourez vos équipes, ouvrez un agent et suivez les conversations réelles depuis ATLAS. Le propriétaire peut envoyer des messages lorsque la connexion administrateur est effectivement activée.</p>
-          <div className="atlas-people-hero-meta">
-            <span><Icon name="shield-check" /> Accès selon les droits du propriétaire</span>
-            <span><Icon name="activity" /> Aucun message simulé</span>
-          </div>
+          <p className="atlas-people-overline"><Icon name="layers" /> ATLAS / ÉQUIPES MAUSBOT</p>
+          <h1>Vos équipes. <span>Vos agents.</span></h1>
+          <p>Une équipe à la fois. Les membres, les chiefs et les conversations proviennent du moteur MAUSBOT.</p>
         </div>
         <div className="atlas-people-hero-visual" aria-hidden="true">
           <span className="atlas-people-visual-back"><Icon name="layers" /></span>
@@ -225,73 +227,125 @@ export function AgentsWorkspace() {
         </div>
       </header>
 
-      <section className="atlas-people-toolbar" aria-label="Contrôles de l’espace agents">
+      <section className="atlas-people-toolbar" aria-label="Workspace et rafraîchissement">
         <div className="atlas-people-toolbar-title">
-          <span className="atlas-people-toolbar-icon"><Icon name="grid" /></span>
-          <div><strong>Centre de collaboration</strong><small>Équipes, agents et fils MAUSBOT</small></div>
+          <span className="atlas-people-toolbar-icon"><Icon name="layers" /></span>
+          <div><strong>Équipes MAUSBOT</strong><small>{inventory ? inventory.groups.length + " équipe(s) réelles" : "Inventaire sécurisé"}</small></div>
         </div>
         <div className="atlas-people-toolbar-actions">
           {spaces.status === "ready" && <label>Workspace
-            <select value={workspaceId} onChange={event => { setQuery(""); setProposalKind(null); setWorkspaceId(event.target.value); }}>
+            <select value={workspaceId} onChange={event => { setQuery(""); setOpenTeamId(null); setWorkspaceId(event.target.value); }}>
               {spaces.workspaces.map(space => <option key={space.id} value={space.id}>{space.name}</option>)}
             </select>
           </label>}
           <span className={"atlas-people-connectivity" + (inventory ? " is-connected" : "")}>
-            <span aria-hidden="true" />{inventory ? "Lecture connectée" : inventoryBusy ? "Vérification…" : "Moteur non connecté"}
+            <span aria-hidden="true" />{inventory ? "Inventaire réel" : inventoryBusy ? "Vérification…" : "Non connecté"}
           </span>
           <button type="button" className="atlas-people-icon-button" disabled={!workspaceId || inventoryBusy}
-            onClick={() => setInventoryRevision(value => value + 1)} aria-label="Actualiser équipes et agents" title="Actualiser">
+            onClick={() => setInventoryRevision(value => value + 1)} aria-label="Actualiser les équipes" title="Actualiser les équipes">
             <Icon name="rotate-ccw" />
           </button>
         </div>
       </section>
 
-      {spaces.status === "error" && <p className="atlas-people-alert" role="alert">Accès aux workspaces indisponible.</p>}
-      {spaces.status === "loading" && <p role="status">Chargement du workspace…</p>}
-      <section className="atlas-people-console" aria-label="Espace de travail équipes et conversations">
-        <aside className="atlas-people-sidebar" aria-label="Équipes et agents du workspace">
-          <div className="atlas-people-sidebar-head">
-            <strong>Explorer</strong>
-            <span className="atlas-people-sidebar-count">{inventory ? inventory.groups.length + inventory.agents.length : "—"} éléments</span>
-          </div>
-          <label className="atlas-people-search"><Icon name="search" />
-            <span className="sr-only">Rechercher une équipe ou un agent</span>
-            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Rechercher une équipe, un agent…" />
-          </label>
-          <div className="atlas-people-directory-scroll">
-            <div className="atlas-people-directory-heading"><span><Icon name="layers" /> Équipes</span><small>{inventory ? visibleTeams.length : "—"}</small></div>
-            {visibleTeams.map(team => <button type="button" key={team.id}
-              className={"atlas-people-directory-item" + (selection?.kind === "team" && selection.id === team.id ? " is-selected" : "")}
-              aria-pressed={selection?.kind === "team" && selection.id === team.id}
-              onClick={() => selectItem({ kind: "team", id: team.id }, threadsFor(team))}>
-              <span className="atlas-people-avatar is-team"><Icon name="layers" /></span>
-              <span className="atlas-people-item-copy"><strong>{team.name}</strong><small>{team.memberIds.length} membre{team.memberIds.length > 1 ? "s" : ""} · {threadsFor(team).length} fil{threadsFor(team).length > 1 ? "s" : ""}</small></span>
-              <Icon name="chevron-right" className="atlas-people-item-chevron" />
-            </button>)}
-            {inventory && !visibleTeams.length && <p className="atlas-people-sidebar-empty">{normalQuery ? "Aucune équipe correspondante." : "Aucune équipe retournée."}</p>}
-            <div className="atlas-people-directory-heading"><span><Icon name="bot" /> Agents</span><small>{inventory ? visibleAgents.length : "—"}</small></div>
-            {visibleAgents.map(agent => <button type="button" key={agent.id}
-              className={"atlas-people-directory-item" + (selection?.kind === "agent" && selection.id === agent.id ? " is-selected" : "")}
-              aria-pressed={selection?.kind === "agent" && selection.id === agent.id}
-              onClick={() => selectItem({ kind: "agent", id: agent.id }, threadsFor(agent))}>
-              <span className="atlas-people-avatar is-agent"><Icon name="bot" /></span>
-              <span className="atlas-people-item-copy"><strong>{agent.name}</strong><small>{agent.title || (threadsFor(agent).length + " fils accessibles")}</small></span>
-              <Icon name="chevron-right" className="atlas-people-item-chevron" />
-            </button>)}
-            {inventory && !visibleAgents.length && <p className="atlas-people-sidebar-empty">{normalQuery ? "Aucun agent correspondant." : "Aucun agent retourné."}</p>}
-            {!inventory && <div className="atlas-people-sidebar-offline"><Icon name="shield-check" /><strong>{inventoryBusy ? "Recherche des agents…" : "Aucune liste vérifiée"}</strong><p>Les équipes et agents apparaîtront après connexion autorisée.</p></div>}
-          </div>
-          <div className="atlas-people-sidebar-footer">
-            <button type="button" onClick={() => setProposalKind("team")}><Icon name="plus-circle" /> Proposer une équipe</button>
-          </div>
-        </aside>
+      {spaces.status === "error" && <p className="atlas-people-alert" role="alert">Workspaces indisponibles.</p>}
+      {spaces.status === "loading" && <p role="status">Chargement des workspaces…</p>}
+      {!inventory && <section className="atlas-team-empty" role="status">
+        <Icon name="shield-check" />
+        <div><strong>{inventoryBusy ? "Chargement des équipes…" : "Équipes non disponibles"}</strong>
+          <p>{inventoryBusy ? "Lecture du moteur MAUSBOT…" : disconnectedCopy}</p>
+        </div>
+      </section>}
 
+      {inventory && !openedTeam && <section className="atlas-team-directory" aria-label="Équipes MAUSBOT">
+        <div className="atlas-team-directory-heading">
+          <div><p className="atlas-people-overline">VOS ÉQUIPES</p><h2>Les équipes du moteur</h2></div>
+          <span>{inventory.groups.length} équipe{inventory.groups.length > 1 ? "s" : ""}</span>
+        </div>
+        {!!inventory.groups.length && <label className="atlas-people-search atlas-team-search">
+          <Icon name="search" />
+          <span className="sr-only">Chercher une équipe ou un membre</span>
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Rechercher une équipe ou un membre…" />
+        </label>}
+        <div className="atlas-team-grid">
+          {visibleTeams.map(team => {
+            const teamChief = chiefFor(team, inventory.agents);
+            const members = team.memberIds.map(id => inventory.agents.find(agent => agent.id === id)).filter((agent): agent is Agent => Boolean(agent));
+            return <button type="button" key={team.id} className="atlas-team-card"
+              onClick={() => { setOpenTeamId(team.id); selectItem({ kind: "team", id: team.id }, threadsFor(team)); }}
+              aria-label={"Ouvrir l’équipe " + team.name}>
+              <span className="atlas-team-card-top"><span className="atlas-team-card-icon"><Icon name="layers" /></span><span className="atlas-team-card-eyebrow">ÉQUIPE MAUSBOT</span></span>
+              <strong className="atlas-team-card-name">{team.name}</strong>
+              <span className="atlas-team-chief">
+                <span>{teamChief?.label ?? "Chief of Staff"}</span>
+                <strong>{teamChief?.agent.name ?? "Non renseigné"}</strong>
+              </span>
+              <span className="atlas-team-card-members">
+                {members.length ? members.slice(0, 3).map(agent => agent.name).join(" · ") : "Aucun membre nommé accessible"}
+                {members.length > 3 ? " · +" + (members.length - 3) : ""}
+              </span>
+              <span className="atlas-team-card-footer">
+                <span>{team.memberIds.length} membre{team.memberIds.length > 1 ? "s" : ""}</span>
+                <span>Entrer dans l’équipe <Icon name="arrow-up-right" /></span>
+              </span>
+            </button>;
+          })}
+        </div>
+        {!inventory.groups.length && <div className="atlas-team-empty"><Icon name="layers" /><div><strong>Aucune équipe MAUSBOT retournée</strong><p>Cette instance ne présente aucun canal accessible. Aucune équipe fictive n’est ajoutée.</p></div></div>}
+        {inventory.groups.length > 0 && visibleTeams.length === 0 && <p className="atlas-team-no-results">Aucune équipe ne correspond à cette recherche.</p>}
+      </section>}
+
+      {inventory && openedTeam && <section className="atlas-team-detail" aria-label={"Équipe " + openedTeam.name}>
+        <header className="atlas-team-detail-header">
+          <button type="button" className="atlas-team-back" onClick={() => {
+            setOpenTeamId(null); setSelection(null); setThreadId(""); setMessages([]); setDraft(""); setSendIssue("");
+          }}><Icon name="arrow-left" /> Toutes les équipes</button>
+          <div className="atlas-team-detail-title">
+            <span className="atlas-team-detail-mark"><Icon name="layers" /></span>
+            <div>
+              <p className="atlas-people-overline">ÉQUIPE MAUSBOT</p>
+              <h2>{openedTeam.name}</h2>
+              <p><strong>{chief?.label ?? "Chief of Staff"} :</strong> {chief?.agent.name ?? "Non renseigné"} · {openedTeam.memberIds.length} membre{openedTeam.memberIds.length > 1 ? "s" : ""}</p>
+            </div>
+          </div>
+        </header>
+
+        <section className="atlas-team-members" aria-label="Agents de l’équipe">
+          <div className="atlas-team-members-heading"><h3>Agents de l’équipe</h3><span>{memberAgents.length} agent{memberAgents.length > 1 ? "s" : ""} visible{memberAgents.length > 1 ? "s" : ""}</span></div>
+          <div className="atlas-team-member-grid">
+            <button type="button" className={"atlas-team-member-card" + (selection?.kind === "team" ? " is-active" : "")}
+              aria-pressed={selection?.kind === "team"}
+              onClick={() => selectItem({ kind: "team", id: openedTeam.id }, threadsFor(openedTeam))}>
+              <span className="atlas-team-member-icon"><Icon name="layers" /></span>
+              <span><strong>Conversation d’équipe</strong><small>Canal MAUSBOT</small></span>
+              <Icon name="arrow-right" />
+            </button>
+            {openedTeam.memberIds.map(id => {
+              const agent = inventory.agents.find(item => item.id === id);
+              if (!agent) return <div key={id} className="atlas-team-member-card is-unavailable">
+                <span className="atlas-team-member-icon"><Icon name="shield-check" /></span>
+                <span><strong>Membre non accessible</strong><small>Identité non retournée par MAUSBOT</small></span>
+              </div>;
+              const agentChief = chief?.agent.id === agent.id;
+              return <button type="button" key={id}
+                className={"atlas-team-member-card" + (selection?.kind === "agent" && selection.id === id ? " is-active" : "")}
+                aria-pressed={selection?.kind === "agent" && selection.id === id}
+                onClick={() => selectItem({ kind: "agent", id }, threadsFor(agent))}>
+                <span className="atlas-team-member-icon"><Icon name="bot" /></span>
+                <span><strong>{agent.name}</strong><small>{agentChief ? (chief?.label ?? "Chief of Staff") : agent.title || "Agent MAUSBOT"}</small></span>
+                <Icon name="arrow-right" />
+              </button>;
+            })}
+          </div>
+        </section>
+
+        <section className="atlas-people-console atlas-people-console-team" aria-label="Conversation MAUSBOT de l’équipe">
         <div className="atlas-people-chat" id="atlas-people-conversation">
           <div className="atlas-people-chat-heading">
-            <span className={"atlas-people-avatar " + (selectedTeam ? "is-team" : "is-agent")}><Icon name={selectedTeam ? "layers" : "bot"} /></span>
+            <span className={"atlas-people-avatar " + (selection?.kind === "team" ? "is-team" : "is-agent")}><Icon name={selection?.kind === "team" ? "layers" : "bot"} /></span>
             <div className="atlas-people-chat-identity">
               <strong>{selectedName || "Conversations"}</strong>
-              <small>{selectedTeam ? "Canal d’équipe MAUSBOT" : selectedAgent ? selectedAgent.title || "Agent MAUSBOT" : "Choisissez une équipe ou un agent"}</small>
+              <small>{selection?.kind === "team" ? "Canal d’équipe MAUSBOT" : selectedAgent ? selectedAgent.title || "Agent MAUSBOT" : "Choisissez une équipe ou un agent"}</small>
             </div>
             {selected && <button type="button" className="atlas-people-icon-button" title="Actualiser les messages"
               aria-label="Actualiser les messages" disabled={!threadId || messagesBusy || !canReadMessages}
@@ -313,8 +367,8 @@ export function AgentsWorkspace() {
             </div>}
             {inventory && !selected && <div className="atlas-people-zero-state">
               <span className="atlas-people-zero-symbol"><Icon name="layers" /></span>
-              <strong>Sélectionnez une équipe ou un agent</strong>
-              <p>Ouvrez son espace pour afficher ses fils et les messages disponibles. Aucun échange fictif n’est généré.</p>
+              <strong>Sélectionnez la conversation de l’équipe ou un agent</strong>
+              <p>Choisissez un membre ou la conversation de l’équipe pour consulter les vrais messages.</p>
             </div>}
             {selected && !threadId && <div className="atlas-people-zero-state">
               <span className="atlas-people-zero-symbol"><Icon name="inbox" /></span>
@@ -367,63 +421,7 @@ export function AgentsWorkspace() {
             </div>
           </div>
         </div>
-
-        <aside className="atlas-people-inspector" aria-label="Détails de la sélection">
-          <div className="atlas-people-inspector-title"><Icon name="layers" /><strong>Informations</strong></div>
-          {selected ? <>
-            <span className="atlas-people-inspector-avatar"><Icon name={selectedTeam ? "layers" : "bot"} /></span>
-            <h2>{selectedName}</h2>
-            <p>{selectedTeam ? "Équipe MAUSBOT existante" : selectedAgent?.title || "Agent MAUSBOT existant"}</p>
-            <div className="atlas-people-info-row"><span>Type</span><strong>{selectedTeam ? "Équipe" : "Agent"}</strong></div>
-            <div className="atlas-people-info-row"><span>Fils visibles</span><strong>{currentThreads.length}</strong></div>
-            {selectedTeam && <div className="atlas-people-info-row"><span>Membres déclarés</span><strong>{selectedTeam.memberIds.length}</strong></div>}
-            <div className="atlas-people-roster">
-              <h3>{selectedTeam ? "Membres" : "Équipes de cet agent"}</h3>
-              {selectedTeam ? <>
-                {memberAgents.map(agent => <button key={agent.id} type="button" onClick={() => selectItem({ kind: "agent", id: agent.id }, threadsFor(agent))}>
-                  <span className="atlas-people-avatar is-agent"><Icon name="bot" /></span><span>{agent.name}<small>{agent.title || "Agent"}</small></span><Icon name="arrow-right" />
-                </button>)}
-                {selectedTeam.memberIds.length > memberAgents.length && <p>Certains membres ne sont pas visibles dans cet inventaire.</p>}
-                {!selectedTeam.memberIds.length && <p>Cette équipe n’a aucun membre déclaré.</p>}
-              </> : <>
-                {inventory?.groups.filter(team => team.memberIds.includes(selectedAgent?.id ?? "")).map(team =>
-                  <button key={team.id} type="button" onClick={() => selectItem({ kind: "team", id: team.id }, threadsFor(team))}>
-                    <span className="atlas-people-avatar is-team"><Icon name="layers" /></span><span>{team.name}</span><Icon name="arrow-right" />
-                  </button>)}
-                {!inventory?.groups.some(team => team.memberIds.includes(selectedAgent?.id ?? "")) && <p>Aucune équipe identifiée.</p>}
-              </>}
-            </div>
-          </> : <div className="atlas-people-inspector-empty"><Icon name="shield-check" /><strong>Accès sous contrôle</strong><p>Les identités et les appartenances proviennent exclusivement de l’inventaire autorisé.</p></div>}
-          <Link href="/engines" className="atlas-people-inspector-link">Statut du moteur <Icon name="arrow-up-right" /></Link>
-        </aside>
-      </section>
-
-      <div className="atlas-people-bottom">
-        <section className="atlas-people-catalog">
-          <div className="atlas-people-bottom-heading"><div><p className="atlas-people-overline">BIBLIOTHÈQUE</p><h2>Modèles d’équipes</h2></div><span>{inventory?.teamCatalogAvailable ? inventory.teamTemplates.length : "—"} modèles</span></div>
-          {inventory?.teamCatalogAvailable && inventory.teamTemplates.length ? <div className="atlas-people-template-grid">
-            {inventory.teamTemplates.map(template => <article key={template.slug}>
-              <span className="atlas-people-avatar is-team"><Icon name="layers" /></span>
-              <strong>{template.name}</strong><small>{template.category ?? "Équipe"}{template.members !== null ? " · " + template.members + " profils" : ""}</small>
-              <p>{template.summary || "Modèle référencé par MAUSBOT."}</p>
-              {!!template.requiredApps.length && <small>Applications : {template.requiredApps.join(", ")}</small>}
-            </article>)}
-          </div> : <p>{inventory?.teamCatalogAvailable ? "Aucun modèle retourné par l’instance." : "Le catalogue n’est pas disponible sans connexion et autorisation du moteur."}</p>}
         </section>
-        <section className="atlas-people-requests">
-          <div className="atlas-people-bottom-heading"><div><p className="atlas-people-overline">GOUVERNANCE</p><h2>Création sous approbation</h2></div><Icon name="shield-check" /></div>
-          <p>Préparez un nouvel agent ou une équipe dans ATLAS. La demande est auditée et soumise à revue, sans créer de ressource sur MAUSBOT.</p>
-          <div className="atlas-people-request-actions">
-            <button type="button" aria-expanded={proposalKind === "agent"} onClick={() => setProposalKind(proposalKind === "agent" ? null : "agent")}><Icon name="plus-circle" /> Proposer un agent</button>
-            <button type="button" aria-expanded={proposalKind === "team"} onClick={() => setProposalKind(proposalKind === "team" ? null : "team")}><Icon name="layers" /> Proposer une équipe</button>
-          </div>
-          <Link href="/engines/approvals">Voir les demandes à valider <Icon name="arrow-right" /></Link>
-        </section>
-      </div>
-      {workspaceId && <N8nCoordinationPanel workspaceId={workspaceId} scope="agents" />}
-      {proposalKind && <section className="atlas-people-proposal" id="atlas-people-proposal" aria-label="Formulaire de proposition">
-        <div className="atlas-people-bottom-heading"><h2>Préparer une demande</h2><button type="button" onClick={() => setProposalKind(null)} aria-label="Fermer le formulaire"><Icon name="close" /></button></div>
-        <AgentRequestForm key={proposalKind} initialKind={proposalKind} />
       </section>}
     </div>
   );
