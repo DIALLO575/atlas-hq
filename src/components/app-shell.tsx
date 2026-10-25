@@ -16,6 +16,7 @@ const navItems = [
   { label: "Moteurs IA", icon: "layers" as const, href: "/engines" },
   { label: "Mes Apps", icon: "apps" as const, href: "/apps" },
   { label: "Inbox", icon: "inbox" as const, href: "/inbox" },
+  { label: "Journal", icon: "spark" as const, href: "/journal" },
 ];
 
 const utilityItems = [

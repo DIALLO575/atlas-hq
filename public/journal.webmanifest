@@ -1,0 +1,17 @@
+{
+  "id": "/journal",
+  "name": "Journal du matin — ATLAS HQ",
+  "short_name": "Journal",
+  "description": "WORLD RADAR : l’édition du matin, lisible hors ligne.",
+  "lang": "fr",
+  "start_url": "/journal",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f3ea",
+  "theme_color": "#1d1b18",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

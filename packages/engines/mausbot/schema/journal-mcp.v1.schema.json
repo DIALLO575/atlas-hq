@@ -1,0 +1,702 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "journal-mcp.v1.schema.json",
+  "title": "journal-mcp v1 — tool contracts",
+  "x-version": "1",
+  "x-producers": [
+    "morgans",
+    "grok-bot"
+  ],
+  "tools": {
+    "publish_edition": {
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "edition"
+        ],
+        "properties": {
+          "edition": {
+            "$ref": "journal-edition.v1.schema.json"
+          }
+        }
+      },
+      "output": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "edition_id",
+              "items",
+              "checks"
+            ],
+            "properties": {
+              "ok": {
+                "const": true
+              },
+              "edition_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+              },
+              "items": {
+                "type": "integer"
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "check",
+                    "severity",
+                    "item_id",
+                    "detail"
+                  ],
+                  "properties": {
+                    "check": {
+                      "enum": [
+                        "contract_invalid",
+                        "missing_source",
+                        "duplicate_in_edition",
+                        "duplicate_across_editions",
+                        "missing_cover",
+                        "edition_late"
+                      ]
+                    },
+                    "severity": {
+                      "enum": [
+                        "error",
+                        "warning",
+                        "info"
+                      ]
+                    },
+                    "item_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "code",
+              "errors"
+            ],
+            "properties": {
+              "ok": {
+                "const": false
+              },
+              "code": {
+                "enum": [
+                  "CONTRACT_INVALID",
+                  "UNAUTHORIZED_PRODUCER",
+                  "NOT_FOUND",
+                  "INVALID_INPUT"
+                ]
+              },
+              "status": {
+                "enum": [
+                  401,
+                  404,
+                  422
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50
+              }
+            }
+          }
+        ]
+      }
+    },
+    "get_edition": {
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "edition"
+        ],
+        "properties": {
+          "edition": {
+            "oneOf": [
+              {
+                "const": "latest"
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+              }
+            ]
+          }
+        }
+      },
+      "output": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "edition"
+            ],
+            "properties": {
+              "ok": {
+                "const": true
+              },
+              "edition": {
+                "$ref": "journal-edition.v1.schema.json"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "code",
+              "errors"
+            ],
+            "properties": {
+              "ok": {
+                "const": false
+              },
+              "code": {
+                "enum": [
+                  "CONTRACT_INVALID",
+                  "UNAUTHORIZED_PRODUCER",
+                  "NOT_FOUND",
+                  "INVALID_INPUT"
+                ]
+              },
+              "status": {
+                "enum": [
+                  401,
+                  404,
+                  422
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50
+              }
+            }
+          }
+        ]
+      }
+    },
+    "search_items": {
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "topic": {
+            "enum": [
+              "ia",
+              "commerce",
+              "guinee",
+              "afrique",
+              "monde",
+              "geopolitique",
+              "economie",
+              "tech"
+            ]
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "q": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "source_name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "items"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "edition_id",
+                "id",
+                "topic",
+                "title",
+                "source_name",
+                "source_url"
+              ],
+              "properties": {
+                "edition_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+                },
+                "topic": {
+                  "enum": [
+                    "ia",
+                    "commerce",
+                    "guinee",
+                    "afrique",
+                    "monde",
+                    "geopolitique",
+                    "economie",
+                    "tech"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "source_name": {
+                  "type": "string"
+                },
+                "source_url": {
+                  "type": "string"
+                },
+                "published_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "set_item_state": {
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "edition_id",
+          "item_id",
+          "state"
+        ],
+        "properties": {
+          "edition_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+          },
+          "item_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+          },
+          "state": {
+            "enum": [
+              "read",
+              "done",
+              "reopen"
+            ]
+          }
+        }
+      },
+      "output": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "state"
+            ],
+            "properties": {
+              "ok": {
+                "const": true
+              },
+              "state": {
+                "enum": [
+                  "new",
+                  "read",
+                  "done"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "code",
+              "errors"
+            ],
+            "properties": {
+              "ok": {
+                "const": false
+              },
+              "code": {
+                "enum": [
+                  "CONTRACT_INVALID",
+                  "UNAUTHORIZED_PRODUCER",
+                  "NOT_FOUND",
+                  "INVALID_INPUT"
+                ]
+              },
+              "status": {
+                "enum": [
+                  401,
+                  404,
+                  422
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50
+              }
+            }
+          }
+        ]
+      }
+    },
+    "correct_item": {
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "edition_id",
+          "item_id",
+          "changes",
+          "reason"
+        ],
+        "properties": {
+          "edition_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+          },
+          "item_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 300
+          },
+          "changes": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "topic": {
+                "enum": [
+                  "ia",
+                  "commerce",
+                  "guinee",
+                  "afrique",
+                  "monde",
+                  "geopolitique",
+                  "economie",
+                  "tech"
+                ]
+              },
+              "cover": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "storage_path",
+                      "generated",
+                      "alt",
+                      "credit",
+                      "source_name"
+                    ],
+                    "properties": {
+                      "storage_path": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9._-]{1,120}/[A-Za-z0-9._-]{1,150}\\.(webp|png|jpg|jpeg)$"
+                      },
+                      "generated": {
+                        "type": "boolean"
+                      },
+                      "alt": {
+                        "type": "string",
+                        "maxLength": 300
+                      },
+                      "credit": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "source_name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "output": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "audit_id"
+            ],
+            "properties": {
+              "ok": {
+                "const": true
+              },
+              "audit_id": {
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "code",
+              "errors"
+            ],
+            "properties": {
+              "ok": {
+                "const": false
+              },
+              "code": {
+                "enum": [
+                  "CONTRACT_INVALID",
+                  "UNAUTHORIZED_PRODUCER",
+                  "NOT_FOUND",
+                  "INVALID_INPUT"
+                ]
+              },
+              "status": {
+                "enum": [
+                  401,
+                  404,
+                  422
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50
+              }
+            }
+          }
+        ]
+      }
+    },
+    "edition_status": {
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "edition"
+        ],
+        "properties": {
+          "edition": {
+            "oneOf": [
+              {
+                "const": "latest"
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+              }
+            ]
+          }
+        }
+      },
+      "output": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "edition_id",
+              "complete",
+              "counts",
+              "checks"
+            ],
+            "properties": {
+              "ok": {
+                "const": true
+              },
+              "edition_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._:-]{1,120}$"
+              },
+              "complete": {
+                "type": "boolean"
+              },
+              "counts": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "items",
+                  "withoutCover"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "withoutCover": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "check",
+                    "severity",
+                    "item_id",
+                    "detail"
+                  ],
+                  "properties": {
+                    "check": {
+                      "enum": [
+                        "contract_invalid",
+                        "missing_source",
+                        "duplicate_in_edition",
+                        "duplicate_across_editions",
+                        "missing_cover",
+                        "edition_late"
+                      ]
+                    },
+                    "severity": {
+                      "enum": [
+                        "error",
+                        "warning",
+                        "info"
+                      ]
+                    },
+                    "item_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ok",
+              "code",
+              "errors"
+            ],
+            "properties": {
+              "ok": {
+                "const": false
+              },
+              "code": {
+                "enum": [
+                  "CONTRACT_INVALID",
+                  "UNAUTHORIZED_PRODUCER",
+                  "NOT_FOUND",
+                  "INVALID_INPUT"
+                ]
+              },
+              "status": {
+                "enum": [
+                  401,
+                  404,
+                  422
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
