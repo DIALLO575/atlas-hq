@@ -57,3 +57,14 @@ déploiement, import MAUSBOT, modèle/outils/droits effectifs, attribution missi
 équipe réelle, canaux et réception des résultats. Le formulaire ne conserve pas
 un brouillon entre rechargements ; un nouvel ID représente une nouvelle demande.
 Ne pas annoncer d'équipe créée sur la seule base du reçu de demande.
+
+
+## Course de contraintes uniques corrigée
+
+La première CI de cette tranche a révélé qu'un INSERT concurrent peut rencontrer
+l'index unique composite tenant/run/instance, même si `ON CONFLICT(id)` cible la
+clé primaire. Le cœur utilise désormais `ON CONFLICT DO NOTHING` sans cible,
+puis verrouille et compare l'intention complète déjà stockée. Il ne transforme
+pas un conflit de contenu/tenant en succès. Cette correction s'applique aussi aux
+demandes agents de PR51 ; intégrer les tranches avec cette correction et ne pas
+considérer l'ancienne CI comme preuve d'absence de cette course.

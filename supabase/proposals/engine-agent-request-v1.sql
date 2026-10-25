@@ -112,7 +112,9 @@ begin
  fingerprint:=encode(extensions.digest(convert_to(summary::text,'UTF8'),'sha256'),'hex');
  insert into public.atlas_engine_runs(id,workspace_id,instance_id,mission_id,requested_by,primitive_id,payload_sha256,state,request_summary)
  values(p_request_id,p_workspace_id,p_instance_id,p_mission_id,actor,p_primitive,fingerprint,'awaiting-approval',summary)
- on conflict(id) do nothing returning id into inserted_id;
+ -- Both primary and tenant-composite unique indexes can arbitrate a concurrent
+ -- replay. Handle either conflict, then verify the stored full intent below.
+ on conflict do nothing returning id into inserted_id;
  select * into stored from public.atlas_engine_runs r where r.id=p_request_id for update;
  if not found or stored.workspace_id<>p_workspace_id or stored.instance_id<>p_instance_id
  or stored.mission_id<>p_mission_id or stored.requested_by<>actor or stored.primitive_id<>p_primitive
