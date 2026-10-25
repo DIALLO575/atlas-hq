@@ -10,7 +10,9 @@ test("Studio wizard supports preview, OAuth and explicit approved creation",asyn
  assert.match(ui,/method:\s*"POST"/);
  assert.match(ui,/data\?\.canExecute\s*!==\s*false/);
  assert.match(ui,/executionEnabled/);
- assert.match(ui,/Création GitHub désactivée/);
+ assert.ok(ui.includes("Création non activée dans cet environnement"));
+ assert.ok(ui.includes("Aucune tentative de création n’a été envoyée à GitHub."));
+ assert.ok(ui.includes('created?.state??"Aucune tentative"'));
  assert.match(ui,/\/api\/apps\/github\/studio\/repositories\/execute/);
  assert.match(ui,/studio\/oauth\/start/);
  assert.match(page,/id: "studio"/);
