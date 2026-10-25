@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/icon";
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -26,7 +26,6 @@ export function N8nAdminStudio({workspaceId,isOwner}:{workspaceId:string;isOwner
   const [busy,setBusy]=useState(false);
   const [result,setResult]=useState<{workspaceId:string;value:unknown;path:string;method:string}|null>(null);
   const [failure,setFailure]=useState<{workspaceId:string;text:string}|null>(null);
-  useEffect(()=>{setResult(null);setFailure(null);setConfirmation("");},[workspaceId]);
   function choose(p:typeof presets[number]) {
     setMethod(p.method);setPath(p.path);setQuery(p.query??"{}");
     setResult(null);setFailure(null);setConfirmation("");

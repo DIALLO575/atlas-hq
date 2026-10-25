@@ -267,7 +267,7 @@ export function N8nControlCenter({ workspaces, initialWorkspaceId, workspaceLoad
     </div>}
 
     {activeTab === "admin" && <div className="n8n-workarea" role="tabpanel">
-      <N8nAdminStudio workspaceId={workspaceId} isOwner={workspace?.role === "owner"} />
+      <N8nAdminStudio key={workspaceId} workspaceId={workspaceId} isOwner={workspace?.role === "owner"} />
     </div>}
 
     {activeTab === "workflows" && <div className="n8n-workarea" role="tabpanel">
