@@ -422,7 +422,7 @@ export function AgentsWorkspace() {
                 aria-pressed={fullscreenChat} aria-label={fullscreenChat ? "Quitter le plein écran" : "Afficher la conversation en plein écran"}
                 title={fullscreenChat ? "Réduire" : "Plein écran"}
                 onClick={() => setFullscreenChat(value => !value)}>
-                <Icon name={fullscreenChat ? "minimize-2" : "maximize-2"} />
+                <Icon name={fullscreenChat ? "minimize" : "maximize"} />
               </button>
             </div>
           </div>

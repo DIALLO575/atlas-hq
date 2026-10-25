@@ -92,8 +92,8 @@ test("Messages use workspace-scoped memory cache and deltas, not persistent brow
 test("Conversation can take full viewport while only message list scrolls on mobile",()=>{
   assert.match(ui,/fullscreenChat/);
   assert.match(ui,/aria-pressed=\{fullscreenChat\}/);
-  assert.match(ui,/minimize-2/);
-  assert.match(ui,/maximize-2/);
+  assert.match(ui,/minimize/);
+  assert.match(ui,/maximize/);
   assert.match(ui,/document.body.style.overflow = "hidden"/);
   assert.match(css,/is-chat-fullscreen/);
   assert.match(css,/height:100dvh/);
