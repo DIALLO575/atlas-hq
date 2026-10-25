@@ -6,7 +6,7 @@ const ui=readFileSync(new URL("../../../../src/components/notion-resources-clien
 const api=readFileSync(new URL("../../../../src/app/api/apps/notion/views/route.ts",
  import.meta.url),"utf8");
 test("view preview is tied to chosen database/data source, never just client view UUID",()=>{
- assert.match(ui,/sourceKind:selected\.kind,resourceId:selected\.id/);
+ assert.match(ui,/sourceKind:scope\.kind,resourceId:scope\.id/);
  assert.match(api,/projectNotionViewMetadata\(detail/);
  assert.match(api,/new NotionReadError\("NOT_FOUND_OR_HIDDEN",404\)/);
 });
