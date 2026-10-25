@@ -21,7 +21,7 @@ test("GitHub Actions UI renders real workflow data and never offers actions:writ
  const css=await load("../src/app/github-control-center.css");
  assert.match(page,/id: "actions"/);
  assert.match(page,/<GitHubActionsControlCenter/);
- assert.match(page,/section !== "actions"/);
+ assert.match(page,/section === "actions"/);
  assert.match(ui,/fetch\("\/api\/apps\/github\/actions/);
  assert.match(ui,/failedSteps/);
  assert.match(ui,/Consulter les logs GitHub/);

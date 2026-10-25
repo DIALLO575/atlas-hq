@@ -16,7 +16,7 @@ test("GitHub Studio wizard only submits preview, keeps creation disabled", async
   assert.doesNotMatch(ui, /\/api\/apps\/github\/studio\/repositories\/execute/);
   assert.match(page, /id: "studio"/);
   assert.match(page, /<GitHubStudioRepositoryWizard/);
-  assert.match(page, /section !== "settings" && section !== "studio"/);
+  assert.match(page, /section === "repositories" \|\| section === "pulls"/);
 });
 
 test("GitHub Studio preview has responsive split layout and a clear readonly state", async () => {

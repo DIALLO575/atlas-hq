@@ -11,7 +11,7 @@ test("three pillars remain visible and Studio approval is reset on installation 
  assert.match(page,/id: "actions"/);
  assert.match(page,/GitHubStudioRepositoryWizard key=\{\x60\$\{workspace.id\}:\$\{installationId/);
  assert.match(page,/GitHubActionsControlCenter key=\{\x60\$\{workspace.id\}:\$\{installationId/);
- assert.match(page,/Le dépôt|préparer les dépôts/);
+ assert.match(page,/Gardez le contrôle de vos projets GitHub/);
  const studio=await file("../src/components/github-studio-repository-wizard.tsx");
  assert.match(studio,/Math\.min\(300000,Math\.max\(0,approval\.expiresAt-Date\.now\(\)\)\)/);
  assert.match(studio,/window\.setTimeout\(\(\)=>setApproval\(null\),delay\)/);

@@ -6,6 +6,7 @@ import "./atlas-redesign.css";
 import "./apps-redesign.css";
 import "./workspaces-redesign.css";
 import "./github-control-center.css";
+import "./github-command-deck.css";
 import "./workflow-redesign.css";
 import "./smart-dock.css";
 import "./dock-studio.css";
