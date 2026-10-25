@@ -102,6 +102,16 @@ Restent : revue/promotion/application éventuelles de la proposition et chemin
 d'écriture session-admin/audit, adaptateurs de ressources réels, identité SQL
 privée, intégration BFF/worker sous gates,
 canaux/groupes, staging et vraie Auth/UI, puis SHA133 avant connexion SHA105.
+
+### Durcissement de la proposition d'affectation — 25 octobre 2026
+
+La proposition ajoute maintenant des index complets pour les clés étrangères des
+affectations et grants (y compris les lignes révoquées), rejette les inserts déjà
+révoqués afin que chaque ligne passe par l'événement d'ajout puis une révocation
+auditée, et supprime l'index partiel non-unique qui dupliquait l'index unique des
+grants actifs. Les tests PG jetables vérifient ces refus et la présence des index.
+Ce SQL reste une proposition non appliquée; aucun writer ni route d'affectation
+n'est livré et MAUSBOT reste verrouillé.
 KMS toujours différé selon la décision Founder.
 
 Références consultées : [sessions Supabase](https://supabase.com/docs/guides/auth/sessions)

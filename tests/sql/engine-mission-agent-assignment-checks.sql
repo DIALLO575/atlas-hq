@@ -20,6 +20,16 @@ do $$ begin
   raise exception 'DUPLICATE_ACTIVE_ASSIGNMENT_ACCEPTED';
  exception when unique_violation then null;end;
  begin
+  insert into private.atlas_engine_mission_agents(workspace_id,mission_id,instance_id,atlas_agent_key,remote_agent_key,assigned_by,revoked_at,revoked_by)
+  values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','aaaaaaaa-0000-4000-8000-000000000001','pre-revoked','remote-pre-revoked','11111111-1111-4111-8111-111111111111',clock_timestamp(),'11111111-1111-4111-8111-111111111111');
+  raise exception 'PRE_REVOKED_ASSIGNMENT_ACCEPTED';
+ exception when insufficient_privilege then null;end;
+ begin
+  insert into private.atlas_engine_mission_agent_primitives(workspace_id,mission_agent_id,primitive_id,granted_by,revoked_at,revoked_by)
+  values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','abababab-0000-4000-8000-000000000001','conversations.messages.list','11111111-1111-4111-8111-111111111111',clock_timestamp(),'11111111-1111-4111-8111-111111111111');
+  raise exception 'PRE_REVOKED_PRIMITIVE_ACCEPTED';
+ exception when insufficient_privilege then null;end;
+ begin
   insert into private.atlas_engine_mission_agents(workspace_id,mission_id,instance_id,atlas_agent_key,remote_agent_key,assigned_by)
   values('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','ffffffff-ffff-4fff-8fff-ffffffffffff','aaaaaaaa-0000-4000-8000-000000000001','vision','remote-vision-v1','22222222-2222-4222-8222-222222222222');
   raise exception 'CROSS_TENANT_ASSIGNMENT_ACCEPTED';
@@ -51,5 +61,17 @@ do $$ begin
  if (select count(*) from private.atlas_engine_audit_events where event_key like 'engine.mission_agent.%') - (select n from assignment_baseline)<>6 then raise exception 'BINDING_HISTORY_AUDIT_MISSING';end if;
  if has_table_privilege('anon','private.atlas_engine_mission_agents','SELECT') or has_table_privilege('authenticated','private.atlas_engine_mission_agent_primitives','SELECT') then raise exception 'CLIENT_CAN_READ_PRIVATE_ASSIGNMENTS';end if;
  if not has_table_privilege('service_role','private.atlas_engine_mission_agents','SELECT') then raise exception 'WORKER_CANNOT_READ_ASSIGNMENTS';end if;
+ if to_regclass('private.atlas_engine_mission_agents_mission_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agents_binding_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agents_assigned_member_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agents_assigned_user_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agents_revoked_member_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agents_revoked_user_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agent_primitives_assignment_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agent_primitives_granted_member_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agent_primitives_granted_user_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agent_primitives_revoked_member_fk_idx') is null
+  or to_regclass('private.atlas_engine_mission_agent_primitives_revoked_user_fk_idx') is null then
+  raise exception 'ASSIGNMENT_FOREIGN_KEY_INDEX_MISSING'; end if;
 end $$;
 reset role;

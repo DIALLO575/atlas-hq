@@ -17,6 +17,19 @@ create table private.atlas_engine_mission_agents (
     references private.atlas_engine_agent_bindings(workspace_id,instance_id,atlas_agent_key) on update restrict on delete restrict,
   foreign key(workspace_id,assigned_by) references public.workspace_members(workspace_id,user_id) on delete restrict
 );
+-- Full indexes cover FK checks for both active and revoked history rows.
+create index atlas_engine_mission_agents_mission_fk_idx
+  on private.atlas_engine_mission_agents(mission_id,workspace_id);
+create index atlas_engine_mission_agents_binding_fk_idx
+  on private.atlas_engine_mission_agents(workspace_id,instance_id,atlas_agent_key);
+create index atlas_engine_mission_agents_assigned_member_fk_idx
+  on private.atlas_engine_mission_agents(workspace_id,assigned_by);
+create index atlas_engine_mission_agents_assigned_user_fk_idx
+  on private.atlas_engine_mission_agents(assigned_by);
+create index atlas_engine_mission_agents_revoked_member_fk_idx
+  on private.atlas_engine_mission_agents(workspace_id,revoked_by);
+create index atlas_engine_mission_agents_revoked_user_fk_idx
+  on private.atlas_engine_mission_agents(revoked_by);
 create unique index atlas_engine_mission_agents_one_active
   on private.atlas_engine_mission_agents(workspace_id,mission_id,atlas_agent_key) where revoked_at is null;
 create index atlas_engine_mission_agents_run_lookup
@@ -37,9 +50,17 @@ create table private.atlas_engine_mission_agent_primitives (
   foreign key(workspace_id,granted_by) references public.workspace_members(workspace_id,user_id) on delete restrict,
   foreign key(workspace_id,revoked_by) references public.workspace_members(workspace_id,user_id) on delete restrict
 );
+create index atlas_engine_mission_agent_primitives_assignment_fk_idx
+  on private.atlas_engine_mission_agent_primitives(mission_agent_id,workspace_id);
+create index atlas_engine_mission_agent_primitives_granted_member_fk_idx
+  on private.atlas_engine_mission_agent_primitives(workspace_id,granted_by);
+create index atlas_engine_mission_agent_primitives_granted_user_fk_idx
+  on private.atlas_engine_mission_agent_primitives(granted_by);
+create index atlas_engine_mission_agent_primitives_revoked_member_fk_idx
+  on private.atlas_engine_mission_agent_primitives(workspace_id,revoked_by);
+create index atlas_engine_mission_agent_primitives_revoked_user_fk_idx
+  on private.atlas_engine_mission_agent_primitives(revoked_by);
 create unique index atlas_engine_mission_agent_primitives_one_active
-  on private.atlas_engine_mission_agent_primitives(mission_agent_id,primitive_id) where revoked_at is null;
-create index atlas_engine_mission_agent_primitives_lookup
   on private.atlas_engine_mission_agent_primitives(mission_agent_id,primitive_id) where revoked_at is null;
 alter table private.atlas_engine_mission_agent_primitives enable row level security;
 revoke all on private.atlas_engine_mission_agent_primitives from public,anon,authenticated;
@@ -59,6 +80,9 @@ begin
   if tg_table_name='atlas_engine_mission_agents' then event_key:='engine.mission_agent.revoked';
   else event_key:='engine.mission_agent.primitive.revoked'; end if;
  else
+  if new.revoked_at is not null or new.revoked_by is not null then
+   raise exception 'ENGINE_MISSION_ASSIGNMENT_IMMUTABLE' using errcode='42501';
+  end if;
   if tg_table_name='atlas_engine_mission_agents' then actor:=new.assigned_by;event_key:='engine.mission_agent.assigned';
   else actor:=new.granted_by;event_key:='engine.mission_agent.primitive.granted'; end if;
  end if;

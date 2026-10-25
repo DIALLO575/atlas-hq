@@ -136,3 +136,13 @@ ne pas merger les PR empilées hors ordre.
 Le runbook [SHA-150](engine-agent-request-live-recipe.md) prépare les vérifications
 à deux/ trois comptes sans lancer de demande réelle tant que la cible n'est pas
 isolée et autorisée.
+
+## Durcissement de la proposition mission-agent — 25 octobre 2026
+
+La proposition `engine-mission-agent-assignment-v1.sql` refuse maintenant les
+insertions déjà révoquées et indexe explicitement toutes les clés étrangères,
+y compris celles des lignes révoquées et les colonnes d'acteur. L'index partiel
+non-unique redondant des grants actifs a été retiré. Les checks PostgreSQL jetables
+ajoutent ces cas négatifs et vérifient les index. Cette tranche est du code non
+fusionné/testé en CI seulement; elle n'a pas été appliquée à Supabase et ne fournit
+toujours aucun writer.
