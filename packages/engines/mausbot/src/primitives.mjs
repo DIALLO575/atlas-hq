@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mausbotRequest, MausbotAdapterError } from "./adapter.mjs";
 import { PrimitiveInputError, validateMausbotPrimitive } from "../../../engine-core/src/primitives.mjs";
+import { storedMausbotAvatarPath } from "./avatar.mjs";
 
 const records = (value) => Array.isArray(value) ? value.filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry)) : [];
 const rec = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -22,8 +23,9 @@ const safeTask = (task, active) => ({
   ...(typeof active === "string" ? { active: task.threadId === active } : {}),
 });
 const safeBot = (bot) => ({
-  ...projection(bot, ["id", "name", "title", "description", "section", "chiefOfStaff", "modelSelection",
+  ...projection(bot, ["id", "name", "title", "description", "section", "chiefOfStaff", "avatarCrop", "modelSelection",
     "busy", "waitingForTeammates", "activity", "unread"]),
+  avatarUrl: storedMausbotAvatarPath(bot.avatarUrl),
   activeTaskId: bot.threadId, tasks: records(bot.tasks).map((task) => safeTask(task, bot.threadId)),
 });
 const safeChannel = (channel) => ({

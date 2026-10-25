@@ -251,3 +251,12 @@
 @media(max-width:700px){.atlas-people-hero-compact{padding:20px;min-height:0;}.atlas-team-directory,.atlas-team-members,.atlas-team-detail-header{padding:16px;}.atlas-team-grid,.atlas-team-member-grid{grid-template-columns:1fr;}.atlas-team-card{min-height:215px;padding:17px;}.atlas-team-member-card{min-height:72px;}.atlas-team-detail-title h2{font-size:20px;}.atlas-people-console-team .atlas-people-chat{min-height:420px;}}
 @media(max-width:420px){.atlas-team-directory-heading h2{font-size:16px;}.atlas-team-detail-title{gap:10px;}.atlas-team-detail-mark{height:48px;width:48px;}.atlas-team-card-footer{flex-wrap:wrap;}.atlas-people-team-space .atlas-people-toolbar-actions{gap:7px;}}
 @media(prefers-reduced-motion:reduce){.atlas-team-card{transition:none;}.atlas-team-card:hover{transform:none;}}
+
+/* Real MAUSBOT profile images, served by the authenticated ATLAS image route. */
+.atlas-agent-portrait{display:grid;place-items:center;position:relative;overflow:hidden;flex:none;}
+.atlas-agent-portrait>img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;}
+.atlas-team-card-icon.atlas-agent-portrait,
+.atlas-team-member-icon.atlas-agent-portrait{overflow:hidden;}
+.atlas-people-avatar.atlas-agent-portrait{overflow:hidden;}
+.atlas-people-message-avatar .atlas-agent-portrait{width:100%;height:100%;border-radius:inherit;}
+.atlas-agent-portrait>svg{width:55%;height:55%;}
