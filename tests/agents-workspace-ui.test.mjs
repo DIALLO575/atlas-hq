@@ -52,3 +52,22 @@ test("Unrelated library, proposal workflow and n8n panel are not on the Agents s
   }
   assert.doesNotMatch(ui, /href="\/engines\/approvals"/);
 });
+
+test("Real agent and Chief avatars render through the authenticated workspace-only proxy", () => {
+  const bridge = readFileSync(new URL("../src/app/api/engines/mausbot/avatar/route.ts", import.meta.url), "utf8");
+  const library = readFileSync(new URL("../packages/engines/mausbot/src/avatar.mjs", import.meta.url), "utf8");
+  const primitives = readFileSync(new URL("../packages/engines/mausbot/src/primitives.mjs", import.meta.url), "utf8");
+  assert.match(primitives, /storedMausbotAvatarPath\(bot\.avatarUrl\)/);
+  assert.match(api, /hasAvatar: mausbotAvatarAvailable\(agent\)/);
+  assert.match(bridge, /requireEngineWorkspace\(workspaceId\)/);
+  assert.match(bridge, /executeMausbotPrimitive\(config, "agents.list"\)/);
+  assert.match(bridge, /fetchMausbotAvatar\(config, path\)/);
+  assert.match(bridge, /Cache-Control": "private, no-store"/);
+  assert.match(bridge, /nosniff/);
+  assert.match(library, /redirect: "manual"/);
+  assert.match(ui, /AgentPortrait agent=\{teamChief\?\.agent\}/);
+  assert.match(ui, /AgentPortrait agent=\{agent\}/);
+  assert.match(ui, /AgentPortrait agent=\{selectedAgent/);
+  assert.match(ui, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.doesNotMatch(ui, /mausbot\.shadoron\.com/);
+});

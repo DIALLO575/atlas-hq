@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import type { WorkspaceResult } from "@/lib/workspaces/contract";
 
 type Task = { threadId: string; title: string | null; activity: string | null; active: boolean };
-type Agent = { id: string; name: string; title?: string | null; section?: string | null; chiefOfStaff?: boolean; activeTaskId: string | null; tasks: Task[] };
+type Agent = { id: string; name: string; title?: string | null; section?: string | null; chiefOfStaff?: boolean; hasAvatar?: boolean; activeTaskId: string | null; tasks: Task[] };
 type Team = { id: string; name: string; section?: string | null; memberIds: string[]; defaultResponder?: { kind: string; botId?: string }; activeTaskId?: string | null; tasks?: Task[] };
 type Inventory = { agents: Agent[]; groups: Team[]; canWrite: boolean };
 type Message = { id: string | null; at: string | null; role: string | null; kind: string | null; text: string; hasImage?: boolean; queued?: boolean; steered?: boolean;
@@ -24,6 +25,21 @@ function chiefFor(team: Team, agents: Agent[]) {
     ? agents.find(agent => agent.chiefOfStaff === true && agent.section === team.section)
     : null;
   return section ? { agent: section, label: "Chief de section" } : null;
+}
+
+/** Same-origin, permission-checked avatar. Broken or absent image = original MAUSBOT icon. */
+function AgentPortrait({ agent, workspaceId, className = "", fallback = "bot" }: {
+  agent: Agent | null | undefined; workspaceId: string; className?: string; fallback?: "bot" | "layers";
+}) {
+  const [failed, setFailed] = useState(false);
+  const source = agent?.hasAvatar && workspaceId
+    ? "/api/engines/mausbot/avatar?workspaceId=" + encodeURIComponent(workspaceId) +
+      "&botId=" + encodeURIComponent(agent.id) : null;
+  return <span className={className + " atlas-agent-portrait"}>
+    {source && !failed ? <Image key={source} src={source} alt="" width={64} height={64}
+      unoptimized onError={() => setFailed(true)} />
+      : <Icon name={fallback} />}
+  </span>;
 }
 
 function readableTime(value: string | null) {
@@ -274,7 +290,7 @@ export function AgentsWorkspace() {
             return <button type="button" key={team.id} className="atlas-team-card"
               onClick={() => { setOpenTeamId(team.id); selectItem({ kind: "team", id: team.id }, threadsFor(team)); }}
               aria-label={"Ouvrir l’équipe " + team.name}>
-              <span className="atlas-team-card-top"><span className="atlas-team-card-icon"><Icon name="layers" /></span><span className="atlas-team-card-eyebrow">ÉQUIPE MAUSBOT</span></span>
+              <span className="atlas-team-card-top"><AgentPortrait agent={teamChief?.agent} workspaceId={workspaceId} className="atlas-team-card-icon" fallback="layers" /><span className="atlas-team-card-eyebrow">ÉQUIPE MAUSBOT</span></span>
               <strong className="atlas-team-card-name">{team.name}</strong>
               <span className="atlas-team-chief">
                 <span>{teamChief?.label ?? "Chief of Staff"}</span>
@@ -331,7 +347,7 @@ export function AgentsWorkspace() {
                 className={"atlas-team-member-card" + (selection?.kind === "agent" && selection.id === id ? " is-active" : "")}
                 aria-pressed={selection?.kind === "agent" && selection.id === id}
                 onClick={() => selectItem({ kind: "agent", id }, threadsFor(agent))}>
-                <span className="atlas-team-member-icon"><Icon name="bot" /></span>
+                <AgentPortrait agent={agent} workspaceId={workspaceId} className="atlas-team-member-icon" />
                 <span><strong>{agent.name}</strong><small>{agentChief ? (chief?.label ?? "Chief of Staff") : agent.title || "Agent MAUSBOT"}</small></span>
                 <Icon name="arrow-right" />
               </button>;
@@ -342,7 +358,8 @@ export function AgentsWorkspace() {
         <section className="atlas-people-console atlas-people-console-team" aria-label="Conversation MAUSBOT de l’équipe">
         <div className="atlas-people-chat" id="atlas-people-conversation">
           <div className="atlas-people-chat-heading">
-            <span className={"atlas-people-avatar " + (selection?.kind === "team" ? "is-team" : "is-agent")}><Icon name={selection?.kind === "team" ? "layers" : "bot"} /></span>
+            <AgentPortrait agent={selectedAgent ?? (selection?.kind === "team" ? chief?.agent : null)} workspaceId={workspaceId}
+              className={"atlas-people-avatar " + (selection?.kind === "team" ? "is-team" : "is-agent")} fallback={selection?.kind === "team" ? "layers" : "bot"} />
             <div className="atlas-people-chat-identity">
               <strong>{selectedName || "Conversations"}</strong>
               <small>{selection?.kind === "team" ? "Canal d’équipe MAUSBOT" : selectedAgent ? selectedAgent.title || "Agent MAUSBOT" : "Choisissez une équipe ou un agent"}</small>
@@ -388,7 +405,9 @@ export function AgentsWorkspace() {
               {!!messages.length && !messagesIssue && <ol className="atlas-people-messages" ref={scrollRef} aria-label="Messages du fil" aria-live="polite" aria-relevant="additions">
                 {messages.map((message, index) => <li key={message.id ?? (message.at ?? "message") + "-" + index}
                   data-speaker={message.role === "user" ? "user" : message.role === "assistant" ? "assistant" : "event"}>
-                  <div className="atlas-people-message-avatar"><Icon name={message.role === "user" ? "grid" : "bot"} /></div>
+                  <div className="atlas-people-message-avatar">{message.role === "assistant"
+                    ? <AgentPortrait agent={selectedAgent} workspaceId={workspaceId} fallback="bot" />
+                    : <Icon name={message.role === "user" ? "grid" : "bot"} />}</div>
                   <div className="atlas-people-bubble">
                     <div className="atlas-people-message-meta"><strong>{message.role === "assistant" ? selectedAgent?.name ?? "MAUSBOT" : message.role === "user" ? "Utilisateur" : message.role || "Événement"}</strong><time>{readableTime(message.at)}</time></div>
                     {message.text && <p>{message.text}</p>}

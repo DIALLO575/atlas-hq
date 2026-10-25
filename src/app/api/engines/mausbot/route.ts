@@ -4,6 +4,7 @@ import {
   MausbotAdapterError, resolveMausbotConfig, mausbotHealth, mausbotAgents, mausbotJob,
 } from "../../../../../packages/engines/mausbot/src/adapter.mjs";
 import { executeMausbotPrimitive } from "../../../../../packages/engines/mausbot/src/primitives.mjs";
+import { mausbotAvatarAvailable } from "../../../../../packages/engines/mausbot/src/avatar.mjs";
 import { mausbotReleasePermission } from "../../../../../packages/engine-core/src/release-gates.mjs";
 import { mausbotOwnerControlPermission } from "../../../../../packages/engine-core/src/mausbot-owner-control.mjs";
 
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
           const threadId = label(task.threadId, 120);
           return threadId ? [{ threadId, title: label(task.title, 200), activity: label(task.activity, 40), active: task.active === true }] : [];
         }).slice(0, 50) : [];
-        return [{ id, name, title: label(agent.title, 200), section: label(agent.section, 100), chiefOfStaff: agent.chiefOfStaff === true, activeTaskId: label(agent.activeTaskId, 120), tasks }];
+        return [{ id, name, title: label(agent.title, 200), section: label(agent.section, 100), chiefOfStaff: agent.chiefOfStaff === true, hasAvatar: mausbotAvatarAvailable(agent), activeTaskId: label(agent.activeTaskId, 120), tasks }];
       }).slice(0, 200) : [];
       const groups = Array.isArray(groupResult.channels) ? groupResult.channels.flatMap((value: unknown) => {
         if (!value || typeof value !== "object" || Array.isArray(value)) return [];
