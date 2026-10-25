@@ -57,9 +57,9 @@ test("premium Mes Apps preserves its directory and offers the real GitHub connec
   assert.doesNotMatch(apps, /<GitHubWorkspacePicker|from\("workspace_members"\)|auth\.getUser\(\)/);
   assert.match(agents, /<AgentsWorkspace/);
   assert.match(agentsWorkspace, /view=inventory/);
-  assert.match(agentsWorkspace, /channels\\.messages\\.list/);
+  assert.ok(agentsWorkspace.includes("channels.messages.list"));
   assert.match(agentsWorkspace, /<AgentRequestForm/);
-  assert.match(agentsWorkspace, /href="\\/engines"/);
+  assert.ok(agentsWorkspace.includes('href="/engines"'));
   assert.match(agentsWorkspace, /HTTP 423/);
   assert.match(demoData, /export const demoApps/);
   assert.match(demoData, /Google Calendar/);
