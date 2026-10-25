@@ -69,10 +69,10 @@ export default async function NotionPage({
     {connectionsError && <p className="nt-banner" role="alert">Le statut des connexions ne peut pas être vérifié.</p>}
     <section className="nt-summary" aria-label="État de l’intégration">
       <div><span className="nt-kicker">CONNEXIONS ENREGISTRÉES</span>
-        <strong>{authorized.length}</strong><p>L'accès réel reste à vérifier.</p></div>
+        <strong>{authorized.length}</strong><p>L&apos;accès réel reste à vérifier.</p></div>
       <div><span className="nt-kicker">VUES ET APERÇUS</span>
         <strong>À la demande</strong><p>Résultats Notion, sans import.</p></div>
-      <div><span className="nt-kicker">MODE D'ACCÈS</span>
+      <div><span className="nt-kicker">MODE D&apos;ACCÈS</span>
         <strong>REST · Lecture</strong><p>Pas d’écriture, webhook ou agent actif.</p></div>
     </section>
     {authorized.length > 0 ? <NotionResourcesClient connections={authorized}/> :
@@ -80,7 +80,7 @@ export default async function NotionPage({
         <div className="nt-empty-art" aria-hidden="true"><span>N</span><i/><i/><i/></div>
         <div><span className="nt-kicker">APERÇU NON DISPONIBLE</span>
           <h2>Votre espace Notion apparaîtra ici.</h2>
-          <p>Une fois l'OAuth REST activé et une connexion de test autorisée, ATLAS
+          <p>Une fois l&apos;OAuth REST activé et une connexion de test autorisée, ATLAS
             affichera uniquement les pages, bases et vues que Notion partage réellement
             avec cette connexion. Aucun jeu de données fictif n’est présenté.</p>
           <p className="nt-empty-note">{!configured
