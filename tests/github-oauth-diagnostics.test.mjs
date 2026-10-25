@@ -29,7 +29,7 @@ test("OAuth callback safely logs diagnostics and returns directly to the GitHub 
   assert.match(route, /githubOAuthFailureOutcome\(stage, safeReason\)/);
   assert.doesNotMatch(route, /console\.(log|warn|error)\(.*(userToken|clientSecret|code,)/);
   assert.match(conn, /new URL\("\/apps\/github", settings\.publicOrigin\)/);
-  assert.match(page, /searchParams: Promise<\{ workspaceId\?: string; github\?: string \}>/);
+  assert.match(page, /searchParams: Promise<\{ workspaceId\?: string; github\?: string; studioAuth\?: string \}>/);
   assert.match(page, /githubResult &&/);
   assert.match(page, /Only select repositories/);
 });
