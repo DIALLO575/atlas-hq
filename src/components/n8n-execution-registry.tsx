@@ -58,7 +58,7 @@ export function N8nExecutionRegistry({ workspaceId }: { workspaceId: string }) {
   },[workspaceId,refresh]);
   const data=snapshot?.workspaceId===workspaceId?snapshot.value:null;
   const error=issue?.workspaceId===workspaceId?issue.message:null;
-  const executions=data?.executions??[];
+  const executions=useMemo(()=>data?.executions??[],[data]);
   const filtered=useMemo(()=>executions.filter(item=>
     (status==="all"||item.status===status)&&
     (item.workflowName??item.workflowId).toLocaleLowerCase("fr").includes(query.toLocaleLowerCase("fr").trim())
@@ -90,10 +90,10 @@ export function N8nExecutionRegistry({ workspaceId }: { workspaceId: string }) {
     {data&&executions.length===0&&<div className="n8n-empty-state">
       <span className="n8n-empty-icon"><Icon name="activity" /></span>
       <h3>Aucune exécution enregistrée</h3>
-      <p>Le registre Atlas n'a pas encore d'historique. Cela n'indique pas l'état du serveur n8n.</p>
+      <p>Le registre Atlas n’a pas encore d’historique. Cela n’indique pas l’état du serveur n8n.</p>
     </div>}
     {data&&executions.length>0&&filtered.length===0&&<div className="n8n-empty-state">
-      <h3>Aucun résultat pour ce filtre</h3><p>Modifiez la recherche ou le statut pour afficher d'autres entrées.</p>
+      <h3>Aucun résultat pour ce filtre</h3><p>Modifiez la recherche ou le statut pour afficher d’autres entrées.</p>
       <button type="button" className="n8n-outline-button" onClick={()=>{setQuery("");setStatus("all");}}>Effacer les filtres</button>
     </div>}
     {filtered.length>0&&<div className="n8n-table-scroll"><table className="n8n-table">
@@ -106,7 +106,7 @@ export function N8nExecutionRegistry({ workspaceId }: { workspaceId: string }) {
       </tr>)}</tbody>
     </table></div>}
     {data?.executionListTruncated&&<p className="n8n-note">Extrait limité aux 50 entrées les plus récentes. Ce chiffre n’est pas le total des exécutions n8n.</p>}
-    <p className="n8n-panel-footnote">La réussite ou l'échec affichés sont les derniers états enregistrés par Atlas ;
+    <p className="n8n-panel-footnote">La réussite ou l’échec affichés sont les derniers états enregistrés par Atlas ;
       aucune vérification n8n live et aucun redémarrage ne sont possibles ici.</p>
   </section>;
 }
