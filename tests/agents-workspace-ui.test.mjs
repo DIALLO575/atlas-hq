@@ -4,20 +4,34 @@ import { readFileSync } from "node:fs";
 
 const page = readFileSync(new URL("../src/app/agents/page.tsx", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../src/components/agents-workspace.tsx", import.meta.url), "utf8");
-const requests = readFileSync(new URL("../src/components/agent-request-form.tsx", import.meta.url), "utf8");
+const api = readFileSync(new URL("../src/app/api/engines/mausbot/route.ts", import.meta.url), "utf8");
 const css = readFileSync(new URL("../src/app/agents/agent-request.css", import.meta.url), "utf8");
 
-test("Agents route is now a real workspace: teams, agents, thread picker and conversation pane", () => {
+test("Agents route presents real MAUSBOT teams as cards and drills into members", () => {
   assert.match(page, /<AgentsWorkspace \/>/);
-  for (const part of ["atlas-people-console","atlas-people-sidebar","atlas-people-chat","atlas-people-inspector",
-    "atlas-people-messages","atlas-people-thread-picker","atlas-people-roster","atlas-people-template-grid"]) {
-    assert.ok(ui.includes(part), "missing " + part);
+  for (const className of ["atlas-team-grid","atlas-team-card","atlas-team-detail","atlas-team-member-grid",
+    "atlas-team-member-card","atlas-people-chat","atlas-people-messages","atlas-people-thread-picker"]) {
+    assert.ok(ui.includes(className), "missing " + className);
   }
-  assert.match(ui, /atlas-people-search/);
+  assert.match(ui, /team\.memberIds\.map/);
+  assert.match(ui, /Ouvrir l’équipe/);
+  assert.match(ui, /setOpenTeamId/);
+  assert.match(ui, /chiefFor/);
+  assert.match(ui, /Non renseigné/);
   assert.match(css, /@media\(max-width:700px\)/);
-  assert.match(css, /atlas-people-directory-item\.is-selected/);
+  assert.match(css, /@media\(max-width:420px\)/);
+  assert.match(css, /grid-template-columns:1fr/);
 });
-test("Data is workspace scoped, owner writes are conditional, and content is never fabricated", () => {
+test("MAUSBOT inventory projects chiefs and members only from real upstream fields", () => {
+  assert.match(api, /chiefOfStaff: agent\.chiefOfStaff === true/);
+  assert.match(api, /section: label\(group\.section, 100\)/);
+  assert.match(api, /memberIds/);
+  assert.match(ui, /agent\.chiefOfStaff === true/);
+  assert.match(ui, /team\.section/);
+  assert.match(ui, /Identité non retournée par MAUSBOT/);
+  assert.doesNotMatch(ui, /SEO Growth Team|Engineering Team|Reddit Lead Miner|Competitor Watch/);
+});
+test("Team drill-down retains workspace and private conversation checks, never invents activity", () => {
   assert.match(ui, /view=inventory/);
   assert.match(ui, /data\.source !== "live-read-only"/);
   assert.match(ui, /MAUSBOT_INVENTORY_INVALID/);
@@ -29,14 +43,12 @@ test("Data is workspace scoped, owner writes are conditional, and content is nev
   assert.match(ui, /canWrite/);
   assert.match(ui, /Idempotency-Key/);
   assert.match(ui, /disabled=\{!canSend \|\| sending\}/);
-  assert.match(ui, /MAUSBOT_INVENTORY_INVALID/);
   assert.doesNotMatch(ui, /\/api\/engines\/mausbot\/dispatch/);
 });
-test("Team and agent creation remain approval-only and are not conflated with chat sending", () => {
-  assert.match(ui, /AgentRequestForm/);
-  assert.match(requests, /\/api\/engines\/"/);
-  assert.match(requests, /canDispatch !== false/);
-  assert.match(requests, /crypto\.randomUUID/);
-  assert.match(requests, /openmaus\.team/);
-  assert.doesNotMatch(requests, /mausbot\/dispatch/);
+test("Unrelated library, proposal workflow and n8n panel are not on the Agents screen", () => {
+  for (const blocked of ["AgentRequestForm","N8nCoordinationPanel","Modèles d’équipes",
+    "Création sous approbation","atlas-people-template-grid","atlas-people-bottom","proposalKind"]) {
+    assert.ok(!ui.includes(blocked), blocked + " unexpectedly shown");
+  }
+  assert.doesNotMatch(ui, /href="\/engines\/approvals"/);
 });
