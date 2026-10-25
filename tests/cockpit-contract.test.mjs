@@ -60,7 +60,8 @@ test("premium Mes Apps preserves its directory and offers the real GitHub connec
   assert.ok(agentsWorkspace.includes("channels.messages.list"));
   assert.match(agentsWorkspace, /<AgentRequestForm/);
   assert.ok(agentsWorkspace.includes('href="/engines"'));
-  assert.match(agentsWorkspace, /HTTP 423/);
+  assert.match(agentsWorkspace, /Idempotency-Key/);
+  assert.match(agentsWorkspace, /canWrite/);
   assert.match(demoData, /export const demoApps/);
   assert.match(demoData, /Google Calendar/);
 });

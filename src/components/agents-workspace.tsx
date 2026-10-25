@@ -121,7 +121,7 @@ export function AgentsWorkspace() {
   const canSend = inventory?.canWrite === true && activeWorkspace?.role === "owner" && !!selection && !!threadId;
 
   async function sendMessage() {
-    if (!canSend || sending || !draft.trim()) return;
+    if (!canSend || sending || !draft.trim() || !selection || !threadId) return;
     const value = draft.trim();
     setSending(true); setSendIssue("");
     try {
@@ -144,6 +144,7 @@ export function AgentsWorkspace() {
   }
 
   function selectItem(next: Selection, tasks: Task[]) {
+    setDraft(""); setSendIssue("");
     setSelection(next);
     setThreadId(tasks.find(task => task.active)?.threadId ?? tasks[0]?.threadId ?? "");
     setMessages([]);
