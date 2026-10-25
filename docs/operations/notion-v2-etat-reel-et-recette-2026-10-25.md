@@ -1,5 +1,7 @@
+> **Mise à jour post-fusion — 25 octobre 2026 :** [PR #72](https://github.com/DIALLO575/atlas-hq/pull/72) **fusionnée dans `main`** au commit [`3bec14be978a37989d2fb1e36a3018990d96b452`](https://github.com/DIALLO575/atlas-hq/commit/3bec14be978a37989d2fb1e36a3018990d96b452). **CI GitHub de PR : 5/5 jobs réussis** (run [40210335758](https://github.com/DIALLO575/atlas-hq/actions/runs/40210335758)) ; 596/596 tests applicatifs, TypeScript/lint/build et audit production à zéro vulnérabilité à la revue locale. La version est **intégrée dans `main`, mais son déploiement Vercel n'est pas confirmé** (contrôle Vercel rouge, lien de limitation de build) ; **aucun test OAuth ATLAS/Notion réel**. Pas de GO connexion ou production fournisseur. Le texte plus ancien de ce document décrivait le stade *candidat non fusionné* au début de la journée.
+
 # ATLAS HQ × Notion V2 — état réel, preuve et reste à faire
-**Instantané vérifié le 25 octobre 2026 · Mission [SHA-182](https://linear.app/shadoron/issue/SHA-182) · NON-GO mise en service avancée**
+**Historique et état post-fusion du 25 octobre 2026 · Mission [SHA-182](https://linear.app/shadoron/issue/SHA-182) · NON-GO mise en service avancée**
 
 > **Verdict :** le socle Notion V2 REST **en lecture seule** est largement **développé et validé en code source isolé**. Il n'est **ni fusionné dans `main`, ni déployé, ni vérifié sur une vraie session OAuth ATLAS ↔ Notion**. Ne pas confondre la connexion Notion de ChatGPT, qui a créé la page `ATLAS — TEST`, et le connecteur OAuth d'ATLAS HQ.
 
