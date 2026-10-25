@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { Icon } from "@/components/icon";
 import { GitHubStudioRepositoryWizard } from "@/components/github-studio-repository-wizard";
+import { GitHubActionsControlCenter } from "@/components/github-actions-control-center";
 
 type Workspace = { id: string; name: string; role: "owner" | "admin" | "member" };
 type Installation = {
@@ -19,7 +20,7 @@ type PullDetail = {
   updatedAt: string | null; htmlUrl: string; resource: { headSha: string };
   files: FileChange[]; filesTruncated: boolean;
 };
-type Section = "overview" | "repositories" | "pulls" | "studio" | "settings";
+type Section = "overview" | "repositories" | "pulls" | "actions" | "studio" | "settings";
 type Loading = "connections" | "repositories" | "pulls" | "detail" | null;
 
 const labels: Record<string, string> = {
@@ -70,6 +71,7 @@ const sections: { id: Section; title: string; icon: "grid" | "layers" | "activit
   { id: "overview", title: "Vue générale", icon: "grid" },
   { id: "repositories", title: "Dépôts", icon: "layers" },
   { id: "pulls", title: "Pull Requests", icon: "activity" },
+  { id: "actions", title: "Actions CI/CD", icon: "activity" },
   { id: "studio", title: "Studio", icon: "spark" },
   { id: "settings", title: "Connexion", icon: "settings" },
 ];
@@ -288,7 +290,12 @@ function WorkspaceGitHub({ workspace, configured }: { workspace: Workspace; conf
       workspaceId={workspace.id} installationId={installationId}
       canManage={canInstall} ready={ready.some((item) => item.installationId === installationId)} />}
 
-    {section !== "settings" && section !== "studio" && <div className="atlas-gh-content atlas-gh-content-v2">
+    {section === "actions" && <GitHubActionsControlCenter
+      workspaceId={workspace.id} installationId={installationId}
+      repositories={repositories.map((item)=>({id:item.id,fullName:item.fullName}))}
+      ready={ready.some((item)=>item.installationId===installationId)} />}
+
+    {section !== "settings" && section !== "studio" && section !== "actions" && <div className="atlas-gh-content atlas-gh-content-v2">
       <section className="atlas-gh-primary">
         <div className="atlas-gh-section-heading">
           <div><h2>{section === "repositories" ? "Dépôts autorisés" : "Pull Requests ouvertes"}</h2>

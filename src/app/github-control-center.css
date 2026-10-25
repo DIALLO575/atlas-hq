@@ -751,3 +751,71 @@
 .atlas-gh-studio-unavailable p{font-size:10px;line-height:1.55;color:#9388a2;margin:4px 0 0}
 @media(max-width:790px){.atlas-gh-studio-layout{grid-template-columns:1fr}.atlas-gh-studio-head{flex-direction:column}}
 @media(max-width:450px){.atlas-gh-studio{padding:14px}.atlas-gh-studio-visibility{grid-template-columns:1fr}}
+
+/* GitHub Actions — read-only CI diagnostics, separate from Pull Requests. */
+.atlas-gh-actions{min-width:0;border:1px solid #eae4f2;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 7px 26px #2f245508}
+.atlas-gh-actions-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:27px 28px;background:radial-gradient(circle at top right,#e8ddff 0,transparent 40%),linear-gradient(100deg,#faf8ff,#f5f3ff);border-bottom:1px solid #ebe4f5}
+.atlas-gh-actions-overline{display:inline-flex;align-items:center;gap:7px;color:#8262bc;letter-spacing:.11em;font-size:10px;font-weight:790}
+.atlas-gh-actions-overline svg{width:15px;height:15px}
+.atlas-gh-actions-hero h2{margin:10px 0 0;color:#2e2343;letter-spacing:-.035em;font-size:clamp(20px,2.4vw,30px)}
+.atlas-gh-actions-hero h2 span{color:#906bd7}
+.atlas-gh-actions-hero p{margin:10px 0 0;color:#827690;max-width:480px;font-size:12px;line-height:1.7}
+.atlas-gh-actions-readonly{display:inline-flex;align-items:center;gap:7px;border-radius:999px;border:1px solid #d9ccec;background:#fff9;color:#7255a3;padding:9px 12px;white-space:nowrap;font-size:10px;font-weight:750}
+.atlas-gh-actions-readonly svg{width:15px;height:15px}
+.atlas-gh-actions-toolbar{display:flex;gap:12px;align-items:flex-end;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #f0edf4}
+.atlas-gh-actions-toolbar label{display:flex;flex-direction:column;gap:6px;min-width:0;width:min(400px,100%);font-size:11px;color:#6f6480;font-weight:720}
+.atlas-gh-actions-toolbar select{min-width:0;max-width:100%;height:40px;padding:0 12px;border:1px solid #e4ddee;border-radius:10px;background:#fcfbff;color:#433453;font:600 12px var(--font-body)}
+.atlas-gh-actions-toolbar button{border:1px solid #e5ddef;border-radius:10px;padding:11px 13px;display:inline-flex;align-items:center;gap:7px;background:#fff;color:#7250ae;font-size:11px;font-weight:740;cursor:pointer}
+.atlas-gh-actions-toolbar button:disabled{opacity:.5;cursor:not-allowed}
+.atlas-gh-actions-toolbar svg{width:14px;height:14px}
+.atlas-gh-actions-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:17px 23px;background:#fdfcff;border-bottom:1px solid #efebf5}
+.atlas-gh-actions-stats>div{border:1px solid #ece6f4;background:#fff;border-radius:12px;padding:13px;display:flex;flex-direction:column;gap:5px}
+.atlas-gh-actions-stats strong{font-size:23px;letter-spacing:-.04em;line-height:1.1;color:#382953}
+.atlas-gh-actions-stats span{font-size:10px;color:#8c819d}
+.atlas-gh-actions-content{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr);gap:16px;padding:18px;min-width:0}
+.atlas-gh-actions-feed,.atlas-gh-actions-inspector{min-width:0;background:#fff;border:1px solid #ede7f4;border-radius:14px}
+.atlas-gh-actions-feed>header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:13px;align-items:center;padding:17px;border-bottom:1px solid #f0ecf5}
+.atlas-gh-actions-feed h3,.atlas-gh-actions-inspector h3{margin:0;font-size:14px;color:#34264e;letter-spacing:-.02em}
+.atlas-gh-actions-feed header p{margin:5px 0 0;color:#9990a8;font-size:10px}
+.atlas-gh-actions-filters{display:flex;gap:5px;background:#f6f3fa;padding:4px;border-radius:9px}
+.atlas-gh-actions-filters button{font-size:10px;border:0;border-radius:7px;background:transparent;padding:8px 9px;color:#877c95;cursor:pointer}
+.atlas-gh-actions-filters button[aria-pressed=true]{background:#fff;color:#6e4fa9;box-shadow:0 2px 6px #25143d13;font-weight:760}
+.atlas-gh-actions-runs{display:flex;flex-direction:column;max-height:620px;overflow-y:auto}
+.atlas-gh-actions-run{min-width:0;display:flex;gap:9px;align-items:center;text-align:left;border:0;border-bottom:1px solid #f1edf5;background:#fff;padding:15px 13px;cursor:pointer}
+.atlas-gh-actions-run:hover,.atlas-gh-actions-run.is-active{background:#f8f5fe}
+.atlas-gh-actions-run>svg{width:15px;height:15px;flex:none;color:#b1a1c5}
+.atlas-gh-actions-indicator{height:8px;width:8px;flex:0 0 8px;border-radius:50%;background:#bbb0cb}
+.atlas-gh-actions-indicator.is-success{background:#33a773}
+.atlas-gh-actions-indicator.is-failure{background:#dd6e70}
+.atlas-gh-actions-indicator.is-running{background:#6d8ddc}
+.atlas-gh-actions-run-text{flex:1;display:flex;flex-direction:column;min-width:0;gap:6px}
+.atlas-gh-actions-run-text strong{font-size:11px;font-weight:750;color:#3c3050;overflow-wrap:anywhere}
+.atlas-gh-actions-run-text small{font-size:10px;line-height:1.5;color:#958b9f;overflow-wrap:anywhere}
+.atlas-gh-actions-status{flex:0 0 auto;border-radius:999px;padding:5px 8px;background:#f1eff3;color:#867a94;font-size:9px;font-weight:740;white-space:nowrap}
+.atlas-gh-actions-status.is-success{background:#e9f8f0;color:#23855a}
+.atlas-gh-actions-status.is-failure{background:#fff0f0;color:#bc4c5b}
+.atlas-gh-actions-status.is-running{background:#edf3ff;color:#4e78bb}
+.atlas-gh-actions-inspector{padding:20px;display:flex;flex-direction:column;gap:15px;align-self:start;min-height:320px}
+.atlas-gh-actions-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:210px;text-align:center}
+.atlas-gh-actions-placeholder>span{height:56px;width:56px;border-radius:16px;display:grid;place-items:center;color:#8660bf;background:#f0eafb}
+.atlas-gh-actions-placeholder svg{height:26px;width:26px}
+.atlas-gh-actions-placeholder p{font-size:11px;color:#91869e;line-height:1.65;max-width:235px;margin:0}
+.atlas-gh-actions-meta{display:flex;gap:7px;flex-wrap:wrap}
+.atlas-gh-actions-meta span{font-size:10px;border:1px solid #e9e1f2;padding:6px 8px;border-radius:8px;color:#695b7a;background:#fbf9fd}
+.atlas-gh-actions-link,.atlas-gh-actions-job a{display:inline-flex;align-items:center;gap:6px;color:#7750b5;font-size:11px;font-weight:750;text-decoration:none}
+.atlas-gh-actions-link svg,.atlas-gh-actions-job a svg{height:13px;width:13px}
+.atlas-gh-actions-job-list{display:flex;flex-direction:column;gap:10px}
+.atlas-gh-actions-job{border:1px solid #ede7f4;border-radius:11px;padding:13px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.atlas-gh-actions-job-head{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.atlas-gh-actions-job-head strong{font-size:11px;overflow-wrap:anywhere;color:#3e3254}
+.atlas-gh-actions-failed-steps{border-radius:9px;padding:10px;background:#fff6f6;border:1px solid #f2dede;min-width:0}
+.atlas-gh-actions-failed-steps>span{font-size:10px;font-weight:800;color:#aa5362}
+.atlas-gh-actions-failed-steps p{display:flex;align-items:center;gap:6px;color:#985867;font-size:10px;margin:8px 0 0;overflow-wrap:anywhere}
+.atlas-gh-actions-failed-steps svg{flex:0 0 13px;width:13px;height:13px}
+.atlas-gh-actions-safety{padding:12px;border:1px dashed #e7dff0;background:#fcfaff;border-radius:9px;color:#897b99;font-size:10px;line-height:1.6;margin:auto 0 0}
+.atlas-gh-actions-message{padding:17px;color:#8c809a;font-size:11px;line-height:1.6;margin:0}
+.atlas-gh-actions-alert{margin:16px 23px;border-radius:10px;background:#fff8ed;border:1px solid #f1e1c8;color:#9c673f;padding:13px;font-size:11px;line-height:1.65}
+.atlas-gh-actions-alert button{margin-left:12px;border:0;background:transparent;color:inherit;text-decoration:underline;cursor:pointer}
+@media(max-width:980px){.atlas-gh-actions-content{grid-template-columns:1fr}.atlas-gh-actions-runs{max-height:400px}}
+@media(max-width:600px){.atlas-gh-actions-hero{padding:22px;flex-direction:column}.atlas-gh-actions-toolbar{align-items:stretch;flex-direction:column;padding:14px}.atlas-gh-actions-toolbar label{width:100%}.atlas-gh-actions-stats{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px}.atlas-gh-actions-content{padding:12px}.atlas-gh-actions-feed>header{flex-direction:column;align-items:stretch}.atlas-gh-actions-run{flex-wrap:wrap}.atlas-gh-actions-run .atlas-gh-actions-status{margin-left:auto}.atlas-gh-actions-run>svg{display:none}}
+@media(prefers-reduced-motion:reduce){.atlas-gh-actions *{transition:none!important}}
