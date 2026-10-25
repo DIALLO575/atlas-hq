@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   let serverConfiguration: "missing" | "ready-for-preconnection" | "invalid" = "missing";
   try {
-    if (resolveN8nReadOnlyConfig(process.env, workspaceId))
+    if (resolveN8nReadOnlyConfig(process.env, workspaceId ?? ""))
       serverConfiguration = "ready-for-preconnection";
   } catch (cause) {
     if (cause instanceof N8nReadOnlyError) serverConfiguration = "invalid";

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   catch { return engineFailure("ENGINE_CONFIGURATION_INVALID", 503); }
   // Server configuration is not proof of live n8n reachability or grants.
   let n8nConfigured = false;
-  try { n8nConfigured = Boolean(resolveN8nReadOnlyConfig(process.env, workspaceId)); }
+  try { n8nConfigured = Boolean(resolveN8nReadOnlyConfig(process.env, workspaceId ?? "")); }
   catch { n8nConfigured = false; }
   const release = mausbotReleaseState(process.env);
   return engineSuccess({
