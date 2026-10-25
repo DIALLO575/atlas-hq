@@ -19,7 +19,7 @@ begin
  if (select count(*) from pg_policies
     where schemaname='public' and tablename in
       ('atlas_automation_workflows','atlas_automation_executions')
-      and cmd='SELECT' and roles @> array['authenticated']) <> 2
+      and cmd='SELECT' and 'authenticated' = any(roles)) <> 2
  then raise exception 'N8N_REGISTRY_RLS_POLICIES_MISSING';end if;
 end $$;
 
