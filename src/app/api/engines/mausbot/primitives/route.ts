@@ -1,10 +1,13 @@
+import { createHash } from "node:crypto";
 import { NextRequest } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { engineFailure, engineSuccess, requireEngineWorkspace } from "@/lib/engines/access";
 import { resolveMausbotConfig, MausbotAdapterError } from "../../../../../../packages/engines/mausbot/src/adapter.mjs";
 import { executeMausbotPrimitive } from "../../../../../../packages/engines/mausbot/src/primitives.mjs";
 import { MAUSBOT_PRIMITIVES, MAUSBOT_FUTURE_SURFACES, validateMausbotPrimitive, PrimitiveInputError } from "../../../../../../packages/engine-core/src/primitives.mjs";
 import { MAUSBOT_NATIVE_CAPABILITIES, nativeCoverageSummary } from "../../../../../../packages/engine-core/src/native-capabilities.mjs";
 import { mausbotReleasePermission, mausbotReleaseState } from "../../../../../../packages/engine-core/src/release-gates.mjs";
+import { mausbotOwnerControlPermission } from "../../../../../../packages/engine-core/src/mausbot-owner-control.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,7 +60,43 @@ export async function POST(request: NextRequest) {
   const access = await requireEngineWorkspace(input.workspaceId, normalized.def.mode !== "read" || sensitiveRead);
   if (!access.ok) return access.response;
   const gate = mausbotReleasePermission(process.env, normalized.def.mode);
-  if (!gate.allowed) return engineFailure(gate.code, gate.status);
+  const ownerControl = normalized.def.mode === "read" ? { allowed: false } :
+    mausbotOwnerControlPermission(process.env, {
+      role: access.role, workspaceId: input.workspaceId, mode: normalized.def.mode,
+    });
+  if (!gate.allowed && !ownerControl.allowed) return engineFailure(gate.code, gate.status);
+
+  // The owner explicitly clicked an action. Reserve its ID before any upstream
+  // mutation: after a timeout/crash it MUST NOT be dispatched again automatically.
+  // No bearer, raw prompt, or external response is stored in this audit record.
+  let audit: { id: string; supabase: NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>> } | null = null;
+  if (ownerControl.allowed) {
+    const actionId = request.headers.get("idempotency-key");
+    if (!actionId || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actionId)) {
+      return engineFailure("MAUSBOT_ACTION_ID_REQUIRED", 400);
+    }
+    const supabase = await createSupabaseServerClient();
+    if (!supabase) return engineFailure("MAUSBOT_AUDIT_UNAVAILABLE", 503);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return engineFailure("AUTH_REQUIRED", 401);
+    const digest = createHash("sha256").update(JSON.stringify({
+      workspaceId: input.workspaceId, primitive: normalized.def.id, args: normalized.args,
+    })).digest("hex");
+    const reserved = await supabase.rpc("atlas_mausbot_action_begin", {
+      p_action_id: actionId, p_workspace_id: input.workspaceId,
+      p_primitive: normalized.def.id, p_hash: digest,
+    });
+    if (reserved.error) return engineFailure("MAUSBOT_AUDIT_UNAVAILABLE", 503);
+    if (reserved.data !== true) return engineFailure("MAUSBOT_ACTION_ALREADY_RESERVED", 409);
+    audit = { id: actionId, supabase };
+  }
+  const finalize = async (state: "accepted" | "unknown") => {
+    if (!audit) return true;
+    const complete = await audit.supabase.rpc("atlas_mausbot_action_complete", {
+      p_action_id: audit.id, p_state: state,
+    });
+    return !complete.error && complete.data === true;
+  };
   try {
     const config = resolveMausbotConfig(process.env, input.workspaceId);
     if (!config) return engineFailure("MAUSBOT_NOT_CONFIGURED", 503);
@@ -98,9 +137,11 @@ export async function POST(request: NextRequest) {
         hasMore: record.hasMore === true, messages,
       } });
     }
+    if (!await finalize("accepted")) return engineFailure("MAUSBOT_ACTION_OUTCOME_UNKNOWN", 503);
     return engineSuccess({ primitive: normalized.def.id, result },
       normalized.def.mode === "read" ? 200 : 202);
   } catch (error) {
+    if (!await finalize("unknown")) return engineFailure("MAUSBOT_ACTION_OUTCOME_UNKNOWN", 503);
     if (error instanceof PrimitiveInputError) return engineFailure(error.code, 400);
     if (error instanceof MausbotAdapterError) return engineFailure(error.code, error.status);
     return engineFailure("MAUSBOT_UNAVAILABLE", 503);

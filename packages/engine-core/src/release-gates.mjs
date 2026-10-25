@@ -4,7 +4,7 @@
  */
 export function mausbotReleaseState(env) {
   const value = env.ATLAS_MAUSBOT_RELEASE_STAGE;
-  const readsEnabled = value === "read-only" || value === "enabled";
+  const readsEnabled = value === "read-only" || value === "enabled" || value === "admin";
   return Object.freeze({
     stage: readsEnabled ? "read-only" : "offline",
     readsEnabled,

@@ -6,6 +6,7 @@ import {
 import { executeMausbotPrimitive } from "../../../../../packages/engines/mausbot/src/primitives.mjs";
 import { executeTeamCatalogRead } from "../../../../../packages/engines/mausbot/src/team-channel-contracts.mjs";
 import { mausbotReleasePermission } from "../../../../../packages/engine-core/src/release-gates.mjs";
+import { mausbotOwnerControlPermission } from "../../../../../packages/engine-core/src/mausbot-owner-control.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,7 +69,10 @@ export async function GET(request: NextRequest) {
         return [{ id, name, memberIds, activeTaskId: label(group.activeTaskId, 120), tasks }];
       }).slice(0, 100) : [];
       return engineSuccess({
-        engine: "mausbot", source: "live-read-only", canWrite: false,
+        engine: "mausbot", source: "live-read-only",
+        canWrite: mausbotOwnerControlPermission(process.env, {
+          role: access.role, workspaceId, mode: "execute",
+        }).allowed,
         agents, groups,
         teamTemplates, teamCatalogAvailable,
       });
