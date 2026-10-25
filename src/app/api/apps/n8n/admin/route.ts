@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     try { query = rawQuery ? JSON.parse(rawQuery) : {}; }
     catch { return engineFailure("N8N_ADMIN_QUERY_INVALID", 400); }
     const data = await callN8nPublicAdminApi(config, {
-      method: "GET", path: p.get("path"), query,
+      method: "GET", path: p.get("path") ?? "", query: query as Record<string, string | number | boolean>,
     });
     return engineSuccess({ source: "n8n-public-api", method: "GET", data });
   } catch (error) { return safeError(error); }
@@ -88,7 +88,10 @@ export async function POST(request: NextRequest) {
     const config = boundConfig(workspaceId);
     if (!config) return engineFailure("N8N_ADMIN_NOT_CONFIGURED", 503);
     const data = await callN8nPublicAdminApi(config, {
-      method: input.method, path: input.path, query: input.query, body: input.body,
+      method: input.method as "POST" | "PUT" | "PATCH" | "DELETE",
+      path: typeof input.path === "string" ? input.path : "",
+      query: input.query as Record<string, string | number | boolean> | undefined,
+      body: input.body as Record<string, unknown> | unknown[] | undefined,
     });
     return engineSuccess({ source: "n8n-public-api", method: input.method, data });
   } catch (error) { return safeError(error); }
