@@ -29,6 +29,9 @@ Prerequisites before release:
 6. Build once after changes, verify SHA READY, smoke test the Agents composer,
    then monitor MAUSBOT/Vercel logs for owner actions and anomalous traffic.
 
+Send-only emergency stop: `ATLAS_MAUSBOT_SEND_KILL_SWITCH=true` (423 on every send; see
+`mausbot-control-roadmap.md`).
+
 Emergency stop: set `ATLAS_MAUSBOT_ADMIN_CONTROL_ENABLED=false` and
 `ATLAS_MAUSBOT_RELEASE_STAGE=read-only`, revoke upstream MAUSBOT session,
 and remove Caddy mutation paths. Existing deployments need fresh runtime env

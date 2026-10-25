@@ -300,3 +300,25 @@
  .atlas-people-console-team .atlas-people-messages>li{max-width:100%;}
  .atlas-people-console-team .atlas-people-chat-heading .atlas-people-icon-button{min-width:36px;min-height:36px;}
 }
+
+/* Chiefs of Staff board (read-only, phase 1) */
+.atlas-chief-board{margin-bottom:18px;}
+.atlas-chief-degraded{font-size:12px;opacity:.7;margin:4px 0 10px;}
+.atlas-chief-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.atlas-chief-card{border:1px solid rgba(127,127,127,.25);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+.atlas-chief-head{display:flex;align-items:center;gap:10px;min-width:0;}
+.atlas-chief-portrait{width:40px;height:40px;flex:0 0 40px;border-radius:50%;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;}
+.atlas-chief-portrait img{width:100%;height:100%;object-fit:cover;}
+.atlas-chief-id{display:flex;flex-direction:column;min-width:0;flex:1;}
+.atlas-chief-id strong,.atlas-chief-id span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.atlas-chief-id span{font-size:12px;opacity:.7;}
+.atlas-chief-status{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(127,127,127,.15);}
+.atlas-chief-status.is-active,.atlas-chief-dot.is-active{background:rgba(34,197,94,.25);}
+.atlas-chief-status.is-waiting,.atlas-chief-dot.is-waiting{background:rgba(234,179,8,.3);}
+.atlas-chief-last{font-size:13px;margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
+.atlas-chief-meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;opacity:.75;flex-wrap:wrap;}
+.atlas-chief-members{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px;}
+.atlas-chief-members li{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px 2px 2px;border-radius:999px;background:rgba(127,127,127,.1);max-width:100%;}
+.atlas-chief-members .atlas-chief-portrait{width:22px;height:22px;flex-basis:22px;}
+.atlas-chief-dot{width:8px;height:8px;border-radius:50%;background:rgba(127,127,127,.4);display:inline-block;}
+@media (max-width:420px){.atlas-chief-grid{grid-template-columns:1fr;}.atlas-chief-card{padding:10px;}}
