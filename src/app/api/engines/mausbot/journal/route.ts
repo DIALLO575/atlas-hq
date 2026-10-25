@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const stateMap = Object.fromEntries((states ?? []).map((s: { item_id: string; status: string }) => [s.item_id, s.status]));
     return NextResponse.json({
       source: "supabase-read-only", demo: edition.demo, editionId: edition.editionId, producer: edition.producer,
-      generatedAt: edition.generatedAt, categories: groupJournal(edition),
+      generatedAt: edition.generatedAt, coverExpiresAt: edition.coverExpiresAt, categories: groupJournal(edition),
       items: edition.items.map(i => ({ ...i, state: stateMap[i.id] ?? "new" })), stateAvailable: states !== null,
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

@@ -43,6 +43,19 @@
           "type": "image/svg+xml"
         }
       ]
+    },
+    {
+      "name": "Journal du matin",
+      "short_name": "Journal",
+      "description": "Ouvrir l’édition WORLD RADAR du matin",
+      "url": "/journal",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }

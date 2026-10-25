@@ -1,0 +1,5 @@
+.atlas-activity-feed{display:grid;gap:8px;margin:0 0 16px}
+.atlas-activity-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 14px;border-radius:14px;border:1px solid var(--line,rgba(127,127,127,.2));background:var(--surface,#fff);color:inherit;text-decoration:none}
+.atlas-activity-row:hover{border-color:#6c5ce7}.atlas-activity-row:focus-visible{outline:3px solid #6c5ce7;outline-offset:2px}
+.atlas-activity-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:rgba(108,92,231,.12);color:#6c5ce7;flex:none}
+.atlas-activity-text{display:grid;flex:1;min-width:0}.atlas-activity-text small{opacity:.65;text-transform:capitalize}

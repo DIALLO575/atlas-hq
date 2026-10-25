@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
 import { MausbotNeedsYou } from "@/components/mausbot-needs-you";
+import { ActivityFeed } from "@/components/activity-feed";
+import "../activity-feed.css";
 import { decideAtlasMissionReview } from "@/app/missions/actions";
 import { readAtlasWorkflow, type AtlasReview } from "@/lib/atlas-workflow";
 
@@ -81,6 +83,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
             aria-current={space.id === data.selected?.id ? "page" : undefined}
             href={inboxPath(space.id)}>{space.name}</Link>)}</div>
         <Link className="atlas-flow-workspace-all" href="/workspaces">Gérer <Icon name="arrow-up-right"/></Link></div>
+      <ActivityFeed workspaceId={data.selected.id} />
       <MausbotNeedsYou workspaceId={data.selected.id} />
       {params.result && <div role="status" className={"atlas-flow-feedback" + (params.result === "error" ? " is-error" : "")}>
         {params.result === "decided" ? "Votre décision a été enregistrée." : "Impossible de traiter la demande. Elle a peut-être déjà été résolue."}</div>}

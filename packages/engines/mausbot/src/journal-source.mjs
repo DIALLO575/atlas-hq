@@ -7,9 +7,12 @@ export const SIGNED_URL_TTL_SECONDS = 3600;
 export const JOURNAL_FIXTURE = Object.freeze({
   schema_version: "1", edition_id: "demo-2026-10-25-matin", generated_at: "2026-10-25T13:30:00Z", producer: "morgans",
   items: [
-    { id: "ia-1", topic: "ia", title: "Exemple — un nouveau modèle open source publié", summary: "Données de démonstration : aucune information réelle.", why_it_matters: "Montre le rendu d’une carte IA.", certainty: "moyenne", status: "rapporte", source_url: "https://example.com/ia", source_name: "Example", extra_sources: [], published_at: "2026-10-25T08:00:00Z", author_bot: "Turing", cover: null },
+    { id: "ia-1", topic: "ia", title: "Exemple — un nouveau modèle open source publié", summary: "Données de démonstration : aucune information réelle. Le modèle annoncé met l’accent sur trois points :\n- poids ouverts et licence permissive ;\n- performances proches des modèles fermés ;\n- coût d’inférence réduit.\n\n> « Une étape pour l’écosystème ouvert », selon [Example](https://example.com/ia).", why_it_matters: "Montre le rendu d’une carte IA.", certainty: "moyenne", status: "rapporte", source_url: "https://example.com/ia", source_name: "Example", extra_sources: [], featured: true, published_at: "2026-10-25T08:00:00Z", author_bot: "Turing", cover: null },
     { id: "com-1", topic: "commerce", title: "Exemple — délais de fret maritime", summary: "Données de démonstration.", why_it_matters: null, certainty: "faible", status: "a_verifier", source_url: "https://example.com/fret", source_name: "Example", extra_sources: [], published_at: null, author_bot: "Mercator", cover: null },
     { id: "gn-1", topic: "guinee", title: "Exemple — actualité Conakry", summary: "Données de démonstration.", why_it_matters: null, certainty: "elevee", status: "confirme", source_url: "https://example.com/gn", source_name: "Example", extra_sources: [], published_at: null, author_bot: "Kora", cover: null },
+    { id: "af-1", topic: "afrique", title: "Exemple — corridor logistique ouest-africain", summary: "Données de démonstration.\n1. Annonce du financement ;\n2. Calendrier des travaux.", why_it_matters: "Illustre une liste numérotée.", certainty: "moyenne", status: "rapporte", source_url: "https://example.com/af", source_name: "Example Afrique", extra_sources: [{ url: "https://example.org/af2", name: "Second média" }], published_at: null, author_bot: "Kora", cover: null },
+    { id: "mo-1", topic: "monde", title: "Exemple — sommet international sur le climat", summary: "Données de démonstration.", why_it_matters: null, certainty: "elevee", status: "confirme", source_url: "https://example.com/monde", source_name: "Example Monde", extra_sources: [], published_at: null, author_bot: "Atlas", cover: null },
+    { id: "eco-1", topic: "economie", title: "Exemple — inflation et taux directeurs", summary: "Données de démonstration.", why_it_matters: "Effet direct sur les coûts d’importation.", certainty: "moyenne", status: "rapporte", source_url: "https://example.com/eco", source_name: "Example Éco", extra_sources: [], published_at: null, author_bot: "Mercator", cover: null },
   ],
 });
 export class JournalSourceError extends Error {
@@ -21,9 +24,10 @@ export function journalDemoAllowed(env) {
 }
 export function readJournalDemo() {
   const e = parseJournalJson(JOURNAL_FIXTURE);
-  return { ...e, demo: true, producer: "morgans", items: e.items.map(i => ({ ...i, coverUrl: null })) };
+  return { ...e, coverExpiresAt: null, demo: true, producer: "morgans", items: e.items.map(i => ({ ...i, coverUrl: null })) };
 }
-const ITEM_COLUMNS = "item_id,topic,title,summary,why_it_matters,certainty,status,source_url,source_name,extra_sources,published_at,author_bot,cover,position";
+// "*" so the optional `featured` column (migration 20261025224000) is read when present without breaking before it.
+const ITEM_COLUMNS = "*";
 
 /**
  * Reads the latest edition for a workspace with the caller's (owner) Supabase session — RLS enforces
@@ -47,7 +51,7 @@ export async function readJournalFromSupabase(supabase, workspaceId, { ttl = SIG
     for (const s of data ?? []) if (s?.signedUrl && !s.error && s.path) signed.set(s.path, s.signedUrl);
   }
   return {
-    editionId: edition.edition_id, generatedAt: edition.generated_at, producer: edition.producer, format: "json", demo: false, skipped: 0,
+    coverExpiresAt: new Date(Date.now() + ttl * 1000).toISOString(), editionId: edition.edition_id, generatedAt: edition.generated_at, producer: edition.producer, format: "json", demo: false, skipped: 0,
     items: items.map(i => ({ ...i, coverUrl: i.cover ? signed.get(workspaceId + "/" + i.cover.storagePath) ?? null : null })),
   };
 }

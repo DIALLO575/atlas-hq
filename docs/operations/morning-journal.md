@@ -126,3 +126,21 @@ item_id, check, severity, detail, at). RLS lecture owner-only, aucune écriture 
 4. Un seul preview Vercel vérifié (quota, cf. AGENTS.md), puis merge sur décision.
 5. Appliquer `20261025223000_atlas_journal_audit.sql`, puis construire `journal-mcp` selon le contrat ci-dessus.
 6. Futur : Grok Bot producteur (`producer: "grok-bot"`), même webhook.
+
+## Lecture éditoriale & PWA mobile
+
+- **Lecteur** : plein écran (bottom sheet sur mobile ≤ 760px), corps serif, interligne 1.7, ~65ch ; titre, chapeau, encadré « Pourquoi c'est important », sources en pied (nom du média + domaine). A−/A+ (16→24px), thèmes clair/sépia/sombre (persistés `localStorage` `mj.font`/`mj.theme`), barre de progression, temps de lecture (220 mots/min), précédent/suivant, swipe horizontal, Échap/flèches, focus piégé et restauré.
+- **Rendu sûr** : `journal-reader.mjs` parse un sous-ensemble Markdown (paragraphes, listes `-`/`1.`, citations `>`, `**gras**`, `_italique_`, `[lien](https://…)`). Aucun `dangerouslySetInnerHTML` ; tout HTML reste du texte ; seuls les liens http(s) deviennent des `<a rel="noopener noreferrer nofollow">`. La normalisation conserve désormais les retours à la ligne de `summary`/`why_it_matters`.
+- **Mobile** : onglets thèmes défilants (sticky), cartes pleine largeur, barre d'actions basse au-dessus de la nav ATLAS, cibles ≥ 44px, safe areas, `viewport-fit=cover`, pull-to-refresh (70px).
+- **À la une** : champ optionnel `featured` (bool, défaut false, migration `20261025224000`) ; à défaut, premier article.
+- **Tout marquer terminé** : par thème, confirmation puis toast « Annuler » 8 s (restaure l'état précédent de chaque article).
+
+## Offline / service worker
+
+- `public/journal.webmanifest` (start_url `/journal`, standalone) + raccourci dans le manifest principal.
+- `public/sw.js` (cache `atlas-hq-v3`) + `public/journal-sw-core.js` : l'API `/api/engines/mausbot/journal` est network-first ; seule la **dernière** réponse JSON est conservée (`atlas-journal-v1`) et, hors ligne, servie avec `offline: true` et les `coverUrl` signées retirées si expirées (ou < 60 s). Seule la coquille HTML `/journal` est mise en cache ; aucune autre page authentifiée. Message `journal:clear` pour vider ce cache.
+- `src/proxy.ts` exclut `sw.js`, `journal-sw-core.js` et `*.webmanifest` de l'auth (sinon redirection /login).
+
+## Signal Inbox
+
+`ActivityFeed` (au-dessus de needs-you, sans le modifier) lit la dernière ligne `journal_editions` (RLS propriétaire) et affiche « Journal du matin prêt — N articles » → `/journal`. Allow-list stricte (`journal_ready`), types inconnus ignorés, hrefs relatifs uniquement.

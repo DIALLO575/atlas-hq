@@ -34,6 +34,7 @@
           },
           "published_at": { "type": ["string", "null"], "format": "date-time" },
           "author_bot": { "type": ["string", "null"], "maxLength": 60 },
+          "featured": { "type": "boolean", "default": false, "description": "Optionnel, rétrocompatible : dossier à la une (le premier true l’emporte ; sinon la première entrée)." },
           "cover": {
             "oneOf": [
               { "type": "null" },

@@ -40,6 +40,12 @@ function str(value, max) {
   const s = value.replace(/\s+/g, " ").trim();
   return s ? s.slice(0, max) : null;
 }
+/** Like str() but keeps line breaks so the reader can render lists and quotes. */
+function prose(value, max) {
+  if (typeof value !== "string") return null;
+  const s = value.replace(/\r\n?/g, "\n").split("\n").map(l => l.replace(/[^\S\n]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return s ? s.slice(0, max) : null;
+}
 function hostName(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return null; } }
 
 export const JOURNAL_SCHEMA_VERSION = "1";
@@ -78,7 +84,8 @@ export function validateJournalEdition(data) {
   (Array.isArray(data.items) ? data.items : []).forEach((it, i) => {
     const p = "$.items[" + i + "]";
     if (!it || typeof it !== "object" || Array.isArray(it)) { e.push(p + ": objet attendu"); return; }
-    onlyKeys(it, ["id", "topic", "title", "summary", "why_it_matters", "certainty", "status", "source_url", "source_name", "extra_sources", "published_at", "author_bot", "cover"], p, e);
+    onlyKeys(it, ["id", "topic", "title", "summary", "why_it_matters", "certainty", "status", "source_url", "source_name", "extra_sources", "published_at", "author_bot", "cover", "featured"], p, e);
+    if (it.featured !== undefined && typeof it.featured !== "boolean") e.push(p + ".featured: booléen attendu");
     if (typeof it.id !== "string" || !ID.test(it.id)) e.push(p + ".id: invalide");
     else if (seen.has(it.id)) e.push(p + ".id: doublon"); else seen.add(it.id);
     if (!JOURNAL_TOPICS.includes(it.topic)) e.push(p + ".topic: invalide");
@@ -125,12 +132,12 @@ function normalizeItem(raw, editionId) {
   const published = typeof raw.published_at === "string" && !Number.isNaN(Date.parse(raw.published_at)) ? raw.published_at : null;
   return {
     id, editionId, category, topic: str(raw.topic, 40), title,
-    summary: str(raw.summary, 2000) ?? "", whyItMatters: str(raw.why_it_matters, 1000),
+    summary: prose(raw.summary, 2000) ?? "", whyItMatters: prose(raw.why_it_matters, 1000),
     certainty: CERTAINTY.includes(raw.certainty) ? raw.certainty : null,
     status: STATUS.includes(raw.status) ? raw.status : null,
     sourceUrl, sourceName: str(raw.source_name, 120) ?? (sourceUrl ? hostName(sourceUrl) : null),
     extraSources: extra, cover: normalizeCover(raw.cover), publishedAt: published,
-    authorBot: str(raw.author_bot, 60),
+    authorBot: str(raw.author_bot, 60), featured: raw.featured === true,
   };
 }
 /** Strict JSON edition parser: invalid envelope throws, unknown topics / bad items are skipped. */
