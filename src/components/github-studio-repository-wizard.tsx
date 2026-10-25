@@ -42,7 +42,7 @@ export function GitHubStudioRepositoryWizard({workspaceId,installationId,canMana
   const permitted=canManage && ready && installationId!==null;
   const permission=preview?.permissionState ?? "unavailable";
   const canApprove=Boolean(permitted && preview && permission==="granted" &&
-    typedName===preview.preview.name && consent && approvalKey.current && !working);
+    typedName===preview.preview.name && consent && !working);
   const step=approval ? 3 : preview ? 2 : 1;
 
   function reset(next:Partial<Draft>) {
