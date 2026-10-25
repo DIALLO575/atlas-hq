@@ -61,8 +61,8 @@ test("ATLAS Inbox and homepage display source verified status; the engine route 
   assert.match(route,/requireEngineWorkspace\(workspaceId, true\)/);
   assert.match(route,/mausbotReleasePermission\(process\.env,"read"\)/);
   assert.match(route,/ATLAS_MAUSBOT_NEEDS_YOU_IDENTITY_VERIFIED/);
-  assert.ok(route.indexOf("mausbotReleasePermission")<route.indexOf("resolveMausbotConfig"));
-  assert.ok(route.indexOf("ATLAS_MAUSBOT_NEEDS_YOU_IDENTITY_VERIFIED")<route.indexOf("resolveMausbotConfig"));
+  assert.ok(route.indexOf("const permission=mausbotReleasePermission")<route.indexOf("const config=resolveMausbotConfig"));
+  assert.ok(route.indexOf('if(process.env.ATLAS_MAUSBOT_NEEDS_YOU_IDENTITY_VERIFIED')<route.indexOf("const config=resolveMausbotConfig"));
   assert.doesNotMatch(route,/export async function POST|service_role|MAUSBOT_TOKEN\s*:/);
   assert.match(inbox, /<MausbotNeedsYou workspaceId=\{data\.selected\.id\}/);
   assert.match(home, /<MausbotNeedsYou mode="home"/);
