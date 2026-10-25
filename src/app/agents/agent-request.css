@@ -13,3 +13,81 @@
 .agent-request-panel .team-member-fields { margin-block: 1rem; padding: 1rem; border: 1px solid var(--border, #b8bec8); border-radius: .75rem; }
 .agent-request-panel [role="group"] { display: flex; flex-wrap: wrap; gap: .5rem; }
 .agent-request-panel [aria-pressed="true"] { font-weight: 700; outline: 2px solid currentColor; outline-offset: 1px; }
+.mausbot-live-inventory { margin: 0 0 1.75rem; padding: clamp(1rem, 2vw, 1.5rem); border: 1px solid var(--line, #e5e9ef); border-radius: .9rem; background: var(--surface, #fff); }
+.mausbot-live-heading, .mausbot-live-subheading, .mausbot-live-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.mausbot-live-heading-actions { display: flex; align-items: center; gap: .5rem; }
+.mausbot-live-heading-actions button { margin: 0; }
+.mausbot-live-heading h2, .mausbot-live-subheading h3 { margin: .15rem 0 .5rem; }
+.mausbot-live-eyebrow { margin: 0; color: var(--muted, #758196); font-size: .68rem; font-weight: 700; letter-spacing: .12em; }
+.mausbot-live-state { flex: 0 0 auto; padding: .4rem .65rem; border: 1px solid var(--line, #e5e9ef); border-radius: 999px; color: var(--muted, #758196); font-size: .72rem; }
+.mausbot-live-state.is-live { border-color: #b7d7c1; background: #effaf1; color: #25623a; }
+.mausbot-live-note, .mausbot-live-empty { color: var(--muted, #758196); font-size: .84rem; line-height: 1.55; }
+.mausbot-live-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.2rem; }
+.mausbot-live-grid > section, .mausbot-template-list { min-width: 0; padding: 1rem; border: 1px solid var(--line, #e5e9ef); border-radius: .75rem; }
+.mausbot-live-subheading { align-items: baseline; }
+.mausbot-live-subheading strong { min-width: 1.8rem; padding: .25rem .5rem; border-radius: 999px; background: #eef3f9; color: #344a64; text-align: center; font-size: .75rem; }
+.mausbot-live-list, .mausbot-template-cards { display: grid; gap: .55rem; margin: .75rem 0 0; padding: 0; list-style: none; }
+.mausbot-live-list li { display: flex; align-items: flex-start; gap: .7rem; min-width: 0; padding: .7rem; border-radius: .6rem; background: color-mix(in srgb, var(--canvas, #f6f8fb) 75%, transparent); }
+.mausbot-live-list li > span:last-child { display: grid; gap: .2rem; min-width: 0; }
+.mausbot-live-list small, .mausbot-live-list code { color: var(--muted, #758196); font-size: .72rem; overflow-wrap: anywhere; }
+.mausbot-live-avatar { display: grid; flex: 0 0 2rem; width: 2rem; height: 2rem; place-items: center; border-radius: .65rem; background: #e9eff7; color: #415a78; }
+.mausbot-template-list { margin-top: 1rem; }
+.mausbot-template-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.mausbot-template-cards li { display: grid; gap: .35rem; padding: .8rem; border: 1px solid var(--line, #e5e9ef); border-radius: .65rem; }
+.mausbot-template-cards small { color: var(--muted, #758196); font-size: .72rem; }
+.mausbot-template-cards p { margin: 0; font-size: .8rem; line-height: 1.5; }
+.mausbot-live-actions { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--line, #e5e9ef); color: var(--muted, #758196); font-size: .76rem; line-height: 1.5; }
+.mausbot-live-actions button { flex: 0 0 auto; margin: 0; }
+.mausbot-team-directory, .mausbot-unassigned-section { margin-top: 1rem; }
+.mausbot-team-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-top: .75rem; }
+.mausbot-team-card { min-width: 0; border: 1px solid var(--line, #e5e9ef); border-radius: .8rem; background: var(--surface, #fff); overflow: hidden; }
+.mausbot-team-card summary { display: flex; align-items: center; gap: .75rem; min-height: 4.4rem; padding: .85rem; cursor: pointer; list-style: none; }
+.mausbot-team-card summary::-webkit-details-marker { display: none; }
+.mausbot-team-summary { display: grid; flex: 1; gap: .2rem; min-width: 0; }
+.mausbot-team-summary small, .mausbot-member-list small { color: var(--muted, #758196); font-size: .74rem; }
+.mausbot-team-chevron { transition: transform .16s ease; color: var(--muted, #758196); }
+.mausbot-team-card[open] .mausbot-team-chevron { transform: rotate(180deg); }
+.mausbot-team-content { padding: 0 .85rem .85rem; border-top: 1px solid var(--line, #e5e9ef); }
+.mausbot-team-description { margin: .75rem 0; color: var(--muted, #758196); font-size: .78rem; }
+.mausbot-open-channel { min-height: 2.6rem; margin: 0 0 .5rem !important; }
+.mausbot-member-list { display: grid; gap: .45rem; margin: .65rem 0; padding: 0; list-style: none; }
+.mausbot-member-list li { display: flex; align-items: center; justify-content: space-between; gap: .7rem; min-width: 0; padding: .65rem .7rem; border-radius: .55rem; background: color-mix(in srgb, var(--canvas, #f6f8fb) 75%, transparent); }
+.mausbot-member-list li > span { display: grid; gap: .15rem; min-width: 0; }
+.mausbot-member-list button { flex: 0 0 auto; min-height: 2.6rem; margin: 0; }
+.mausbot-team-id { display: block; margin-top: .7rem; color: var(--muted, #758196); font-size: .68rem; overflow-wrap: anywhere; }
+.mausbot-conversation-panel { margin-top: 1rem; padding: clamp(1rem, 2vw, 1.4rem); border: 1px solid var(--line, #e5e9ef); border-radius: .85rem; background: var(--surface, #fff); scroll-margin-top: 5rem; }
+.mausbot-conversation-panel h3 { margin: .2rem 0 .6rem; }
+.mausbot-task-picker { display: grid; gap: .45rem; max-width: 38rem; margin: .8rem 0; font-size: .78rem; }
+.mausbot-task-picker select { width: 100%; min-height: 2.7rem; padding: .55rem .7rem; border: 1px solid var(--line, #e5e9ef); border-radius: .55rem; background: var(--surface, #fff); color: inherit; font: inherit; }
+.mausbot-message-list { display: grid; gap: .65rem; max-height: min(52vh, 32rem); overflow: auto; overscroll-behavior: contain; margin: 1rem 0; padding: .2rem; list-style: none; }
+.mausbot-message-list li { width: min(88%, 46rem); padding: .75rem .85rem; border: 1px solid var(--line, #e5e9ef); border-radius: .85rem; background: color-mix(in srgb, var(--canvas, #f6f8fb) 78%, transparent); }
+.mausbot-message-list li[data-role="bot"] { justify-self: start; border-top-left-radius: .3rem; }
+.mausbot-message-list li[data-role="human"] { justify-self: end; border-top-right-radius: .3rem; background: #eef3f9; }
+.mausbot-message-list small { color: var(--muted, #758196); font-size: .68rem; }
+.mausbot-message-list p { margin: .4rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+.mausbot-message-list .mausbot-message-attachment { color: var(--muted, #758196); font-style: italic; }
+.mausbot-message-card, .mausbot-tool-detail { display: grid; gap: .4rem; margin-top: .65rem; padding: .75rem; border: 1px solid var(--line, #e5e9ef); border-radius: .65rem; background: var(--surface, #fff); }
+.mausbot-message-card > p, .mausbot-tool-detail > p { margin: 0; }
+.mausbot-message-card > small, .mausbot-tool-detail > summary { color: var(--muted, #758196); font-size: .72rem; }
+.mausbot-tool-detail summary { cursor: pointer; font-weight: 600; }
+.mausbot-tool-detail pre { max-height: 18rem; overflow: auto; margin: 0; padding: .65rem; border-radius: .45rem; background: var(--canvas, #f6f8fb); white-space: pre-wrap; overflow-wrap: anywhere; font-size: .72rem; }
+.mausbot-media-placeholder { display: flex; align-items: center; gap: .65rem; min-height: 4rem; margin-top: .65rem; padding: .7rem; border: 1px dashed var(--line, #cbd2dc); border-radius: .65rem; color: var(--muted, #758196); font-size: .74rem; }
+.mausbot-media-placeholder > span:first-child { display: grid; width: 2.2rem; height: 2.2rem; place-items: center; border-radius: .5rem; background: #eef3f9; color: #415a78; font-size: 1.2rem; }
+.mausbot-message-state { display: block; margin-top: .45rem; }
+.mausbot-chat-composer { display: grid; gap: .5rem; padding-top: .85rem; border-top: 1px solid var(--line, #e5e9ef); }
+.mausbot-chat-composer label { margin: 0; }
+.mausbot-chat-composer textarea { width: 100%; padding: .7rem; border: 1px solid var(--line, #e5e9ef); border-radius: .6rem; background: var(--canvas, #f6f8fb); color: var(--muted, #758196); font: inherit; resize: vertical; }
+.mausbot-chat-composer button { justify-self: end; min-height: 2.7rem; margin: 0; }
+.mausbot-chat-composer small { color: var(--muted, #758196); font-size: .72rem; }
+@media(max-width:760px) {
+  .agent-request-panel { padding: 1rem; }
+  .mausbot-live-grid, .mausbot-team-list { grid-template-columns: 1fr; }
+  .mausbot-live-heading { align-items: flex-start; flex-direction: column; }
+  .mausbot-live-heading-actions { width: 100%; justify-content: space-between; }
+  .mausbot-live-actions { align-items: stretch; flex-direction: column; }
+  .mausbot-live-actions button, .mausbot-member-list button { min-height: 2.75rem; }
+  .mausbot-open-channel { width: 100%; }
+  .mausbot-message-list { max-height: 45vh; }
+  .mausbot-message-list li { width: min(94%, 46rem); }
+}
+@media(prefers-reduced-motion:reduce) { .mausbot-team-chevron { transition: none; } }

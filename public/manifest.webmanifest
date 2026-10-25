@@ -30,6 +30,19 @@
           "type": "image/svg+xml"
         }
       ]
+    },
+    {
+      "name": "Agents et équipes",
+      "short_name": "Agents",
+      "description": "Ouvrir l’inventaire MAUSBOT dans ATLAS HQ",
+      "url": "/agents",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }

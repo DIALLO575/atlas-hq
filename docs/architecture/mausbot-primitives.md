@@ -345,3 +345,41 @@ Tests PostgreSQL sur base jetable en CI + tests Node hors réseau.
 créées, RLS active, 0 instance/mission de moteur.** Il reste à développer
 le vault, l'actor-session proof, les transactions du worker, les
 leases à jeton de fencing, RLS Supabase complète et l'E2E sandbox.
+
+## Interface Agents — inventaire MAUSBOT en lecture seule
+
+La page `/agents` consomme `GET /api/engines/mausbot?view=inventory` après
+authentification et vérification du workspace. Le serveur appelle les lectures
+`agents.list` et `channels.list`, puis le catalogue optionnel
+`teams.library.catalog`. Il ne renvoie à l'interface qu'un sous-ensemble de
+métadonnées (ID/nom/titre et tâches bornées des bots, ID/nom/membres des groupes,
+résumé du catalogue d'équipes) et annonce `canWrite:false`. Les équipes sont
+présentées d'abord, dépliables pour consulter leurs bots, puis les bots sans
+équipe.
+
+L'historique d'un fil utilise `conversations.messages.list`, avec au plus 50
+messages et 6000 caractères de texte par message, sans capture binaire ni objet
+de credential. Cette lecture de contenu exige owner/admin; les opérations
+sensibles de conversation et job ne sont pas ouvertes aux membres simples.
+Le worker PWA ne met en cache que le shell public, jamais HTML authentifié ni
+API. Le manifeste ajoute un raccourci Agents pour mobile.
+
+Les demandes du formulaire « bot/équipe » restent des demandes humaines
+ATLAS (`awaiting-approval`), pas des créations ou modifications du moteur.
+L'envoi de message est affiché mais désactivé; l'historique ne déclenche aucun
+effet. L'UI indique cette limite. Les appels write/execute MAUSBOT demeurent bloqués
+par le gate HTTP 423 tant que le worker durable, l'autorisation persistée et
+les preuves live ne sont pas en place. La lecture réelle nécessite un secret
+serveur valide et le mode serveur `read-only`; le défaut reste offline.
+
+Cette tranche ajoute le chemin d'affichage au worktree local; elle n'est pas
+encore publiée ni vérifiée sur un hôte MAUSBOT réel. `hostTested=0` reste la
+mesure de référence.
+
+## Messagerie ATLAS ↔ MAUSBOT — tranche UI locale, 25 octobre 2026
+
+La page `/agents` ouvre maintenant un fil d'équipe (`channels.messages.list`) aussi bien que le fil d'un bot (`conversations.messages.list`). L'inventaire groupe inclut uniquement les IDs/titres/états bornés des tâches pour offrir un sélecteur de fil. Les conversations se rafraîchissent toutes les 5 secondes pendant que la page est visible, sans SSE/stream MAUSBOT.
+
+Les deux routes de lecture retournent une projection bornée commune : 50 messages, texte max 6000 caractères, statut de file, et champs explicites de cartes/outils (titres, état, extraits bornés). Le rendu React n'interprète pas de HTML. Les cartes sont en lecture seule; les sorties d'outils sont repliables. Le marqueur d'image reste un placeholder : aucun binaire MAUSBOT n'est téléchargé ni passé au navigateur. L'API source d'image existe, mais le contrat ATLAS n'a qu'un plan de transfert hors ligne qui requiert encore un worker et l'autorisation de propriété workspace/fil/message. Le contrat de message actuel ne fournit pas de payload graphique ou vidéo admis; ces rendus attendent une spécification source, une projection stricte et un relais média sécurisé.
+
+Le composeur reste désactivé et le serveur bloque toujours write/execute (HTTP 423). Pas de message envoyé, créé ou mis en file. L'envoi n'est pas activé par la simple présence de `conversations.messages.send`; il manque l'approbation durable, la prise en charge worker/idempotence, la revalidation d'accès et la preuve live. Typecheck réussi et `git diff --check` propre; tests automatisés non lancés, hôte MAUSBOT non configuré/vérifié, aucune publication ni déploiement.

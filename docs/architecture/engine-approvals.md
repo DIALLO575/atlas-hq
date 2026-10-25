@@ -116,12 +116,21 @@ application et son SHA, puis deux comptes de test réellement authentifiés
 (demandeur et reviewer distincts). Ne jamais réutiliser les JWT fictifs des tests
 SQL ni insérer leurs fixtures dans la base connectée.
 
-La création contrôlée doit vérifier la session et le rôle demandeur sous
-transaction, charger une mission du même workspace, fixer instance offline,
-primitive et hash serveur, créer run + demande pending + audit atomiquement,
-retourner uniquement les identifiants/empreinte et conserver zéro outbox.
-Ce chemin reste à implémenter et à tester ; aucun endpoint générique d'insertion
-ni activation de moteur ne fait partie de ce lot de tests.
+**État du code au 25 octobre 2026 :** ce chemin est implémenté dans la branche
+proposée par PR #60 : `POST /api/engines/agent-requests` et
+`POST /api/engines/team-requests` appellent les RPC Auth contrôlées. La migration
+`20261025114614` fixe le demandeur depuis `auth.uid()`, revérifie session/rôle,
+workspace, mission et instance MAUSBOT offline, puis écrit run `awaiting-approval`,
+demande pending et audit dans une transaction. Le profil est borné et son hash
+est fixé côté serveur; la réponse conserve `can_dispatch=false`, sans outbox ni
+appel moteur.
+
+Cette implémentation n'est **pas encore prouvée en fonctionnement Web/Auth** :
+PR #60 est draft/non fusionnée et le SHA servi n'est pas vérifié. Ne pas lire
+« implémenté » comme « déployé » ou « testé de bout en bout ». Une demande réelle
+ne peut être créée qu'après déploiement vérifié sur une cible isolée et comptes
+de test distincts, selon les préconditions plus haut. Aucun endpoint générique
+d'insertion ni activation moteur ne fait partie de ce lot.
 
 Rapport staging obligatoire : SHA servi, versions SQL, identités pseudonymisées,
 session supprimée/expirée, rôle retiré, expiration de demande, auto-review,
