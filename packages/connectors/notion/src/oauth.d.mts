@@ -5,7 +5,7 @@ export function buildNotionAuthorizationUrl(args: {
 }): string;
 export function exchangeNotionAuthorizationCode(args: {
   clientId: string; clientSecret: string; code: string; redirectUri: string;
-  publicOrigin: string; request?: typeof fetch;
+  publicOrigin: string; request?: typeof fetch; timeoutMs?: number;
 }): Promise<{ accessToken: string; refreshToken: string | null;
   notionWorkspaceId: string; notionBotId: string; workspaceName: string | null }>;
 export function revokeNotionOAuthToken(args: {

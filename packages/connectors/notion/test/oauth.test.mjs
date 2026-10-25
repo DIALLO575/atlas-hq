@@ -53,3 +53,37 @@ test("rejects malformed or provider-denied OAuth replies", async () => {
     publicOrigin: origin, request: async () => ({ ok: false, status: 401 }),
   }), { code: "OAUTH_REJECTED" });
 });
+
+test("exchange bounds provider network time, redacts errors", async () => {
+  let aborted = false;
+  await assert.rejects(exchangeNotionAuthorizationCode({
+    clientId: ID, clientSecret: "secret", code: "code", redirectUri, publicOrigin: origin,
+    timeoutMs: 1000,
+    request: async (_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => {
+        aborted = true;
+        reject(new Error("private-provider-response"));
+      }, { once: true });
+    }),
+  }), error => error.code === "PROVIDER_UNAVAILABLE" &&
+      !error.message.includes("private-provider-response"));
+  assert.equal(aborted, true);
+});
+test("exchange bounds a stalled JSON body and validates timeout before fetch", async () => {
+  await assert.rejects(exchangeNotionAuthorizationCode({
+    clientId: ID, clientSecret: "secret", code: "code", redirectUri, publicOrigin: origin,
+    timeoutMs: 1000,
+    request: async (_url, options) => ({ ok: true, status: 200,
+      json: () => new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () => reject(new Error("private-json")),
+          { once: true });
+      }),
+    }),
+  }), error => error.code === "PROVIDER_UNAVAILABLE" &&
+      !error.message.includes("private-json"));
+  await assert.rejects(exchangeNotionAuthorizationCode({
+    clientId: ID, clientSecret: "secret", code: "code", redirectUri, publicOrigin: origin,
+    timeoutMs: -1,
+    request: async () => { throw new Error("Must not reach provider"); },
+  }), { code: "OAUTH_CONFIGURATION_INVALID" });
+});

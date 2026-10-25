@@ -74,7 +74,12 @@ export async function loadNotionPersonalConnection({
             p_expected_version: key.version, p_max_wait_ms: key.maxWaitMs,
           });
           if (error) throw new Error("NOTION_BUDGET_STORE_UNAVAILABLE");
-          return typeof data === "number" && Number.isInteger(data) ? data : null;
+          if (!data || typeof data !== "object") return null;
+          const value = data as { delay_ms?: unknown; probe_lease_id?: unknown };
+          return Number.isInteger(value.delay_ms) &&
+            (value.probe_lease_id === null || typeof value.probe_lease_id === "string")
+            ? { delayMs: value.delay_ms as number,
+                probeLeaseId: value.probe_lease_id as string | null } : null;
         },
         async cooldown(key) {
           const { data, error } = await admin.rpc("atlas_notion_cooldown_rest_read", {
@@ -93,6 +98,7 @@ export async function loadNotionPersonalConnection({
             p_workspace_id: key.workspaceId, p_user_id: key.userId,
             p_notion_workspace_id: key.notionWorkspaceId,
             p_expected_version: key.version, p_outcome: key.outcome,
+            p_probe_lease_id: key.probeLeaseId,
           });
           if (error) throw new Error("NOTION_BUDGET_STORE_UNAVAILABLE");
           return data === true;

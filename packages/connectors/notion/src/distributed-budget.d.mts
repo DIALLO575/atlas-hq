@@ -4,10 +4,12 @@ export interface NotionBudgetBinding {
   connectionId: string; version: number;
 }
 export interface NotionDistributedBudgetStore {
-  reserve(binding: NotionBudgetBinding & { maxWaitMs: number }): Promise<number | null>;
+  reserve(binding: NotionBudgetBinding & { maxWaitMs: number }): Promise<{
+    delayMs: number; probeLeaseId: string | null;
+  } | null>;
   cooldown(binding: NotionBudgetBinding & { seconds: number | null }): Promise<boolean>;
   reportOutcome(binding: NotionBudgetBinding & {
-    outcome: "success" | "transient";
+    outcome: "success" | "transient"; probeLeaseId: string | null;
   }): Promise<boolean>;
 }
 export function createNotionDistributedBudget(args: {
@@ -17,5 +19,6 @@ export function createNotionDistributedBudget(args: {
   maxWaitMs?: number;
   wait?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }): NotionScopedReadBudget & {
-  observeOutcome(outcome: "success" | "transient"): Promise<void>;
+  observeOutcome(outcome: "success" | "transient",
+    reservation?: { probeLeaseId: string | null } | null): Promise<void>;
 };

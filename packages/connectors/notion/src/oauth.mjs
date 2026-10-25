@@ -47,39 +47,48 @@ export function buildNotionAuthorizationUrl({ clientId, redirectUri, publicOrigi
   return url.toString();
 }
 export async function exchangeNotionAuthorizationCode({
-  clientId, clientSecret, code, redirectUri, publicOrigin, request = fetch,
+  clientId, clientSecret, code, redirectUri, publicOrigin,
+  request = fetch, timeoutMs = 10000,
 }) {
   if (!UUID.test(clientId ?? "") || !nonempty(clientSecret, 512) ||
       !nonempty(code, 2048) || !callbackAllowed(redirectUri, publicOrigin) ||
-      typeof request !== "function") {
+      typeof request !== "function" || !Number.isInteger(timeoutMs) ||
+      timeoutMs < 1000 || timeoutMs > 30000) {
     throw new NotionOAuthError("OAUTH_CONFIGURATION_INVALID");
   }
-  let response;
-  try {
-    response = await request(ORIGIN + "/v1/oauth/token", {
-      method: "POST",
-      headers: {
-        Authorization: "Basic " + Buffer.from(clientId + ":" + clientSecret).toString("base64"),
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "Notion-Version": "2026-03-11",
-      },
-      body: JSON.stringify({
-        grant_type: "authorization_code", code, redirect_uri: redirectUri,
-      }),
-      cache: "no-store",
-      redirect: "error",
-    });
-  } catch {
-    throw new NotionOAuthError("PROVIDER_UNAVAILABLE");
-  }
-  if (!response?.ok) {
-    throw new NotionOAuthError(response?.status === 401 ? "OAUTH_REJECTED" : "PROVIDER_UNAVAILABLE");
-  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   let value;
-  try { value = await response.json(); } catch {
-    throw new NotionOAuthError("INVALID_RESPONSE");
-  }
+  try {
+    let response;
+    try {
+      response = await request(ORIGIN + "/v1/oauth/token", {
+        method: "POST",
+        headers: {
+          Authorization: "Basic " + Buffer.from(clientId + ":" + clientSecret).toString("base64"),
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "Notion-Version": "2026-03-11",
+        },
+        body: JSON.stringify({
+          grant_type: "authorization_code", code, redirect_uri: redirectUri,
+        }),
+        signal: controller.signal,
+        cache: "no-store",
+        redirect: "error",
+      });
+    } catch {
+      throw new NotionOAuthError("PROVIDER_UNAVAILABLE");
+    }
+    if (!response?.ok) {
+      throw new NotionOAuthError(response?.status === 401 ?
+        "OAUTH_REJECTED" : "PROVIDER_UNAVAILABLE");
+    }
+    try { value = await response.json(); } catch {
+      throw new NotionOAuthError(controller.signal.aborted ?
+        "PROVIDER_UNAVAILABLE" : "INVALID_RESPONSE");
+    }
+  } finally { clearTimeout(timer); }
   if (!value || !nonempty(value.access_token, 16384) ||
       (value.refresh_token !== null && value.refresh_token !== undefined &&
        !nonempty(value.refresh_token, 16384)) ||

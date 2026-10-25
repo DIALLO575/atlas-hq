@@ -29,12 +29,61 @@ export function notionListView(raw) {
         kind: item.object,
         title: pageTitle(item),
         editedAt: typeof item.last_edited_time === "string" ? item.last_edited_time : null,
+        url: safeNotionUrl(item.url),
       }];
     }),
     hasMore: raw.has_more,
     nextCursor: raw.next_cursor ?? null,
   };
 }
+
+/** Links must stay on official Notion hosts, never arbitrary provider URLs. */
+export function safeNotionUrl(value) {
+  if (typeof value !== "string" || value.length > 2048) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || url.port ||
+        !["notion.so", "www.notion.so", "notion.com", "www.notion.com"].includes(url.hostname)) {
+      return null;
+    }
+    return url.toString();
+  } catch { return null; }
+}
+const VIEW_TYPES = new Set(["table", "board", "calendar", "timeline", "gallery",
+  "list", "form", "chart", "map", "dashboard"]);
+export function notionViewsList(raw) {
+  if (!raw || !Array.isArray(raw.results) ||
+      typeof raw.has_more !== "boolean" ||
+      (raw.has_more && typeof raw.next_cursor !== "string")) {
+    throw new Error("NOTION_INVALID_RESPONSE");
+  }
+  return {
+    results: raw.results.slice(0, 8).flatMap(item =>
+      item?.object === "view" && UUID.test(item.id ?? "") ? [{
+        id: item.id, name: typeof item.name === "string" ?
+          item.name.slice(0, 160) : "Vue Notion",
+        type: VIEW_TYPES.has(item.type) ? item.type : "unknown",
+        url: safeNotionUrl(item.url),
+        editedAt: typeof item.last_edited_time === "string" ?
+          item.last_edited_time : null,
+      }] : []),
+    hasMore: raw.has_more, nextCursor: raw.next_cursor ?? null,
+  };
+}
+export function notionViewPreview(raw) {
+  if (!raw || raw.object !== "view_query" || !Array.isArray(raw.results) ||
+      typeof raw.has_more !== "boolean") {
+    throw new Error("NOTION_INVALID_RESPONSE");
+  }
+  return {
+    results: notionListView({ results: raw.results.slice(0, 12),
+      has_more: false, next_cursor: null }).results,
+    hasMore: raw.has_more,
+    totalCount: Number.isSafeInteger(raw.total_count) && raw.total_count >= 0 ?
+      raw.total_count : null,
+  };
+}
+
 export function notionBlockView(raw) {
   if (!raw || !Array.isArray(raw.results) || typeof raw.has_more !== "boolean") {
     throw new Error("NOTION_INVALID_RESPONSE");

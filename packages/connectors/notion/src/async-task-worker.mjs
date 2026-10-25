@@ -47,28 +47,50 @@ export function classifyNotionAsyncPollError(error) {
  * Caller supplies an authenticated, credential-version-bound reader. It is
  * deliberately NOT a runnable public API endpoint or background schedule.
  */
-export async function processOneNotionAsyncTask({ store, readTask }) {
+export async function processOneNotionAsyncTask({ store, readTask, onMetric = () => {} }) {
   if (!store || typeof store.claim !== "function" ||
-      typeof store.finish !== "function" || typeof readTask !== "function") {
+      typeof store.finish !== "function" || typeof readTask !== "function" ||
+      typeof onMetric !== "function") {
     throw new Error("INVALID_ASYNC_WORKER");
   }
+  const metric = (name) => { try { onMetric(name); } catch { /* telemetry is best effort */ } };
   const claim = await store.claim();
-  if (!claim) return Object.freeze({ state: "idle" });
-  if (!claim.job_id || !claim.lease_id ||
+  if (!claim) {
+    metric("idle");
+    return Object.freeze({ state: "idle" });
+  }
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID.test(claim.job_id ?? "") || !UUID.test(claim.lease_id ?? "") ||
+      !UUID.test(claim.connection_id ?? "") || !UUID.test(claim.workspace_id ?? "") ||
+      !UUID.test(claim.user_id ?? "") || !UUID.test(claim.notion_workspace_id ?? "") ||
+      !Number.isSafeInteger(claim.credential_version) || claim.credential_version < 1 ||
       !TASK_ID.test(claim.provider_task_id ?? "")) {
+    metric("invalid_lease");
     throw new Error("INVALID_ASYNC_LEASE");
   }
   let result;
-  try { result = classifyNotionAsyncTask(await readTask(claim),claim.provider_task_id); }
-  catch (error) { result = classifyNotionAsyncPollError(error); }
+  try {
+    const signal = AbortSignal.timeout(9000);
+    result = classifyNotionAsyncTask(
+      await readTask(claim, { signal }), claim.provider_task_id);
+  } catch (error) {
+    if (error?.code === "STORE_UNAVAILABLE") {
+      metric("store_unavailable");
+      throw new Error("ASYNC_STORE_UNAVAILABLE");
+    }
+    result = classifyNotionAsyncPollError(error);
+  }
   const saved = await store.finish({
     jobId: claim.job_id, leaseId: claim.lease_id,
     outcome: result.outcome, delaySeconds: result.delaySeconds,
     errorCode: result.errorCode,
   });
-  if (saved !== true) throw new Error("ASYNC_LEASE_LOST");
-  return Object.freeze({
-    state: result.outcome === "succeeded" ? "succeeded" :
-      result.outcome === "permanent" ? "dead" : "rescheduled",
-  });
+  if (saved !== true) {
+    metric("lease_lost");
+    throw new Error("ASYNC_LEASE_LOST");
+  }
+  const state = result.outcome === "succeeded" ? "succeeded" :
+    result.outcome === "permanent" ? "dead" : "rescheduled";
+  metric(state);
+  return Object.freeze({ state });
 }

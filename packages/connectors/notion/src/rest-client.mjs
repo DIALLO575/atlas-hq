@@ -102,9 +102,10 @@ export function createNotionReadClient({
       else signal?.addEventListener?.("abort", cancel, { once: true });
       const timeout = setTimeout(cancel, timeoutMs);
       let response;
+      let reservation = null;
       try {
         if (requestBudget) {
-          try { await requestBudget.beforeRequest(controller.signal); }
+          try { reservation = await requestBudget.beforeRequest(controller.signal) ?? null; }
           catch (error) {
             if (error instanceof NotionBudgetError) {
               const aborted = error.code === "REQUEST_ABORTED";
@@ -147,7 +148,7 @@ export function createNotionReadClient({
         const status = response.status;
         const seconds = retryAfter(response.headers);
         if (status >= 500 && requestBudget?.observeOutcome) {
-          try { await requestBudget.observeOutcome("transient"); }
+          try { await requestBudget.observeOutcome("transient",reservation); }
           catch { throw new NotionReadError("PROVIDER_UNAVAILABLE", 503); }
         }
         if ((status === 429 || status === 529) && requestBudget) {
@@ -183,7 +184,7 @@ export function createNotionReadClient({
       try {
         const result = requireObject(await response.json());
         if (requestBudget?.observeOutcome) {
-          try { await requestBudget.observeOutcome("success"); }
+          try { await requestBudget.observeOutcome("success",reservation); }
           catch { throw new NotionReadError("PROVIDER_UNAVAILABLE", 503); }
         }
         return result;
@@ -209,6 +210,29 @@ export function createNotionReadClient({
       if (query.trim()) body.query = query.trim();
       if (cursor(startCursor)) body.start_cursor = startCursor;
       return paginated(await call("POST", "/v1/search", body, signal));
+    },
+    /** Native Notion views: list/retrieve saved definitions without changing them. */
+    async listViews({ sourceKind = "database", resourceId, startCursor = null,
+      size = 8, signal } = {}) {
+      if (!["database", "data_source"].includes(sourceKind)) {
+        throw new NotionReadError("INVALID_INPUT", 400);
+      }
+      const params = parameters({ startCursor, size });
+      params.set(sourceKind === "database" ? "database_id" : "data_source_id", uuid(resourceId));
+      return paginated(await call("GET", "/v1/views?" + params, null, signal));
+    },
+    async getView(id, { signal } = {}) {
+      return call("GET", "/v1/views/" + uuid(id), null, signal);
+    },
+    /** POST creates only a short-lived query snapshot, never Notion content. */
+    async previewView(id, { size = 12, signal } = {}) {
+      const result = requireObject(await call("POST", "/v1/views/" + uuid(id) +
+        "/queries", { page_size: pageSize(size) }, signal));
+      if (result.object !== "view_query" || !Array.isArray(result.results) ||
+          typeof result.has_more !== "boolean") {
+        throw new NotionReadError("INVALID_RESPONSE", 502);
+      }
+      return result;
     },
     async getPage(id, { signal } = {}) {
       return call("GET", "/v1/pages/" + uuid(id), null, signal);

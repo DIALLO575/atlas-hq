@@ -30,7 +30,7 @@ test("search list exposes only whitelisted fields and title", () => {
     internal_private_token: "SHOULD_NOT_LEAK", last_edited_time: "2026-10-24",
   }] });
   assert.deepEqual(view.results, [{ id, kind: "page", title: "Release plan",
-    editedAt: "2026-10-24" }]);
+    editedAt: "2026-10-24", url: null }]);
   assert.equal(JSON.stringify(view).includes("SHOULD_NOT_LEAK"), false);
 });
 test("block view returns bounded plain text, no original rich body", () => {
