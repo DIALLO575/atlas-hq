@@ -10,6 +10,26 @@
   "background_color": "#101415",
   "theme_color": "#101415",
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "GitHub — Atlas",
+      "short_name": "GitHub",
+      "description": "Ouvrir le centre de pilotage GitHub dans la PWA Atlas",
+      "url": "/apps/github",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
   ]
 }

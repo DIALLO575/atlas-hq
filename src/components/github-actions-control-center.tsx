@@ -60,6 +60,8 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
   const [runs,setRuns]=useState<Run[]>([]);
   const [truncated,setTruncated]=useState(false);
   const [selectedRunId,setSelectedRunId]=useState<number|null>(null);
+  // Mobile: replace the run feed with a dedicated job inspector screen.
+  const [mobileRunDetail,setMobileRunDetail]=useState(false);
   const [jobs,setJobs]=useState<Job[]>([]);
   const [jobsTruncated,setJobsTruncated]=useState(false);
   const [filter,setFilter]=useState<"all"|"failure"|"success">("all");
@@ -88,6 +90,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
   async function loadRuns(repo:number,controller:AbortController) {
     jobsController.current?.abort();
     setError(null);setRuns([]);setJobs([]);setSelectedRunId(null);
+    setMobileRunDetail(false);
     setTruncated(false);setLoading("runs");
     try{
       const data=await actionsRequest<RunList>({
@@ -118,6 +121,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
     const controller=new AbortController();
     jobsController.current=controller;
     setSelectedRunId(run.id);setJobs([]);setJobsTruncated(false);setError(null);setLoading("jobs");
+    setMobileRunDetail(true);
     try{
       const data=await actionsRequest<JobList>({
         workspaceId,installationId:String(installationId),
@@ -140,7 +144,8 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
     void loadRuns(activeRepo,controller);
   }
 
-  return <section className="atlas-gh-actions" aria-label="GitHub Actions Control Center">
+  return <section className={"atlas-gh-actions"+(mobileRunDetail ? " is-mobile-run-detail" : "")}
+    aria-label="GitHub Actions Control Center">
     <header className="atlas-gh-actions-hero">
       <div><span className="atlas-gh-actions-overline"><Icon name="activity"/> GITHUB ACTIONS / CI-CD</span>
         <h2>Vos builds, sans zone d&apos;ombre<span>.</span></h2>
@@ -153,6 +158,7 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
         <select value={activeRepo??""} disabled={loading!==null || !ready || !repositories.length}
           onChange={event=>{jobsController.current?.abort();runsController.current?.abort();
             setRuns([]);setJobs([]);setSelectedRunId(null);setError(null);setTruncated(false);
+            setMobileRunDetail(false);
             setRepositoryId(Number(event.target.value));}}>
           {repositories.map(repo=><option value={repo.id} key={repo.id}>{repo.fullName}</option>)}
         </select>
@@ -202,6 +208,9 @@ export function GitHubActionsControlCenter({workspaceId,installationId,repositor
           {truncated && <p className="atlas-gh-actions-message">Liste limitée aux 20 dernières exécutions. Voir GitHub pour l&apos;historique complet.</p>}
         </section>
         <aside className="atlas-gh-actions-inspector" aria-label="Diagnostic de workflow" aria-busy={loading==="jobs"}>
+          <button type="button" className="atlas-gh-actions-mobile-back" onClick={() => setMobileRunDetail(false)}>
+            <Icon name="arrow-left"/> Retour aux workflows
+          </button>
           <span className="atlas-gh-actions-overline">INSPECTEUR DE CI</span>
           {!selectedRun && <div className="atlas-gh-actions-placeholder">
             <span><Icon name="activity"/></span>

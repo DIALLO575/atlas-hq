@@ -1,0 +1,397 @@
+/* GitHub PWA — native-feeling phone workspace, not the desktop grid scaled down.
+   Desktop remains governed by github-command-deck.css. */
+.atlas-gh-mobile-atlas-back,
+.atlas-gh-mobile-dock,
+.atlas-gh-mobile-back,
+.atlas-gh-actions-mobile-back{display:none}
+
+@media (max-width:760px) {
+  /* Dedicated phone surface on top of the persistent Atlas dock. */
+  .atlas-github-page{padding:0!important;margin:0!important;min-height:0!important}
+  .atlas-gh-console,
+  .atlas-gh-console.is-focus{
+    position:fixed!important;
+    inset:0!important;
+    z-index:11000;
+    width:100%!important;
+    height:100vh;
+    height:100dvh;
+    max-width:none!important;
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    background:#f6f8fa;
+    padding:0 0 calc(90px + env(safe-area-inset-bottom,0px))!important;
+    border:0;
+    border-radius:0;
+  }
+  /* Top bar is its own native-style app header, with exit to Atlas. */
+  .atlas-gh-console .atlas-gh-hero{
+    position:sticky;
+    top:0;
+    z-index:5;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    flex-direction:row;
+    gap:9px;
+    min-height:64px;
+    margin:0;
+    padding:calc(9px + env(safe-area-inset-top,0px)) 13px 9px!important;
+    border:0;
+    border-bottom:1px solid #30363d;
+    border-radius:0;
+    background:#0d1117;
+  }
+  .atlas-gh-console .atlas-gh-mobile-atlas-back{
+    flex:0 0 38px;
+    width:38px;
+    height:42px;
+    display:grid;
+    place-items:center;
+    border:1px solid #30363d;
+    border-radius:11px;
+    color:#e6edf3;
+    background:#21262d;
+    text-decoration:none;
+  }
+  .atlas-gh-console .atlas-gh-mobile-atlas-back svg{width:19px;height:19px}
+  .atlas-gh-console .atlas-gh-identity{flex:1 1 125px;min-width:0;gap:9px}
+  .atlas-gh-console .atlas-gh-mark{width:34px;height:34px;flex-basis:34px;border-radius:9px}
+  .atlas-gh-console .atlas-gh-mark .atlas-brand-image{max-width:23px;max-height:23px}
+  .atlas-gh-console .atlas-gh-identity h1{font-size:16px!important;white-space:nowrap}
+  .atlas-gh-console .atlas-gh-identity .atlas-overline{font-size:8px;letter-spacing:.08em}
+  .atlas-gh-console .atlas-gh-identity p:last-child{display:none}
+  .atlas-gh-console .atlas-gh-header-actions{
+    display:flex;
+    flex:0 1 auto;
+    width:auto;
+    min-width:86px;
+    align-items:center;
+    margin-left:auto;
+  }
+  .atlas-gh-console .atlas-gh-workspace-pick{font-size:0;min-width:86px;width:auto;max-width:148px}
+  .atlas-gh-console .atlas-gh-workspace-pick select{
+    width:100%;
+    max-width:148px;
+    min-width:86px;
+    height:40px;
+    padding:0 19px 0 10px;
+    border-radius:9px;
+    font-size:12px;
+    text-overflow:ellipsis;
+  }
+  .atlas-gh-console .atlas-gh-focus-toggle{display:none}
+  .atlas-gh-console .atlas-gh-connection-strip{
+    border:0;
+    border-bottom:1px solid #d8dee4;
+    border-radius:0;
+    box-shadow:none;
+    padding:9px 14px;
+    min-height:58px;
+    gap:9px;
+    align-items:center;
+    background:#fff;
+  }
+  .atlas-gh-console .atlas-gh-connection-label{min-width:0;gap:7px}
+  .atlas-gh-console .atlas-gh-connection-label strong{font-size:11px}
+  .atlas-gh-console .atlas-gh-connection-label>span:last-child{
+    display:block;
+    max-width:220px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:9px;
+  }
+  .atlas-gh-console .atlas-gh-install-controls{gap:5px;flex:0 0 auto}
+  .atlas-gh-console .atlas-gh-install-controls .atlas-gh-minor-action{display:none}
+  .atlas-gh-console .atlas-gh-install-controls .atlas-gh-refresh{
+    width:40px;height:40px;min-height:40px;
+    display:grid;place-items:center;
+    padding:0;
+    font-size:0;
+    border-radius:10px;
+  }
+  .atlas-gh-console .atlas-gh-install-controls .atlas-gh-refresh svg{height:17px;width:17px}
+  .atlas-gh-console .atlas-gh-install-controls label{max-width:90px;overflow:hidden}
+  .atlas-gh-console .atlas-gh-install-controls select{height:40px;max-width:85px;min-width:65px;font-size:11px}
+  /* Desktop rail disappears: thumb navigation is an independent persistent dock. */
+  .atlas-gh-console .atlas-gh-workbench,
+  .atlas-gh-console.is-focus .atlas-gh-workbench{
+    display:block;
+    min-height:0;
+    margin:0;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+    overflow:visible;
+    background:#f6f8fa;
+  }
+  .atlas-gh-console .atlas-gh-tabs{display:none!important}
+  .atlas-gh-console .atlas-gh-workbench-body,
+  .atlas-gh-console.is-focus .atlas-gh-workbench-body{
+    padding:15px 13px 10px;
+    min-width:0;
+    background:#f6f8fa;
+  }
+  .atlas-gh-console .atlas-gh-view-title{margin:0 0 14px;gap:9px}
+  .atlas-gh-console .atlas-gh-view-title h2{font-size:19px;letter-spacing:-.035em}
+  .atlas-gh-console .atlas-gh-view-title p:last-child{font-size:11px;line-height:1.5;margin-top:4px}
+  .atlas-gh-console .atlas-gh-view-title .atlas-gh-eyebrow{font-size:9px;margin-bottom:4px}
+  .atlas-gh-console .atlas-gh-view-flag{display:none}
+  /* Bottom PWA navigation covers six destinations, each a real 48px+ touch target. */
+  .atlas-gh-console .atlas-gh-mobile-dock{
+    display:grid!important;
+    grid-template-columns:repeat(6,minmax(0,1fr));
+    align-items:stretch;
+    position:fixed;
+    z-index:11010;
+    bottom:0;left:0;right:0;
+    width:100%;
+    min-height:65px;
+    padding:6px max(5px,env(safe-area-inset-left,0px))
+      calc(6px + env(safe-area-inset-bottom,0px))
+      max(5px,env(safe-area-inset-right,0px));
+    border-top:1px solid #30363d;
+    background:rgba(13,17,23,.98);
+    box-shadow:0 -8px 28px #0d11172b;
+    -webkit-backdrop-filter:blur(16px);
+    backdrop-filter:blur(16px);
+  }
+  .atlas-gh-console .atlas-gh-mobile-dock button{
+    min-width:0;
+    min-height:49px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    padding:6px 1px;
+    border:1px solid transparent;
+    border-radius:10px;
+    background:transparent;
+    color:#a8b3be;
+    font:650 9px/1.1 var(--font-body);
+    cursor:pointer;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .atlas-gh-console .atlas-gh-mobile-dock button svg{width:20px;height:20px}
+  .atlas-gh-console .atlas-gh-mobile-dock button.is-active{
+    background:#1d2a23;
+    border-color:#355440;
+    color:#72e69d;
+  }
+  .atlas-gh-console .atlas-gh-mobile-dock button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .atlas-gh-console .atlas-gh-mobile-dock button:focus-visible{
+    outline:2px solid #58a6ff;outline-offset:-2px;
+  }
+  /* Dashboard: compact intelligence surfaces designed for one-handed browsing. */
+  .atlas-gh-console .atlas-gh-overview{gap:11px}
+  .atlas-gh-console .atlas-gh-overview-welcome{min-height:0;padding:18px 16px;border-radius:15px}
+  .atlas-gh-console .atlas-gh-overview-welcome h3{font-size:21px;line-height:1.18;margin:10px 0 6px}
+  .atlas-gh-console .atlas-gh-overview-welcome p{font-size:11px;line-height:1.6}
+  .atlas-gh-console .atlas-gh-overview-actions{margin-top:13px}
+  .atlas-gh-console .atlas-gh-overview-actions button{min-height:43px;padding:9px 12px}
+  .atlas-gh-console .atlas-gh-overview-grid{grid-template-columns:1fr 1fr;gap:9px}
+  .atlas-gh-console .atlas-gh-overview-card{
+    min-height:144px;
+    border-radius:12px;
+    padding:12px;
+    gap:8px;
+  }
+  .atlas-gh-console .atlas-gh-overview-card-icon{width:31px;height:31px}
+  .atlas-gh-console .atlas-gh-overview-card strong{font-size:12px}
+  .atlas-gh-console .atlas-gh-overview-card small{font-size:10px}
+  .atlas-gh-console .atlas-gh-overview-activity{padding:13px;border-radius:12px}
+  .atlas-gh-console .atlas-gh-overview-pr{min-height:57px}
+  .atlas-gh-console .atlas-gh-overview-pr strong{font-size:11px}
+  .atlas-gh-console .atlas-gh-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+  .atlas-gh-console .atlas-gh-stat{min-height:100px;padding:10px;flex-direction:column;align-items:flex-start;gap:6px;border-radius:11px}
+  .atlas-gh-console .atlas-gh-stat-icon{width:28px;height:28px}
+  .atlas-gh-console .atlas-gh-stat strong{font-size:19px}
+  .atlas-gh-console .atlas-gh-stat small{font-size:9px}
+  /* Repository list is a touch list, not a table squeezed to phone width. */
+  .atlas-gh-console .atlas-gh-content-v2{display:block;min-width:0}
+  .atlas-gh-console .atlas-gh-primary,.atlas-gh-console .atlas-gh-detail-panel{
+    width:100%;min-width:0;padding:14px;border-radius:13px;
+  }
+  .atlas-gh-console .atlas-gh-section-heading{align-items:center;gap:8px}
+  .atlas-gh-console .atlas-gh-repo-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+  .atlas-gh-console .atlas-gh-repo-toolbar .atlas-gh-select-label,
+  .atlas-gh-console .atlas-gh-repo-toolbar .atlas-gh-search,
+  .atlas-gh-console .atlas-gh-repo-toolbar .atlas-gh-visibility{width:100%;max-width:none;flex:auto}
+  .atlas-gh-console .atlas-gh-repo-toolbar select,
+  .atlas-gh-console .atlas-gh-repo-toolbar input{width:100%;max-width:none;min-height:44px;font-size:16px}
+  .atlas-gh-console .atlas-gh-list-row{min-height:66px;padding:12px 8px;gap:10px}
+  .atlas-gh-console .atlas-gh-row-copy{min-width:0}
+  .atlas-gh-console .atlas-gh-row-copy strong{font-size:12px;overflow-wrap:anywhere}
+  .atlas-gh-console .atlas-gh-row-copy small{font-size:10px;line-height:1.5}
+  .atlas-gh-console .atlas-gh-ghost-link{font-size:0}
+  .atlas-gh-console .atlas-gh-ghost-link svg{width:17px;height:17px}
+  /* Native drill-down: tap PR -> dedicated detail screen; back -> list. */
+  .atlas-gh-console .atlas-gh-content-v2:not(.is-mobile-pr-detail) .atlas-gh-secondary{display:none}
+  .atlas-gh-console .atlas-gh-content-v2.is-mobile-pr-detail .atlas-gh-primary{display:none}
+  .atlas-gh-console .atlas-gh-content-v2.is-mobile-pr-detail .atlas-gh-secondary{display:block;min-width:0}
+  .atlas-gh-console .atlas-gh-mobile-back,
+  .atlas-gh-console .atlas-gh-actions-mobile-back{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:44px;
+    padding:0 13px;
+    margin:0 0 11px;
+    border:1px solid #d0d7de;
+    border-radius:10px;
+    background:#fff;
+    color:#0969da;
+    font:750 12px var(--font-body);
+    cursor:pointer;
+  }
+  .atlas-gh-console .atlas-gh-mobile-back svg,
+  .atlas-gh-console .atlas-gh-actions-mobile-back svg{height:17px;width:17px}
+  .atlas-gh-console .atlas-gh-detail-panel .atlas-gh-section-heading h2{font-size:13px}
+  .atlas-gh-console .atlas-gh-detail-panel h3{font-size:13px;overflow-wrap:anywhere}
+  .atlas-gh-console .atlas-gh-detail-body{font-size:11px;line-height:1.65;overflow-wrap:anywhere}
+  .atlas-gh-console .atlas-gh-code-explorer{display:flex;flex-direction:column;gap:10px;min-width:0}
+  .atlas-gh-console .atlas-gh-file-browser{width:100%;min-width:0;max-width:100%}
+  .atlas-gh-console .atlas-gh-browser-heading{padding:9px 10px}
+  .atlas-gh-console .atlas-gh-code-explorer .atlas-gh-files{
+    display:flex;
+    gap:6px;
+    max-height:none;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+    padding:9px;
+    scroll-snap-type:x proximity;
+    overscroll-behavior-x:contain;
+  }
+  .atlas-gh-console .atlas-gh-code-explorer .atlas-gh-diff-file{
+    flex:0 0 auto;
+    min-width:155px;
+    max-width:215px;
+    scroll-snap-align:start;
+  }
+  .atlas-gh-console .atlas-gh-code-explorer .atlas-gh-file{
+    width:100%;
+    min-height:46px;
+    padding:8px 10px;
+    border:1px solid #d8dee4;
+    border-radius:9px;
+    background:#fff;
+  }
+  .atlas-gh-console .atlas-gh-code-pane{min-width:0;width:100%;max-width:100%;overflow:hidden}
+  .atlas-gh-console .atlas-gh-code-heading{flex-wrap:wrap;gap:8px}
+  .atlas-gh-console .atlas-gh-code-heading strong{white-space:normal;overflow-wrap:anywhere}
+  .atlas-gh-console .atlas-gh-diff{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .atlas-gh-console .atlas-gh-diff pre{
+    max-width:100%;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scrollbar-width:thin;
+    font-size:11px;
+    line-height:1.6;
+    white-space:pre;
+  }
+  .atlas-gh-console .atlas-gh-files-head{gap:6px;flex-wrap:wrap}
+  .atlas-gh-console .atlas-gh-primary-action{min-height:44px}
+  /* CI becomes a two-screen workflow: run feed OR inspector, not crammed columns. */
+  .atlas-gh-console .atlas-gh-actions{border-radius:12px}
+  .atlas-gh-console .atlas-gh-actions-hero{padding:17px 14px;gap:9px}
+  .atlas-gh-console .atlas-gh-actions-hero h2{font-size:20px}
+  .atlas-gh-console .atlas-gh-actions-hero p{font-size:11px}
+  .atlas-gh-console .atlas-gh-actions-readonly{align-self:flex-start;font-size:9px}
+  .atlas-gh-console .atlas-gh-actions-toolbar{
+    display:flex;flex-wrap:wrap;align-items:flex-end;gap:9px;padding:12px 13px;
+  }
+  .atlas-gh-console .atlas-gh-actions-toolbar label{flex:1 1 175px;width:auto;min-width:0}
+  .atlas-gh-console .atlas-gh-actions-toolbar select{height:44px;max-width:none;font-size:16px}
+  .atlas-gh-console .atlas-gh-actions-toolbar button{min-height:44px}
+  .atlas-gh-console .atlas-gh-actions-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:9px}
+  .atlas-gh-console .atlas-gh-actions-stats>div{min-width:0;padding:10px 5px;gap:5px;border-radius:9px}
+  .atlas-gh-console .atlas-gh-actions-stats strong{font-size:19px}
+  .atlas-gh-console .atlas-gh-actions-stats span{font-size:9px;overflow-wrap:anywhere}
+  .atlas-gh-console .atlas-gh-actions-content{display:block;padding:10px;background:#f6f8fa}
+  .atlas-gh-console .atlas-gh-actions-feed{display:block}
+  .atlas-gh-console .atlas-gh-actions-inspector{display:none}
+  .atlas-gh-console .atlas-gh-actions.is-mobile-run-detail .atlas-gh-actions-feed{display:none}
+  .atlas-gh-console .atlas-gh-actions.is-mobile-run-detail .atlas-gh-actions-inspector{display:flex}
+  .atlas-gh-console .atlas-gh-actions.is-mobile-run-detail .atlas-gh-actions-stats{display:none}
+  .atlas-gh-console .atlas-gh-actions-feed>header{padding:12px;gap:10px}
+  .atlas-gh-console .atlas-gh-actions-filters button{min-height:40px;min-width:58px}
+  .atlas-gh-console .atlas-gh-actions-runs{max-height:none;overflow:visible}
+  .atlas-gh-console .atlas-gh-actions-run{min-height:68px;padding:13px 10px;gap:9px}
+  .atlas-gh-console .atlas-gh-actions-run-text strong{font-size:12px}
+  .atlas-gh-console .atlas-gh-actions-run-text small{font-size:10px}
+  .atlas-gh-console .atlas-gh-actions-inspector{width:100%;min-width:0;min-height:300px;padding:15px;border-radius:12px}
+  .atlas-gh-console .atlas-gh-actions-mobile-back{align-self:flex-start;margin:0 0 3px}
+  .atlas-gh-console .atlas-gh-actions-job{min-height:62px;padding:12px}
+  .atlas-gh-console .atlas-gh-actions-job a{min-height:44px;align-items:center}
+  /* Repository Studio: form-first touch flow, no tiny side preview. */
+  .atlas-gh-console .atlas-gh-studio{border-radius:12px}
+  .atlas-gh-console .atlas-gh-studio-head{padding:17px 14px;display:flex;gap:8px}
+  .atlas-gh-console .atlas-gh-studio h2{font-size:20px}
+  .atlas-gh-console .atlas-gh-studio-head p{font-size:11px}
+  .atlas-gh-console .atlas-gh-studio-state{font-size:9px;padding:7px 10px}
+  .atlas-gh-console .atlas-gh-studio-steps{grid-template-columns:repeat(3,minmax(0,1fr));padding:0 9px}
+  .atlas-gh-console .atlas-gh-studio-step{gap:6px;min-width:0;padding:12px 4px}
+  .atlas-gh-console .atlas-gh-studio-step:not(:last-child):after{display:none}
+  .atlas-gh-console .atlas-gh-studio-step-number{flex-basis:27px;height:27px;border-radius:9px}
+  .atlas-gh-console .atlas-gh-studio-step strong{font-size:10px}
+  .atlas-gh-console .atlas-gh-studio-step small{display:none}
+  .atlas-gh-console .atlas-gh-studio-layout{display:flex;flex-direction:column;gap:11px;padding:11px}
+  .atlas-gh-console .atlas-gh-studio-workspace{width:100%;gap:12px}
+  .atlas-gh-console .atlas-gh-studio-form,
+  .atlas-gh-console .atlas-gh-studio-approval{padding:14px;gap:15px}
+  .atlas-gh-console .atlas-gh-studio-field input,
+  .atlas-gh-console .atlas-gh-studio-field textarea{min-height:46px;font-size:16px;line-height:1.45}
+  .atlas-gh-console .atlas-gh-studio-field textarea{min-height:100px}
+  .atlas-gh-console .atlas-gh-studio-visibility{grid-template-columns:1fr 1fr}
+  .atlas-gh-console .atlas-gh-studio-visibility label{min-height:88px;gap:7px;padding:12px 8px}
+  .atlas-gh-console .atlas-gh-studio-visibility strong{font-size:11px}
+  .atlas-gh-console .atlas-gh-studio-visibility small{font-size:9px}
+  .atlas-gh-console .atlas-gh-studio-submit,
+  .atlas-gh-console .atlas-gh-studio-approve{min-height:49px;font-size:12px;touch-action:manipulation}
+  .atlas-gh-console .atlas-gh-studio-preview{
+    position:static;max-width:100%;width:100%;padding:15px;
+    background:linear-gradient(150deg,#fff,#f6f8fa)
+  }
+  .atlas-gh-console .atlas-gh-studio-preview-symbol{width:39px;height:39px;border-radius:12px;margin:3px 0}
+  .atlas-gh-console .atlas-gh-studio-preview-symbol svg{height:21px;width:21px}
+  .atlas-gh-console .atlas-gh-studio-preview>strong{font-size:19px}
+  .atlas-gh-console .atlas-gh-studio-preview-facts{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .atlas-gh-console .atlas-gh-studio-preview-facts>span{font-size:9px;flex-wrap:wrap;gap:4px;padding:8px 0}
+  .atlas-gh-console .atlas-gh-studio-preview-facts>span+span{border-top:0}
+  .atlas-gh-console .atlas-gh-studio-preview-facts b{overflow-wrap:anywhere}
+  .atlas-gh-console .atlas-gh-panel.atlas-gh-settings{padding:15px;border-radius:12px}
+  .atlas-gh-console .atlas-gh-permissions{grid-template-columns:1fr;gap:8px}
+  .atlas-gh-console .atlas-gh-install-list{overflow-wrap:anywhere}
+  /* Prevent iOS automatic zoom + dock collisions with the software keyboard. */
+  .atlas-gh-console input[type="text"],
+  .atlas-gh-console input[type="search"],
+  .atlas-gh-console input:not([type]),
+  .atlas-gh-console textarea,
+  .atlas-gh-console select{font-size:16px;max-width:100%}
+  .atlas-gh-console :is(button,a,input,select,textarea):focus-visible{
+    outline:2px solid #0969da;outline-offset:2px;
+  }
+  @supports selector(:has(input:focus)){
+    .atlas-gh-console:has(input:focus) .atlas-gh-mobile-dock,
+    .atlas-gh-console:has(textarea:focus) .atlas-gh-mobile-dock,
+    .atlas-gh-console:has(select:focus) .atlas-gh-mobile-dock{display:none!important}
+  }
+}
+@media(max-width:390px){
+  .atlas-gh-console .atlas-gh-overview-grid{grid-template-columns:1fr}
+  .atlas-gh-console .atlas-gh-overview-card{min-height:98px;gap:6px}
+  .atlas-gh-console .atlas-gh-studio-visibility{grid-template-columns:1fr}
+  .atlas-gh-console .atlas-gh-studio-visibility label{min-height:67px}
+  .atlas-gh-console .atlas-gh-identity h1{font-size:15px!important}
+  .atlas-gh-console .atlas-gh-mark{width:30px;height:30px;flex-basis:30px}
+}
+@media(prefers-reduced-motion:reduce){
+  .atlas-gh-console .atlas-gh-mobile-dock button{transition:none!important}
+}
