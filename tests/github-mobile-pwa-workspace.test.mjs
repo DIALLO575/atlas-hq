@@ -36,7 +36,7 @@ test("PR list and diff are different phone screens with a real back button", asy
 test("CI runs and jobs use a phone drill-down without exposing write controls", async () => {
   const view = await read("../src/components/github-actions-control-center.tsx");
   const css = await read("../src/app/github-mobile-workspace.css");
-  assert.match(view, /const \[mobileRunDetail,setMobileRunDetail\] = useState\(false\)/);
+  assert.match(view, /const \[mobileRunDetail,setMobileRunDetail\]\s*=\s*useState\(false\)/);
   assert.match(view, /setMobileRunDetail\(true\)/);
   assert.match(view, /setMobileRunDetail\(false\)/);
   assert.match(view, /Retour aux workflows/);
