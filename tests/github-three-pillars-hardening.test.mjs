@@ -31,7 +31,7 @@ test("Actions reset stale repository results and never expose a rerun action",as
  assert.match(client,/aria-busy=\{loading==="jobs"\}/);
  assert.match(client,/orderedJobs/);
  assert.match(connector,/minted\.permissions\?\.actions !== "read"/);
- assert.match(connector,/job\.run_id !== undefined && job\.run_id !== runId/);
+ assert.match(connector,/job\?\.run_id !== undefined && job\.run_id !== runId/);
  assert.match(api,/export async function GET/);
  assert.doesNotMatch(api,/export async function POST|rerun-failed-jobs|dispatches/);
  assert.doesNotMatch(client,/method:"POST"|\/api\/apps\/github\/actions\/rerun/);

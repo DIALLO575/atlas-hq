@@ -10,7 +10,7 @@ test("PR inspector opens one selected patch in a dedicated code pane", async () 
   assert.match(ui, /className="atlas-gh-file-browser"/);
   assert.match(ui, /className="atlas-gh-code-pane"/);
   assert.match(ui, /detail\.files\.filter\(\(file\) => file\.path === expandedFile\)/);
-  assert.match(ui, /setExpandedFile\(result\.files\.find\(\(file\) => file\.patch\)\?\.path/);
+  assert.match(ui, /setExpandedFile\(result\.files\.slice\(0, 35\)\.find\(\(file\) => file\.patch\)\?\.path/);
   assert.match(ui, /detail\.files\.slice\(0, visibleFileCount\)/);
   assert.match(ui, /aria-expanded=\{expandedFile === file\.path\}/);
   assert.match(ui, /file\.patch\.split\("\\n"\)\.map/);
