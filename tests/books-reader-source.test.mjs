@@ -57,3 +57,13 @@ test("reader loading stays visible on the responsive desktop and mobile layouts"
   assert.match(styles, /@media\(max-width:900px\)/);
   assert.match(styles, /@media\(max-width:600px\)/);
 });
+
+test("upload success is not obscured by an optional cover failure, and progress flushes on exit", async () => {
+  const component = await readFile(new URL("../src/components/books/book-library.tsx", import.meta.url), "utf8");
+  assert.match(component, /let coverWarning = false/);
+  assert.match(component, /Livre ajouté\. La couverture n’a pas pu être créée/);
+  assert.match(component, /window\.addEventListener\('pagehide', flushBeforeLeaving\)/);
+  assert.match(component, /document\.addEventListener\('visibilitychange', visibility\)/);
+  assert.match(component, /keepalive: force/);
+  assert.match(component, /deltaSeconds, position/);
+});
