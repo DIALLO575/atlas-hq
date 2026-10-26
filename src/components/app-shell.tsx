@@ -57,6 +57,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   // The dock itself remains mounted; only the page content changes.
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
   const [journalUnread, setJournalUnread] = useState<number | null>(null);
+  const [darkMode, setDarkMode] = useState(false);
   const isRoutePending = Boolean(navigatingTo && navigatingTo !== pathname);
 
   useEffect(() => {
@@ -90,6 +91,20 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
     void refreshUnread();
     return () => { alive = false; auth?.data.subscription.unsubscribe(); window.removeEventListener("journal:updated", update); window.removeEventListener("focus", onVisible); document.removeEventListener("visibilitychange", onVisible); };
   }, [pathname]);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("atlas:theme");
+    const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setDarkMode(dark);
+    document.documentElement.dataset.atlasTheme = dark ? "dark" : "light";
+  }, []);
+
+  const toggleTheme = () => setDarkMode(current => {
+    const next = !current;
+    document.documentElement.dataset.atlasTheme = next ? "dark" : "light";
+    try { window.localStorage.setItem("atlas:theme", next ? "dark" : "light"); } catch {}
+    return next;
+  });
 
   const {
     dockRef, side: dockSide, dragging: dockDragging, dockStyle,
@@ -173,7 +188,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   if (pathname === "/journal" || pathname.startsWith("/lecture/")) return (
     <AppShellContext.Provider value={true}>
       <JournalUnreadContext.Provider value={null}>
-        <div className={"app-shell atlas-shell atlas-journal-shell" + (pathname.startsWith("/lecture/") ? " atlas-book-reader-shell" : "")}>
+        <div className={"app-shell atlas-shell atlas-journal-shell" + (darkMode ? " atlas-dark-mode" : "") + (pathname.startsWith("/lecture/") ? " atlas-book-reader-shell" : "")}>
           <a className="skip-link" href="#main-content">Aller au contenu principal</a>
           <div className="atlas-main-frame">{children}</div>
         </div>
@@ -184,7 +199,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   return (
     <AppShellContext.Provider value={true}>
     <JournalUnreadContext.Provider value={journalUnread}>
-    <div data-dock-side={dockSide} className={"app-shell atlas-shell" + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dockDragging ? " atlas-dock-is-dragging" : "")}>
+    <div data-dock-side={dockSide} className={"app-shell atlas-shell" + (darkMode ? " atlas-dark-mode" : "") + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dockDragging ? " atlas-dock-is-dragging" : "")}>
       <a className="skip-link" href="#main-content">Aller au contenu principal</a>
 
       <header className="atlas-topbar">
@@ -202,6 +217,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
         </Link>
         <div className="atlas-topbar-end">
           <Link className="atlas-chief-shortcut" href="/chief" onClick={() => handleRouteClick("/chief")}><Icon name="spark" /><span>Chief of Staff</span></Link>
+          <button type="button" className="atlas-theme-toggle" onClick={toggleTheme} aria-pressed={darkMode} aria-label={darkMode ? "Activer le mode clair" : "Activer le mode sombre"} title={darkMode ? "Mode clair" : "Mode sombre"}><span aria-hidden="true">{darkMode ? "☀" : "◐"}</span><small>{darkMode ? "Clair" : "Sombre"}</small></button>
           <Link className="atlas-notification-link" href="/inbox" onClick={() => handleRouteClick("/inbox")} aria-label="Ouvrir les demandes à traiter" title="Besoin de vous"><Icon name="inbox" /></Link>
           <div className="atlas-header-workspace"><WorkspaceSelector /></div>
         </div>
