@@ -337,7 +337,7 @@ export function AgentsWorkspace() {
       <div className="atlas-people-kpi-grid" aria-label="Vue d’ensemble MAUSBOT">
         <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-teams"><Icon name="layers" /></span><strong>{inventory.groups.length}</strong><small>Teams</small></div>
         <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-agents"><Icon name="bot" /></span><strong>{inventory.agents.length}</strong><small>Agents</small></div>
-        <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-active"><Icon name="message-circle" /></span><strong>{activeAgentsCount}</strong><small>Avec fil actif</small></div>
+        <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-active"><Icon name="inbox" /></span><strong>{activeAgentsCount}</strong><small>Avec fil actif</small></div>
       </div>
       <label className="atlas-people-search atlas-people-global-search">
         <Icon name="search" /><span className="sr-only">Chercher une team ou un agent</span>
@@ -409,7 +409,7 @@ export function AgentsWorkspace() {
               <span className="atlas-agent-card-bottom">
                 <span className="atlas-status-indicator"><span className={"atlas-status-dot" + (hasActiveThread(agent) ? " is-active" : "")} />
                   {hasActiveThread(agent) ? "Fil actif" : "Aucun fil actif"}</span>
-                <span className="atlas-agent-card-chat">Chat <Icon name="message-circle" /></span>
+                <span className="atlas-agent-card-chat">Chat <Icon name="inbox" /></span>
               </span>
             </button>;
           })}
@@ -418,7 +418,7 @@ export function AgentsWorkspace() {
         {visibleAgents.length > 12 && <button type="button" className="atlas-show-agents"
           onClick={() => setShowAllAgents(value => !value)}>
           {showAllAgents ? "Voir moins" : "Afficher les " + visibleAgents.length + " agents"}
-          <Icon name={showAllAgents ? "chevron-up" : "chevron-down"} />
+          <Icon name={showAllAgents ? "arrow-up" : "arrow-down"} />
         </button>}
       </section>
     </div>}
