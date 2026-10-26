@@ -1,5 +1,5 @@
 // Journal source: ATLAS only READS Supabase (filled by n8n) and displays. No MausBot calls here.
-import { journalItemsFromRows, parseJournalJson } from "./journal.mjs";
+import { journalItemKey, journalItemsFromRows, parseJournalJson } from "./journal.mjs";
 
 export const JOURNAL_BUCKET = "journal-covers";
 export const SIGNED_URL_TTL_SECONDS = 3600;
@@ -24,26 +24,38 @@ export function journalDemoAllowed(env) {
 }
 export function readJournalDemo() {
   const e = parseJournalJson(JOURNAL_FIXTURE);
-  return { ...e, coverExpiresAt: null, demo: true, producer: "morgans", items: e.items.map(i => ({ ...i, coverUrl: null })) };
+  return { ...e, coverExpiresAt: null, demo: true, producer: "morgans", items: e.items.map(i => ({ ...i, key: journalItemKey(i.editionId, i.id), coverUrl: null })) };
 }
 // "*" so the optional `featured` column (migration 20261025224000) is read when present without breaking before it.
 const ITEM_COLUMNS = "*";
 
 /**
- * Reads the latest edition for a workspace with the caller's (owner) Supabase session — RLS enforces
- * owner-only. Cover images come from the private bucket through short-lived signed URLs created here.
+ * Reads each producer's latest edition for a workspace with the caller's (owner) Supabase session —
+ * RLS enforces owner-only. Cover images come from the private bucket through short-lived signed URLs.
  */
 export async function readJournalFromSupabase(supabase, workspaceId, { ttl = SIGNED_URL_TTL_SECONDS } = {}) {
-  const { data: edition, error } = await supabase.from("journal_editions")
-    .select("edition_id,generated_at,producer,schema_version")
-    .eq("workspace_id", workspaceId).order("generated_at", { ascending: false }).limit(1).maybeSingle();
-  if (error) throw new JournalSourceError("JOURNAL_SOURCE_UNAVAILABLE");
-  if (!edition) throw new JournalSourceError("JOURNAL_EDITION_NOT_FOUND", 404);
-  if (edition.schema_version !== "1") throw new JournalSourceError("JOURNAL_SCHEMA_UNSUPPORTED", 502);
-  const { data: rows, error: rowsError } = await supabase.from("journal_items").select(ITEM_COLUMNS)
-    .eq("workspace_id", workspaceId).eq("edition_id", edition.edition_id).order("position", { ascending: true }).limit(200);
-  if (rowsError) throw new JournalSourceError("JOURNAL_SOURCE_UNAVAILABLE");
-  const items = journalItemsFromRows(edition.edition_id, rows).slice(0, 40);
+  const editions = await Promise.all(["morgans", "grok-bot"].map(async producer => {
+    const { data, error } = await supabase.from("journal_editions")
+      .select("edition_id,generated_at,producer,schema_version")
+      .eq("workspace_id", workspaceId).eq("producer", producer)
+      .order("generated_at", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw new JournalSourceError("JOURNAL_SOURCE_UNAVAILABLE");
+    return data;
+  }));
+  const available = editions.filter(Boolean);
+  if (!available.length) throw new JournalSourceError("JOURNAL_EDITION_NOT_FOUND", 404);
+  if (available.some(edition => edition.schema_version !== "1")) throw new JournalSourceError("JOURNAL_SCHEMA_UNSUPPORTED", 502);
+  const rowsByEdition = await Promise.all(available.map(async edition => {
+    const { data, error } = await supabase.from("journal_items").select(ITEM_COLUMNS)
+      .eq("workspace_id", workspaceId).eq("edition_id", edition.edition_id).order("position", { ascending: true }).limit(200);
+    if (error) throw new JournalSourceError("JOURNAL_SOURCE_UNAVAILABLE");
+    return { edition, items: journalItemsFromRows(edition.edition_id, data).slice(0, 40) };
+  }));
+  // Stable editorial order keeps MORGANS first while retaining each item's own edition id for state writes.
+  rowsByEdition.sort((a, b) => ["morgans", "grok-bot"].indexOf(a.edition.producer) - ["morgans", "grok-bot"].indexOf(b.edition.producer));
+  const items = rowsByEdition.flatMap(({ items }) => items);
+  const latest = available.slice().sort((a, b) => Date.parse(b.generated_at) - Date.parse(a.generated_at))[0];
+  const producer = rowsByEdition.map(({ edition }) => edition.producer).join("+");
   const paths = [...new Set(items.map(i => i.cover?.storagePath).filter(Boolean))].map(p => workspaceId + "/" + p);
   const signed = new Map();
   if (paths.length) {
@@ -51,8 +63,8 @@ export async function readJournalFromSupabase(supabase, workspaceId, { ttl = SIG
     for (const s of data ?? []) if (s?.signedUrl && !s.error && s.path) signed.set(s.path, s.signedUrl);
   }
   return {
-    coverExpiresAt: new Date(Date.now() + ttl * 1000).toISOString(), editionId: edition.edition_id, generatedAt: edition.generated_at, producer: edition.producer, format: "json", demo: false, skipped: 0,
-    items: items.map(i => ({ ...i, coverUrl: i.cover ? signed.get(workspaceId + "/" + i.cover.storagePath) ?? null : null })),
+    coverExpiresAt: new Date(Date.now() + ttl * 1000).toISOString(), editionId: latest.edition_id, generatedAt: latest.generated_at, producer, format: "json", demo: false, skipped: 0,
+    items: items.map(i => ({ ...i, key: journalItemKey(i.editionId, i.id), coverUrl: i.cover ? signed.get(workspaceId + "/" + i.cover.storagePath) ?? null : null })),
   };
 }
 const STATES = ["new", "read", "done"];

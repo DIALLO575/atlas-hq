@@ -14,6 +14,7 @@
 .mj-tabs::-webkit-scrollbar{display:none}
 .mj-tabs button{flex:none;scroll-snap-align:start;min-height:44px;border:1px solid var(--mj-line);background:transparent;color:inherit;border-radius:999px;padding:0 16px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
 .mj-tabs button span{opacity:.6;margin-left:4px;font-weight:500}.mj-tabs button.is-active{background:var(--mj-ink);color:var(--mj-paper);border-color:var(--mj-ink)}
+.mj-tabs button.is-ia-sur-x{border-color:#1687a7}.mj-tabs button.is-ia-sur-x:not(.is-active){color:#08718f}
 .mj-tabs button:disabled{opacity:.35;cursor:default}
 .mj-grid{display:grid;gap:14px;grid-template-columns:1fr}
 @media(min-width:720px){.mj-grid{grid-template-columns:repeat(2,1fr);gap:20px}.mj-card.is-lead{grid-column:1/-1;display:grid;grid-template-columns:1.5fr 1fr;align-items:stretch}.mj-card.is-lead .mj-cover{aspect-ratio:auto;height:100%;min-height:340px}}
@@ -22,7 +23,7 @@
 .mj-card.is-state-done{opacity:.55}.mj-card-open{all:unset;cursor:pointer;display:block}
 .mj-cover{position:relative;margin:0;aspect-ratio:16/10;overflow:hidden;background:linear-gradient(135deg,#3a3632,#6d655b)}
 .mj-card.is-lead .mj-cover{aspect-ratio:16/11}
-.mj-cover.is-ia{background:linear-gradient(135deg,#2e2a6b,#6c5ce7)}.mj-cover.is-commerce{background:linear-gradient(135deg,#7a3418,#e17055)}.mj-cover.is-guinee{background:linear-gradient(135deg,#8c1c1c,#c9a227 60%,#2a7a3b)}.mj-cover.is-afrique{background:linear-gradient(135deg,#6b3b0c,#e6a23c)}.mj-cover.is-monde{background:linear-gradient(135deg,#0b3b66,#3fa0e0)}.mj-cover.is-economie{background:linear-gradient(135deg,#0d4d3e,#2ecc9a)}
+.mj-cover.is-ia{background:linear-gradient(135deg,#2e2a6b,#6c5ce7)}.mj-cover.is-ia-sur-x{background:linear-gradient(135deg,#075b78,#38b6cf)}.mj-cover.is-commerce{background:linear-gradient(135deg,#7a3418,#e17055)}.mj-cover.is-guinee{background:linear-gradient(135deg,#8c1c1c,#c9a227 60%,#2a7a3b)}.mj-cover.is-afrique{background:linear-gradient(135deg,#6b3b0c,#e6a23c)}.mj-cover.is-monde{background:linear-gradient(135deg,#0b3b66,#3fa0e0)}.mj-cover.is-economie{background:linear-gradient(135deg,#0d4d3e,#2ecc9a)}
 .mj-cover img{width:100%;height:100%;object-fit:cover;display:block}
 .mj-cover-fallback{position:absolute;inset:0;display:flex;align-items:flex-end;padding:16px;background:radial-gradient(circle at 80% 20%,rgba(255,255,255,.18),transparent 45%),repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 14px)}
 .mj-cover-fallback b{font-family:var(--mj-serif);color:rgba(255,255,255,.9);font-size:clamp(22px,5vw,34px);font-style:italic;font-weight:600}
@@ -30,8 +31,8 @@
 .mj-generated{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:4px 9px;border-radius:999px}
 .mj-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;flex:1}
 .mj-cat{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:8px;color:var(--mj-muted)}
-.mj-cat.is-ia{color:#5b4bd6}.mj-cat.is-commerce{color:#c0532f}.mj-cat.is-guinee{color:#b02a2a}.mj-cat.is-afrique{color:#b86a12}.mj-cat.is-monde{color:#1f6fb5}.mj-cat.is-economie{color:#12866a}
-@media(prefers-color-scheme:dark){.mj-cat.is-ia{color:#b3a9ff}.mj-cat.is-commerce{color:#f0957a}.mj-cat.is-guinee{color:#f08a8a}.mj-cat.is-afrique{color:#f2b766}.mj-cat.is-monde{color:#7cc0f5}.mj-cat.is-economie{color:#6fdcb9}}
+.mj-cat.is-ia{color:#5b4bd6}.mj-cat.is-ia-sur-x{color:#08718f}.mj-cat.is-commerce{color:#c0532f}.mj-cat.is-guinee{color:#b02a2a}.mj-cat.is-afrique{color:#b86a12}.mj-cat.is-monde{color:#1f6fb5}.mj-cat.is-economie{color:#12866a}
+@media(prefers-color-scheme:dark){.mj-tabs button.is-ia-sur-x{border-color:#53bdd8}.mj-tabs button.is-ia-sur-x:not(.is-active){color:#8be3fa}.mj-cat.is-ia{color:#b3a9ff}.mj-cat.is-ia-sur-x{color:#8be3fa}.mj-cat.is-commerce{color:#f0957a}.mj-cat.is-guinee{color:#f08a8a}.mj-cat.is-afrique{color:#f2b766}.mj-cat.is-monde{color:#7cc0f5}.mj-cat.is-economie{color:#6fdcb9}}
 .mj-une{background:var(--mj-ink);color:var(--mj-paper);padding:2px 8px;border-radius:4px;letter-spacing:.1em}
 .mj-dot{width:8px;height:8px;border-radius:50%;background:#1f6fb5;display:inline-block}
 .mj-card h2{font-family:var(--mj-serif);font-size:22px;line-height:1.22;margin:0 0 8px;font-weight:700}

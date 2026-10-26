@@ -19,7 +19,7 @@
         "required": ["id", "topic", "title", "summary", "certainty", "status", "source_url", "source_name", "cover"],
         "properties": {
           "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,120}$" },
-          "topic": { "type": "string", "enum": ["ia", "commerce", "guinee", "afrique", "monde", "geopolitique", "economie", "tech"] },
+          "topic": { "type": "string", "enum": ["ia", "ia-sur-x", "commerce", "guinee", "afrique", "monde", "geopolitique", "economie", "tech"] },
           "title": { "type": "string", "minLength": 1, "maxLength": 240 },
           "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
           "why_it_matters": { "type": ["string", "null"], "maxLength": 1000 },

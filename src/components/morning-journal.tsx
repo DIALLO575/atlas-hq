@@ -6,10 +6,10 @@ import { listWorkspaces } from "@/app/workspaces/actions";
 import { RichText } from "@/components/journal-rich-text";
 import { FONT_STEPS, READER_THEMES, bulkDonePlan, neighbor, pickFeatured, readingMinutes, stepFont, swipeDirection } from "../../packages/engines/mausbot/src/journal-reader.mjs";
 
-type Category = "ia" | "commerce" | "guinee" | "afrique" | "monde" | "economie";
+type Category = "ia" | "ia-sur-x" | "commerce" | "guinee" | "afrique" | "monde" | "economie";
 type ReadState = "new" | "read" | "done";
 type Item = {
-  id: string; editionId: string; category: Category; title: string; summary: string; whyItMatters: string | null;
+  id: string; key: string; editionId: string; category: Category; title: string; summary: string; whyItMatters: string | null;
   certainty: "elevee" | "moyenne" | "faible" | null; status: "confirme" | "rapporte" | "a_verifier" | null;
   sourceUrl: string | null; sourceName: string | null; extraSources: { url: string; name: string | null }[];
   publishedAt: string | null; authorBot: string | null; state: ReadState; featured?: boolean;
@@ -19,7 +19,7 @@ type Payload = { source: "supabase-read-only"; producer: string; demo: boolean; 
   categories: { id: Category; label: string; count: number }[]; items: Item[]; stateAvailable: boolean };
 type View = { status: "loading" | "ready" | "offline" | "error"; data?: Payload; error?: string };
 type Theme = (typeof READER_THEMES)[number];
-type Undo = { label: string; plan: { id: string; editionId: string; previous: "new" | "read" }[] } | null;
+type Undo = { label: string; plan: { key: string; id: string; editionId: string; previous: "new" | "read" }[] } | null;
 
 const CERTAINTY: Record<string, string> = { elevee: "Certitude élevée", moyenne: "Certitude moyenne", faible: "Certitude faible" };
 const STATUS: Record<string, string> = { confirme: "Confirmé", rapporte: "Rapporté", a_verifier: "À vérifier" };
@@ -76,11 +76,11 @@ function Reader({ item, list, label, onClose, onNav, onState }: {
   const scroller = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
-  const prev = neighbor(list, item.id, -1), next = neighbor(list, item.id, 1);
+  const prev = neighbor(list, item.key, -1), next = neighbor(list, item.key, 1);
   const minutes = readingMinutes(item.title, item.summary, item.whyItMatters);
   const sources = sourcesOf(item);
 
-  useEffect(() => { scroller.current?.scrollTo({ top: 0 }); closeBtn.current?.focus(); }, [item.id]);
+  useEffect(() => { scroller.current?.scrollTo({ top: 0 }); closeBtn.current?.focus(); }, [item.key]);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
@@ -207,10 +207,10 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
       headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: ws, editionId, itemId, status }) });
     if (!res.ok) throw Error("state");
   }, [ws]);
-  const patch = useCallback((ids: Map<string, ReadState>) => setView(v => v.data ? { ...v, data: { ...v.data, items: v.data.items.map(i => ids.has(i.id) ? { ...i, state: ids.get(i.id)! } : i) } } : v), []);
+  const patch = useCallback((ids: Map<string, ReadState>) => setView(v => v.data ? { ...v, data: { ...v.data, items: v.data.items.map(i => ids.has(i.key) ? { ...i, state: ids.get(i.key)! } : i) } } : v), []);
   const setState = useCallback(async (item: Item, status: ReadState) => {
-    patch(new Map([[item.id, status]]));
-    try { await postState(item.editionId, item.id, status); } catch { patch(new Map([[item.id, item.state]])); }
+    patch(new Map([[item.key, status]]));
+    try { await postState(item.editionId, item.id, status); } catch { patch(new Map([[item.key, item.state]])); }
   }, [patch, postState]);
 
   const all = useMemo(() => view.data?.items ?? [], [view.data]);
@@ -218,27 +218,27 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const featured = filter === "all" ? pickFeatured(items) : null;
   const rest = items.filter(i => i !== featured);
   const ordered = featured ? [featured, ...rest] : rest;
-  const reading = readingId ? all.find(i => i.id === readingId) ?? null : null;
+  const reading = readingId ? all.find(i => i.key === readingId) ?? null : null;
   const total = all.length;
   const done = all.filter(i => i.state === "done").length;
   const label = useCallback((c: Category) => view.data?.categories.find(x => x.id === c)?.label ?? c, [view.data]);
-  const open = (item: Item) => { setReadingId(item.id); if (item.state === "new") void setState(item, "read"); };
-  const nav = useCallback((item: Item) => { setReadingId(item.id); if (item.state === "new") void setState(item, "read"); }, [setState]);
+  const open = (item: Item) => { setReadingId(item.key); if (item.state === "new") void setState(item, "read"); };
+  const nav = useCallback((item: Item) => { setReadingId(item.key); if (item.state === "new") void setState(item, "read"); }, [setState]);
   const plan = bulkDonePlan(all, filter);
   const filterLabel = filter === "all" ? "toute l’édition" : "« " + label(filter) + " »";
 
   const bulkDone = async () => {
     setConfirm(false);
-    patch(new Map(plan.map(p => [p.id, "done" as ReadState])));
+    patch(new Map(plan.map(p => [p.key, "done" as ReadState])));
     setUndo({ label: plan.length + " article" + (plan.length > 1 ? "s" : "") + " marqué" + (plan.length > 1 ? "s" : "") + " terminé" + (plan.length > 1 ? "s" : ""), plan });
     const failed = new Map<string, ReadState>();
-    for (const p of plan) { try { await postState(p.editionId, p.id, "done"); } catch { failed.set(p.id, p.previous); } }
+    for (const p of plan) { try { await postState(p.editionId, p.id, "done"); } catch { failed.set(p.key, p.previous); } }
     if (failed.size) patch(failed);
   };
   const undoBulk = async () => {
     if (!undo) return;
     const u = undo; setUndo(null);
-    patch(new Map(u.plan.map(p => [p.id, p.previous])));
+    patch(new Map(u.plan.map(p => [p.key, p.previous])));
     for (const p of u.plan) { try { await postState(p.editionId, p.id, p.previous); } catch {} }
   };
   useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 8000); return () => clearTimeout(t); }, [undo]);
@@ -252,7 +252,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     {online && view.data?.offline && <p className="mj-offline" role="status">Édition enregistrée affichée (réseau indisponible).</p>}
     <IosInstallHint />
     <header className="mj-masthead">
-      <p className="mj-kicker">WORLD RADAR · {view.data?.producer === "grok-bot" ? "Grok Bot" : "MORGANS & équipe"}</p>
+      <p className="mj-kicker">WORLD RADAR · {view.data?.producer === "morgans+grok-bot" ? "MORGANS + Grok Bot" : view.data?.producer === "grok-bot" ? "Grok Bot" : "MORGANS & équipe"}</p>
       <h1>Journal du matin</h1>
       {view.data && <p className="mj-edition">{dateLabel(view.data.generatedAt) ?? "Édition " + view.data.editionId}{view.data.demo && " · données de démonstration"}</p>}
       {view.data && <div className="mj-progress" role="progressbar" aria-label="Articles terminés" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
@@ -268,7 +268,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
       </nav>
       {!view.data.stateAvailable && <p className="mj-state is-warn">Suivi lu/terminé indisponible (migration feed_item_state non appliquée).</p>}
       <section className="mj-grid" aria-label="Articles">
-        {ordered.map(item => <article key={item.id} className={"mj-card" + (item === featured ? " is-lead" : "") + " is-state-" + item.state}>
+        {ordered.map(item => <article key={item.key} className={"mj-card" + (item === featured ? " is-lead" : "") + " is-state-" + item.state}>
           <button className="mj-card-open" onClick={() => open(item)} tabIndex={-1} aria-hidden><Cover item={item} large={item === featured} label={label(item.category)} /></button>
           <div className="mj-card-body">
             <p className={"mj-cat is-" + item.category}>{item === featured && <span className="mj-une">À la une</span>}{label(item.category)}{item.state === "new" && <i className="mj-dot" role="img" aria-label="nouveau" />}</p>
@@ -295,7 +295,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
         <div className="mj-actions"><button autoFocus onClick={() => setConfirm(false)}>Annuler</button><button className="mj-primary" onClick={() => void bulkDone()}>Confirmer</button></div></div>
     </div>}
     {undo && <div className="mj-toast" role="status"><span>{undo.label}</span><button onClick={() => void undoBulk()}>Annuler</button></div>}
-    {reading && <Reader item={reading} list={ordered.length && ordered.some(i => i.id === reading.id) ? ordered : all} label={label}
+    {reading && <Reader item={reading} list={ordered.length && ordered.some(i => i.key === reading.key) ? ordered : all} label={label}
       onClose={() => setReadingId(null)} onNav={nav} onState={(i, s) => void setState(i, s)} />}
   </main>;
 }

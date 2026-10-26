@@ -7,7 +7,7 @@ import { JournalSourceError, journalDemoAllowed, readJournalDemo, readJournalFro
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Owner-only read of the latest edition stored in Supabase by n8n. ATLAS never calls MausBot here. */
+/** Owner-only read of each producer's latest edition stored in Supabase by n8n. ATLAS never calls MausBot here. */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const workspaceId = params.get("workspaceId");
@@ -17,13 +17,14 @@ export async function GET(request: NextRequest) {
   if (!access.ok) return access.response;
   try {
     const edition = journalDemoAllowed(process.env) ? readJournalDemo() : await readJournalFromSupabase(access.supabase, workspaceId!);
-    const { data: states } = await access.supabase.from("feed_item_state").select("item_id,status")
-      .eq("workspace_id", workspaceId!).eq("user_id", access.userId).eq("edition_id", edition.editionId);
-    const stateMap = Object.fromEntries((states ?? []).map((s: { item_id: string; status: string }) => [s.item_id, s.status]));
+    const editionIds = [...new Set(edition.items.map(i => i.editionId))];
+    const { data: states } = await access.supabase.from("feed_item_state").select("edition_id,item_id,status")
+      .eq("workspace_id", workspaceId!).eq("user_id", access.userId).in("edition_id", editionIds);
+    const stateMap = Object.fromEntries((states ?? []).map((s: { edition_id: string; item_id: string; status: string }) => [`${s.edition_id}:${s.item_id}`, s.status]));
     return NextResponse.json({
       source: "supabase-read-only", demo: edition.demo, editionId: edition.editionId, producer: edition.producer,
       generatedAt: edition.generatedAt, coverExpiresAt: edition.coverExpiresAt, categories: groupJournal(edition),
-      items: edition.items.map(i => ({ ...i, state: stateMap[i.id] ?? "new" })), stateAvailable: states !== null,
+      items: edition.items.map(i => ({ ...i, state: stateMap[i.key] ?? "new" })), stateAvailable: states !== null,
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     if (error instanceof JournalSourceError) return engineFailure(error.code, error.status);

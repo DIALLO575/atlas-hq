@@ -1,3 +1,5 @@
+import { journalItemKey } from "./journal.mjs";
+
 // Pure helpers for the journal reading view. Output is plain data rendered by React (no HTML strings).
 
 const SAFE_URL = /^https?:\/\/[^\s<>"']+$/i;
@@ -61,11 +63,12 @@ export function swipeDirection(dx, dy, { min = 60 } = {}) {
   return dx < 0 ? 1 : -1;
 }
 export function neighbor(list, id, dir) {
-  const i = list.findIndex(x => x.id === id);
+  const i = list.findIndex(x => (x.key ?? x.id) === id);
   if (i < 0) return null;
   return list[i + dir] ?? null;
 }
 /** Items of a theme that "Tout marquer terminé" would change, with their previous state for undo. */
 export function bulkDonePlan(items, category) {
-  return items.filter(i => (category === "all" || i.category === category) && i.state !== "done").map(i => ({ id: i.id, editionId: i.editionId, previous: i.state }));
+  return items.filter(i => (category === "all" || i.category === category) && i.state !== "done")
+    .map(i => ({ key: i.key ?? journalItemKey(i.editionId, i.id), id: i.id, editionId: i.editionId, previous: i.state }));
 }
