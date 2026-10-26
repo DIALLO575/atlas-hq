@@ -81,7 +81,7 @@ test("inbox activity feed: allow-list, unknown types ignored, safe hrefs", () =>
   const ev = journalReadyEvent("ws 1", { edition_id: "2026-10-25_matin", item_count: 12, generated_at: "2026-10-25T13:00:00Z" });
   assert.equal(ev.title, "Journal du matin prêt — 12 articles");
   assert.equal(ev.href, "/journal?workspaceId=ws%201");
-  assert.equal(journalReadyEvent("w", { edition_id: "e", item_count: 1 }).title, "Journal du matin prêt — 1 article");
+  assert.equal(journalReadyEvent("w", { edition_id: "e", item_count: 1 }).title, "Journal ATLAS prêt — 1 article");
   assert.equal(journalReadyEvent("w", null), null);
   const out = normalizeActivity([ev, { ...ev }, { type: "mystery", id: "x", href: "/x" }, { type: "journal_ready", id: "y", href: "//evil.com" }, null]);
   assert.deepEqual(out.map(e => e.id), ["journal:2026-10-25_matin"]);

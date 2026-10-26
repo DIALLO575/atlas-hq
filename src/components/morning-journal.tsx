@@ -11,6 +11,7 @@ import { listWorkspaces } from "@/app/workspaces/actions";
 import { RichText } from "@/components/journal-rich-text";
 import { FONT_STEPS, READER_THEMES, bulkDonePlan, neighbor, pickFeatured, readingMinutes, stepFont, swipeDirection } from "../../packages/engines/mausbot/src/journal-reader.mjs";
 import { rankItems } from "../../packages/engines/mausbot/src/journal-ranking.mjs";
+import { journalEditionPresentation } from "../../packages/engines/mausbot/src/journal-edition.mjs";
 import { JOURNAL_READ_THRESHOLD_SECONDS } from "../../packages/engines/mausbot/src/journal-progress.mjs";
 
 type Category = "ia" | "ia-sur-x" | "commerce" | "guinee" | "afrique" | "monde" | "economie";
@@ -358,6 +359,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const chooseSection = (id: JournalSection) => { setSection(id); if (id === "featured" || id === "unread") setFilter("all"); };
   const editions = view.data?.editions ?? [];
   const latestEdition = editions[0];
+  const latestPresentation = journalEditionPresentation(latestEdition ?? { editionId: view.data?.editionId, generatedAt: view.data?.generatedAt ?? null, receivedAt: view.data?.receivedAt ?? null });
   const latestProducer = latestEdition?.producer === "grok-bot" ? "Grok" : latestEdition?.producer === "morgans" ? "MORGANS" : "Édition";
   const renderEditionGroups = (list: Item[]) => {
     const groups: { editionId: string; items: Item[] }[] = [];
@@ -369,9 +371,10 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     return groups.map(group => {
       const edition = editions.find(entry => entry.editionId === group.editionId);
       const producer = edition?.producer === "grok-bot" ? "Grok" : edition?.producer === "morgans" ? "MORGANS" : "Édition";
+      const presentation = journalEditionPresentation(edition);
       const instant = edition?.generatedAt ?? edition?.receivedAt ?? null;
-      return <section className="mj-edition-group" key={group.editionId + ":" + group.items[0].state} aria-label={producer + (instant ? " · " + dateLabel(instant) : "")}>
-        <header className="mj-edition-heading"><h2>{producer}</h2>{instant && <time dateTime={instant}>{dateLabel(instant)}</time>}</header>
+      return <section className="mj-edition-group" key={group.editionId + ":" + group.items[0].state} aria-label={presentation.title + " · " + producer + (instant ? " · " + dateLabel(instant) : "")}>
+        <header className="mj-edition-heading"><h2>{presentation.title} <span>· {producer}</span></h2>{instant && <time dateTime={instant}>{dateLabel(instant)}</time>}</header>
         <div className="mj-grid">{group.items.map(item => <article key={item.key} className={"mj-card" + (item === featured ? " is-lead" : "") + " is-state-" + item.state}>
           <button className="mj-card-open" onClick={() => open(item)} tabIndex={-1} aria-hidden><Cover item={item} large={item === featured} label={label(item.category)} /></button>
           <div className="mj-card-body">
@@ -410,7 +413,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     {ws && <JournalBookReadingCard workspaceId={ws} />}
     <header className="mj-masthead">
       <p className="mj-kicker">WORLD RADAR</p>
-      <h1>Journal du matin</h1>
+      <h1>{latestPresentation.title}</h1>
       {view.data && <p className="mj-edition">{dateLabel(view.data.generatedAt ?? view.data.receivedAt ?? null) ?? "Édition " + view.data.editionId}{view.data.demo && " · données de démonstration"}</p>}
       {view.data && !view.data.demo && latestEdition && <p className="mj-new-edition" role="status">Nouvelle édition <span>· {latestProducer}{(latestEdition.generatedAt ?? latestEdition.receivedAt) ? " · " + dateLabel(latestEdition.generatedAt ?? latestEdition.receivedAt ?? null) : ""}</span></p>}
       {view.data && <div className="mj-progress" role="progressbar" aria-label="Articles lus ou terminés" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
