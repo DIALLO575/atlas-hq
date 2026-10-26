@@ -95,23 +95,79 @@ export function AgentsWorkspace() {
   const [openTeamId, setOpenTeamId] = useState<string | null>(null);
   const [openAgentId, setOpenAgentId] = useState<string | null>(null);
   const [showAllAgents, setShowAllAgents] = useState(false);
+  const [directoryTab, setDirectoryTab] = useState<"teams" | "agents">("teams");
+  const [mobileView, setMobileView] = useState<"members" | "chat">("members");
+  const [compact, setCompact] = useState(false);
   const [fullscreenChat, setFullscreenChat] = useState(false);
+  const detailRef = useRef<HTMLElement>(null);
+  const detailBackRef = useRef<HTMLButtonElement>(null);
+  const fullscreenRef = useRef<HTMLElement>(null);
+  const fullscreenToggleRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const threadCache = useRef(new Map<string,{messages: Message[]; updatedAt:number}>());
   const activeMessageKey = useRef("");
   const scrollRef = useRef<HTMLOListElement>(null);
 
   useEffect(() => { threadCache.current.clear(); }, [workspaceId]);
 
+
   useEffect(() => {
-    if (!fullscreenChat) return;
-    const previous = document.body.style.overflow;
+    const media = window.matchMedia("(max-width: 700px)");
+    const sync = () => setCompact(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  function closeDetail() {
+    setFullscreenChat(false); setOpenTeamId(null); setOpenAgentId(null);
+    setSelection(null); setThreadId(""); setMessages([]); setDraft(""); setSendIssue("");
+    window.requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+  }
+
+  function showChatView() {
+    setMobileView("chat");
+    if (compact) window.requestAnimationFrame(() =>
+      detailRef.current?.querySelector<HTMLElement>(".atlas-people-chat-heading")?.focus({ preventScroll: true }));
+  }
+
+  useEffect(() => {
+    if (!fullscreenChat && !(compact && (openTeamId || openAgentId))) return;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const esc = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setFullscreenChat(false);
+    const overlay = fullscreenChat && !compact ? fullscreenRef.current : detailRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      if (fullscreenChat && !compact) fullscreenToggleRef.current?.focus({ preventScroll: true });
+      else detailBackRef.current?.focus({ preventScroll: true });
+    });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (fullscreenChat) setFullscreenChat(false);
+        else closeDetail();
+      }
+      if (event.key !== "Tab" || !overlay) return;
+      const nodes = Array.from(overlay.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+      )).filter(node => node.getClientRects().length > 0);
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (!first || !last) return;
+      if (!overlay.contains(document.activeElement)) {
+        event.preventDefault(); (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
     };
-    window.addEventListener("keydown",esc);
-    return () => { document.body.style.overflow = previous; window.removeEventListener("keydown",esc); };
-  }, [fullscreenChat]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [fullscreenChat, compact, openTeamId, openAgentId]);
+
 
   useEffect(() => {
     let mounted = true;
@@ -307,7 +363,8 @@ export function AgentsWorkspace() {
         <div className="atlas-people-toolbar-actions">
           {spaces.status === "ready" && <label>Workspace
             <select value={workspaceId} onChange={event => {
-              setQuery(""); setShowAllAgents(false); setFullscreenChat(false); setOpenTeamId(null);
+              setQuery(""); setShowAllAgents(false); setDirectoryTab("teams"); setMobileView("members");
+              setFullscreenChat(false); setOpenTeamId(null);
               setOpenAgentId(null); setSelection(null); setThreadId(""); setMessages([]);
               setMessagesIssue(""); setDraft(""); setSendIssue(""); setWorkspaceId(event.target.value);
             }}>
@@ -333,7 +390,7 @@ export function AgentsWorkspace() {
         </div>
       </section>}
 
-      {inventory && !detailOpen && <div className="atlas-agents-directory">
+      {inventory && !detailOpen && <div className="atlas-agents-directory" data-tab={directoryTab}>
       <div className="atlas-people-kpi-grid" aria-label="Vue d’ensemble MAUSBOT">
         <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-teams"><Icon name="layers" /></span><strong>{inventory.groups.length}</strong><small>Teams</small></div>
         <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-agents"><Icon name="bot" /></span><strong>{inventory.agents.length}</strong><small>Agents</small></div>
@@ -343,6 +400,14 @@ export function AgentsWorkspace() {
         <Icon name="search" /><span className="sr-only">Chercher une team ou un agent</span>
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Chercher une team ou un agent…" />
       </label>
+      <div className="atlas-people-mobile-switch" role="group" aria-label="Répertoire">
+        <button type="button" aria-pressed={directoryTab === "teams"}
+          className={directoryTab === "teams" ? "is-active" : ""}
+          onClick={() => setDirectoryTab("teams")}><Icon name="layers" /> Teams <span>{inventory.groups.length}</span></button>
+        <button type="button" aria-pressed={directoryTab === "agents"}
+          className={directoryTab === "agents" ? "is-active" : ""}
+          onClick={() => setDirectoryTab("agents")}><Icon name="bot" /> Agents <span>{inventory.agents.length}</span></button>
+      </div>
       <section className="atlas-team-directory" aria-label="Équipes MAUSBOT">
         <div className="atlas-team-directory-heading">
           <div><p className="atlas-people-overline">TEAMS</p><h2>Explorer les équipes</h2></div>
@@ -355,7 +420,8 @@ export function AgentsWorkspace() {
             const members = team.memberIds.map(id => inventory.agents.find(agent => agent.id === id)).filter((agent): agent is Agent => Boolean(agent));
             const engaged = members.filter(hasActiveThread).length;
             return <button type="button" key={team.id} className="atlas-team-card atlas-team-card-v2"
-              onClick={() => {
+              onClick={event => {
+                openerRef.current = event.currentTarget; setMobileView("members");
                 setOpenAgentId(null); setOpenTeamId(team.id);
                 selectItem({ kind: "team", id: team.id }, threadsFor(team));
               }}
@@ -395,7 +461,8 @@ export function AgentsWorkspace() {
             const memberships = inventory.groups.filter(team => team.memberIds.includes(agent.id));
             return <button type="button" key={agent.id} className="atlas-agent-card-v2"
               aria-label={"Ouvrir l’agent " + agent.name}
-              onClick={() => {
+              onClick={event => {
+                openerRef.current = event.currentTarget; setMobileView("chat");
                 setOpenTeamId(null); setOpenAgentId(agent.id);
                 selectItem({ kind: "agent", id: agent.id }, threadsFor(agent));
               }}>
@@ -424,12 +491,13 @@ export function AgentsWorkspace() {
     </div>}
 
       {inventory && detailOpen && <section className="atlas-team-detail" id="atlas-people-detail"
+        ref={detailRef} data-detail-kind={openedTeam ? "team" : "agent"} data-mobile-view={mobileView}
+        role={compact ? "dialog" : undefined} aria-modal={compact ? true : undefined}
         aria-label={openedTeam ? "Équipe " + openedTeam.name : "Agent " + openedAgent?.name}>
         <header className="atlas-team-detail-header">
-          <button type="button" className="atlas-team-back" onClick={() => {
-            setFullscreenChat(false); setOpenTeamId(null); setOpenAgentId(null);
-            setSelection(null); setThreadId(""); setMessages([]); setDraft(""); setSendIssue("");
-          }}><Icon name="arrow-left" /> Teams & Agents</button>
+          <button type="button" ref={detailBackRef} className="atlas-team-back" onClick={closeDetail}>
+            <Icon name="arrow-left" /> Teams & Agents
+          </button>
           <div className="atlas-team-detail-title">
             {openedAgent
               ? <AgentPortrait agent={openedAgent} workspaceId={workspaceId} className="atlas-team-detail-mark" />
@@ -443,13 +511,22 @@ export function AgentsWorkspace() {
             </div>
           </div>
         </header>
-
+        {openedTeam && <div className="atlas-detail-mobile-tabs" role="group" aria-label="Vue de la Team">
+          <button type="button" aria-pressed={mobileView === "members"}
+            className={mobileView === "members" ? "is-active" : ""} onClick={() => setMobileView("members")}>
+            <Icon name="bot" /> Membres <span>{memberAgents.length}</span>
+          </button>
+          <button type="button" aria-pressed={mobileView === "chat"}
+            className={mobileView === "chat" ? "is-active" : ""} onClick={showChatView}>
+            <Icon name="inbox" /> Chat
+          </button>
+        </div>}
         {openedTeam && <section className="atlas-team-members" aria-label="Agents de l’équipe">
           <div className="atlas-team-members-heading"><h3>Agents de l’équipe</h3><span>{memberAgents.length} agent{memberAgents.length > 1 ? "s" : ""} visible{memberAgents.length > 1 ? "s" : ""}</span></div>
           <div className="atlas-team-member-grid">
             <button type="button" className={"atlas-team-member-card" + (selection?.kind === "team" ? " is-active" : "")}
               aria-pressed={selection?.kind === "team"}
-              onClick={() => selectItem({ kind: "team", id: openedTeam.id }, threadsFor(openedTeam))}>
+              onClick={() => { selectItem({ kind: "team", id: openedTeam.id }, threadsFor(openedTeam)); showChatView(); }}>
               <span className="atlas-team-member-icon"><Icon name="layers" /></span>
               <span><strong>Conversation d’équipe</strong><small>Canal MAUSBOT</small></span>
               <Icon name="arrow-right" />
@@ -464,7 +541,7 @@ export function AgentsWorkspace() {
               return <button type="button" key={id}
                 className={"atlas-team-member-card" + (selection?.kind === "agent" && selection.id === id ? " is-active" : "")}
                 aria-pressed={selection?.kind === "agent" && selection.id === id}
-                onClick={() => selectItem({ kind: "agent", id }, threadsFor(agent))}>
+                onClick={() => { selectItem({ kind: "agent", id }, threadsFor(agent)); showChatView(); }}>
                 <AgentPortrait agent={agent} workspaceId={workspaceId} className="atlas-team-member-icon" />
                 <span><strong>{agent.name}</strong><small>{agentChief ? (chief?.label ?? "Chief of Staff") : agent.title || "Agent MAUSBOT"}</small></span>
                 <Icon name="arrow-right" />
@@ -473,9 +550,13 @@ export function AgentsWorkspace() {
           </div>
         </section>}
 
-        <section className={"atlas-people-console atlas-people-console-team" + (fullscreenChat ? " is-chat-fullscreen" : "")} aria-label="Conversation MAUSBOT de l’équipe">
+        <section ref={fullscreenRef}
+          className={"atlas-people-console atlas-people-console-team" + (fullscreenChat ? " is-chat-fullscreen" : "")}
+          role={fullscreenChat && !compact ? "dialog" : undefined}
+          aria-modal={fullscreenChat && !compact ? true : undefined}
+          aria-label="Conversation MAUSBOT">
         <div className="atlas-people-chat" id="atlas-people-conversation">
-          <div className="atlas-people-chat-heading">
+          <div className="atlas-people-chat-heading" tabIndex={-1}>
             <AgentPortrait agent={selectedAgent ?? (selection?.kind === "team" ? chief?.agent : null)} workspaceId={workspaceId}
               className={"atlas-people-avatar " + (selection?.kind === "team" ? "is-team" : "is-agent")} fallback={selection?.kind === "team" ? "layers" : "bot"} />
             <div className="atlas-people-chat-identity">
@@ -486,7 +567,7 @@ export function AgentsWorkspace() {
               {selected && <button type="button" className="atlas-people-icon-button" title="Actualiser les messages"
                 aria-label="Actualiser les messages" disabled={!threadId || messagesBusy || !canReadMessages}
                 onClick={() => setMessagesRevision(value => value + 1)}><Icon name="rotate-ccw" /></button>}
-              <button type="button" className="atlas-people-icon-button atlas-people-fullscreen-toggle"
+              <button type="button" ref={fullscreenToggleRef} className="atlas-people-icon-button atlas-people-fullscreen-toggle"
                 aria-pressed={fullscreenChat} aria-label={fullscreenChat ? "Quitter le plein écran" : "Afficher la conversation en plein écran"}
                 title={fullscreenChat ? "Réduire" : "Plein écran"}
                 onClick={() => setFullscreenChat(value => !value)}>
