@@ -7,7 +7,7 @@ Raccourcis Explique, Résume, Fais une fiche : préremplissent le champ, sans ap
 
 Historique par objet : GET /api/agent/thread accepte (workspaceId,pageKey=missions,objectId) pour retrouver un fil existant dans agent_threads. Le serveur contrôle owner, entité, mission et workspace. Le fil de la page et chaque mission sont distincts ; aucune migration.
 
-Polling : single-flight 2000 ms pendant un tour accepté (90 s maximum), 15000 ms en dehors. Arrêt total et AbortController à visibilitychange hidden, et quand le panneau ferme ; reprise sans rafale au retour. Les lectures passent toujours par les routes serveur et le garde-fou existant.
+Polling : single-flight 2000 ms pendant un tour accepté (90 s maximum), 15000 ms en dehors. Arrêt total et AbortController à visibilitychange hidden, et quand le panneau ferme ; reprise sans rafale au retour. Les erreurs de lecture déclenchent un backoff 15, 30 puis 60 s. Les lectures passent toujours par les routes serveur et le garde-fou existant.
 
 Route POST /api/agent/interrupt : origine, JSON, rôle propriétaire et fil vérifiés. Réponse 423 MAUSBOT_DURABLE_APPROVAL_REQUIRED, aucun appel au fournisseur. Le bouton ne déclare jamais une interruption réussie si le serveur a refusé.
 

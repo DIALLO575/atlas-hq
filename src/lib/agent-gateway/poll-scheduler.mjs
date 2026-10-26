@@ -17,6 +17,7 @@ export function createAgentPollScheduler({
   let timer = null;
   let inFlight = null;
   let lastStartedAt = Number.NEGATIVE_INFINITY;
+  let failures = 0;
   const hidden = () => visibility.visibilityState === "hidden" || visibility.hidden === true;
   const clear = () => { if (timer !== null) { clearTimer(timer); timer = null; } };
   function schedule(ms) {
@@ -31,11 +32,17 @@ export function createAgentPollScheduler({
     lastStartedAt = now();
     try {
       await load(controller.signal);
+      if (!controller.signal.aborted) failures = 0;
     } catch (error) {
-      if (!controller.signal.aborted && started && !hidden()) onError(error);
+      if (!controller.signal.aborted && started && !hidden()) {
+        failures = Math.min(failures + 1, 4);
+        onError(error);
+      }
     } finally {
       if (inFlight === controller) inFlight = null;
-      if (started && !hidden()) schedule(isActive() ? AGENT_POLL_ACTIVE_MS : AGENT_POLL_IDLE_MS);
+      if (started && !hidden()) schedule(failures
+        ? Math.min(60_000, AGENT_POLL_IDLE_MS * 2 ** (failures - 1))
+        : (isActive() ? AGENT_POLL_ACTIVE_MS : AGENT_POLL_IDLE_MS));
     }
   }
   function visibilityChange() {

@@ -102,3 +102,28 @@ test("B2 shortcut drafts and measured real-message bubbles; no mock replies",asy
  assert.match(p,/createAgentPollScheduler/);
  assert.doesNotMatch(p,/setInterval\(|fakeReply|mockResponse|demoMessages/);
 });
+
+test("B2 provider errors back off to 15s, 30s, 60s instead of hammering VPS",async()=>{
+ const c=clock();let calls=0,errors=0;
+ const scheduler=createAgentPollScheduler({visibility:c.visibility,setTimer:c.setTimer,clearTimer:c.clearTimer,now:c.now,
+  isActive:()=>true,onError:()=>errors++,load:async()=>{calls++;throw new Error("upstream failed");}});
+ scheduler.start();await c.advance(0);assert.equal(calls,1);
+ await c.advance(2000);assert.equal(calls,1);
+ await c.advance(13000);assert.equal(calls,2);
+ await c.advance(29999);assert.equal(calls,2);
+ await c.advance(1);assert.equal(calls,3);
+ await c.advance(60000);assert.equal(calls,4);assert.equal(errors,4);
+ scheduler.stop();
+});
+test("B2 real accepted turn promotes dormant idle poll to 2s without bursting",async()=>{
+ const c=clock();let calls=0,active=false;
+ const scheduler=createAgentPollScheduler({visibility:c.visibility,setTimer:c.setTimer,clearTimer:c.clearTimer,now:c.now,
+  isActive:()=>active,load:async()=>{calls++;}});
+ scheduler.start();await c.advance(0);assert.equal(calls,1);
+ active=true;await c.advance(1000);scheduler.refresh();
+ await c.advance(999);assert.equal(calls,1);
+ await c.advance(1);assert.equal(calls,2);
+ c.visibility.change(true);scheduler.refresh();await c.advance(100000);
+ assert.equal(calls,2,"refresh never polls hidden tab");
+ scheduler.stop();
+});
