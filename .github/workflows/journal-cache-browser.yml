@@ -17,15 +17,32 @@ jobs:
         run: node scripts/generate-journal-offline-cache.mjs --check
       - name: Real Chromium IndexedDB, second-tab purge and cached render measurement
         run: |
+          set -euo pipefail
+          server_pid=""
+          chrome_pid=""
+          server_log="$RUNNER_TEMP/journal-cache-http.log"
+          chrome_log="$RUNNER_TEMP/journal-chrome.log"
+          cleanup() {
+            if [[ -n "$chrome_pid" ]]; then kill "$chrome_pid" 2>/dev/null || true; fi
+            if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi
+          }
+          trap cleanup EXIT
+          wait_for_url() {
+            local url="$1" log="$2"
+            for _ in {1..30}; do
+              if curl -fsS "$url" > /dev/null; then return 0; fi
+              sleep 1
+            done
+            cat "$log"
+            return 1
+          }
           google-chrome --version
-          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/journal-cache-http.log 2>&1 &
+          python3 -m http.server 8765 --bind 127.0.0.1 > "$server_log" 2>&1 &
           server_pid=$!
-          trap 'kill "$server_pid"' EXIT
-          for attempt in 1 2 3 4 5; do curl -fsS http://127.0.0.1:8765/tests/browser/journal-cache-real.html > /dev/null && break || sleep 1; done
-          google-chrome --headless --no-sandbox --disable-gpu --disable-popup-blocking --disable-background-timer-throttling --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/journal-test-profile" about:blank > /tmp/journal-chrome.log 2>&1 &
+          wait_for_url http://127.0.0.1:8765/tests/browser/journal-cache-real.html "$server_log"
+          google-chrome --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-popup-blocking --disable-background-timer-throttling --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/journal-test-profile" about:blank > "$chrome_log" 2>&1 &
           chrome_pid=$!
-          trap 'kill "$chrome_pid" "$server_pid"' EXIT
-          for attempt in 1 2 3 4 5; do curl -fsS http://127.0.0.1:9222/json/version > /dev/null && break || sleep 1; done
+          wait_for_url http://127.0.0.1:9222/json/version "$chrome_log"
           node scripts/verify-journal-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()

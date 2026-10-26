@@ -49,3 +49,12 @@ La CI générale #40286818791 a exécuté tous les tests mais a découvert autom
 Preuves : https://github.com/DIALLO575/atlas-hq/actions/runs/40286818841 ; logs job https://github.com/DIALLO575/atlas-hq/actions/runs/40286818841/job/121452312107.
 
 CI 40287103299 sur 59585a7 : suite complète 809/809 et typecheck verts; lint bloquait sur une écriture de ref pendant le rendu dans le tracker UI hérité de 330a833. Correction minimale : synchronisation de onProgressRef dans useEffect + dépendances setView explicites. Workflow Chromium répété sur cette tête : 40287103544 success. Nettoyage du titre et des références de lecture également renforcé lors du refus/purge du shell froid. Le dernier head corrigé doit encore passer la CI générale avant acceptation.
+
+## Vérification locale reprise — tête distante 884a56e
+
+- SHA main vérifié : `7bb3bfcb08d587cd4d4ce636626703ed58750b2e`; c'est l'ancêtre commun de la branche PR.
+- La diff de la PR contient déjà `src/app/journal/page.tsx`, `src/components/morning-journal.tsx`, `src/components/app-shell.tsx` et `src/app/morning-journal.css` : les sources O1/O2/O3 sont présentes. Le rendu visuel complet reste à valider.
+- Contrôles locaux exécutés : `npm test` 809/809, `npm run typecheck` réussi, `npm run lint` réussi. `npm run build` a été interrompu par SIGTERM (code 143) au démarrage de la compilation; aucun nouvel essai local n'a été fait. La CI générale #40287367452 sur 884a56e a, elle, réussi `npm test`, typecheck, lint et build.
+- Le job `indexeddb-multitab` #40287367265 échoue avant ses assertions : Chrome n'expose pas `/json/version` dans les cinq secondes prévues, puis Node reçoit `ECONNREFUSED`. La suite IndexedDB réelle a réussi sur le SHA précédent 3cf48c6, mais cela ne valide pas la tête 884a56e. Le workflow est corrigé pour attendre jusqu'à 30 secondes, utiliser le mode headless explicite et afficher ses logs en cas d'échec; résultat sur le prochain SHA à vérifier.
+- `next dev` était prêt sur `localhost:3000`, mais `/journal` retourne 307 vers la connexion sans session locale. Le navigateur intégré ne peut pas joindre ce serveur local (`ERR_SOCKS_CONNECTION_FAILED`) et aucun ordinateur local/VM n'est configuré. Aucun contournement d'authentification ni capture factice n'a été fait; captures mobile/desktop et rendu visuel restent non vérifiés.
+- Aucun changement de protection Vercel, merge, déploiement production ou application de migration/rollback.
