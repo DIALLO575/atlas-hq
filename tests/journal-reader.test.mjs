@@ -109,7 +109,7 @@ test("service worker: journal-only offline cache, expired signed URLs stripped",
   const sw = read("public/sw.js");
   assert.match(sw, /importScripts\("\/journal-sw-core.js"\)/);
   assert.doesNotMatch(sw, /journal\/state/);
-  assert.match(sw, /cache\.delete\(r\)/); // only the last edition is kept
+  assert.match(sw, /cache\.delete\(r\)/); // bounded public asset cache; private editions live in scoped IndexedDB
   assert.match(read("src/proxy.ts"), /sw\\\\\.js\$\|journal-sw-core\\\\\.js\$/);
 });
 

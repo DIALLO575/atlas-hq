@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cachedJournalWorkspace } from "@/lib/journal/cache-storage";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useJournalData } from "@/components/journal/use-journal-data";
 import { Icon } from "@/components/icon";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import { RichText } from "@/components/journal-rich-text";
@@ -17,7 +20,6 @@ type Item = {
 };
 type Payload = { source: "supabase-read-only"; producer: string; demo: boolean; editionId: string; generatedAt: string | null; offline?: boolean;
   categories: { id: Category; label: string; count: number }[]; items: Item[]; stateAvailable: boolean };
-type View = { status: "loading" | "ready" | "offline" | "error"; data?: Payload; error?: string };
 type Theme = (typeof READER_THEMES)[number];
 type Undo = { label: string; plan: { key: string; id: string; editionId: string; previous: "new" | "read" }[] } | null;
 
@@ -36,14 +38,6 @@ function dateLabel(v: string | null, opts: Intl.DateTimeFormatOptions = { weekda
   if (!v) return null;
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : new Intl.DateTimeFormat("fr-FR", opts).format(d);
-}
-function usePref<T extends string | number>(key: string, initial: T): [T, (v: T) => void] {
-  // The reader is only mounted client-side after a tap, so reading localStorage in the initializer is safe.
-  const [v, setV] = useState<T>(() => {
-    try { const s = typeof window === "undefined" ? null : localStorage.getItem(key); if (s !== null) return (typeof initial === "number" ? Number(s) : s) as T; } catch {}
-    return initial;
-  });
-  return [v, (n: T) => { setV(n); try { localStorage.setItem(key, String(n)); } catch {} }];
 }
 
 function Cover({ item, large, label }: { item: Item; large?: boolean; label?: string }) {
@@ -67,11 +61,14 @@ function Badges({ item }: { item: Item }) {
 }
 function sourcesOf(item: Item) { return [...(item.sourceUrl ? [{ url: item.sourceUrl, name: item.sourceName }] : []), ...item.extraSources]; }
 
-function Reader({ item, list, label, onClose, onNav, onState }: {
+function Reader({ item, list, label, onClose, onNav, onState, preferences, savePreference }: {
+  preferences: Record<string, string | number>; savePreference: (key: string, value: string | number) => void;
   item: Item; list: Item[]; label: (c: Category) => string; onClose: () => void; onNav: (i: Item) => void; onState: (i: Item, s: ReadState) => void;
 }) {
-  const [size, setSize] = usePref<number>("mj.font", 1);
-  const [theme, setTheme] = usePref<Theme>("mj.theme", "light");
+  const size = typeof preferences.font === "number" && Number.isInteger(preferences.font) && preferences.font >= 0 && preferences.font < FONT_STEPS.length ? preferences.font : 1;
+  const theme: Theme = READER_THEMES.includes(preferences.theme as Theme) ? preferences.theme as Theme : "light";
+  const setSize = (value: number) => savePreference("font", value);
+  const setTheme = (value: Theme) => savePreference("theme", value);
   const [progress, setProgress] = useState(0);
   const scroller = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
@@ -164,7 +161,6 @@ function IosInstallHint() {
 
 export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const [ws, setWs] = useState(workspaceId ?? "");
-  const [view, setView] = useState<View>({ status: "loading" });
   const [filter, setFilter] = useState<Category | "all">("all");
   const [readingId, setReadingId] = useState<string | null>(null);
   const [hideDone, setHideDone] = useState(false);
@@ -173,6 +169,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const [undo, setUndo] = useState<Undo>(null);
   const [pull, setPull] = useState(0);
   const [nonce, setNonce] = useState(0);
+  const { view, setView, enqueue, preferences, savePreference } = useJournalData<Payload>(ws, nonce);
   const pullStart = useRef<number | null>(null);
 
   useEffect(() => {
@@ -184,29 +181,18 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     if (workspaceId) return;
     let alive = true;
     void listWorkspaces().then(r => { if (alive && r.status === "ready") setWs(r.selectedId); else if (alive) setView({ status: "error", error: "WORKSPACE_FORBIDDEN" }); })
-      .catch(() => { if (alive) setView({ status: navigator.onLine ? "error" : "offline", error: navigator.onLine ? undefined : "OFFLINE" }); });
+      .catch(async () => {
+        const session = await createSupabaseBrowserClient()?.auth.getSession();
+        const userId = session?.data.session?.user.id;
+        const cached = userId ? await cachedJournalWorkspace(userId).catch(() => null) : null;
+        if (alive && cached) setWs(cached); else if (alive) setView({ status: "offline", error: "OFFLINE" });
+      });
     return () => { alive = false; };
   }, [workspaceId]);
-  useEffect(() => {
-    if (!ws) return;
-    const abort = new AbortController();
-    void (async () => {
-      try {
-        const res = await fetch("/api/engines/mausbot/journal?workspaceId=" + encodeURIComponent(ws), { credentials: "same-origin", signal: abort.signal });
-        const body = await res.json();
-        if (!res.ok) { setView(v => v.data ? v : { status: res.status === 503 || res.status === 404 ? "offline" : "error", error: body.error }); return; }
-        if (body.source !== "supabase-read-only" || !Array.isArray(body.items)) throw Error("bad");
-        setView({ status: "ready", data: body as Payload });
-      } catch { if (!abort.signal.aborted) setView(v => v.data ? v : { status: "error" }); }
-    })();
-    return () => abort.abort();
-  }, [ws, nonce]);
-
   const postState = useCallback(async (editionId: string, itemId: string, status: ReadState) => {
-    const res = await fetch("/api/engines/mausbot/journal/state", { method: "POST", credentials: "same-origin",
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: ws, editionId, itemId, status }) });
-    if (!res.ok) throw Error("state");
-  }, [ws]);
+    await enqueue({ id: crypto.randomUUID(), kind: "state", body: { workspaceId: ws, editionId, itemId, status } });
+  }, [ws, enqueue]);
+
   const patch = useCallback((ids: Map<string, ReadState>) => setView(v => v.data ? { ...v, data: { ...v.data, items: v.data.items.map(i => ids.has(i.key) ? { ...i, state: ids.get(i.key)! } : i) } } : v), []);
   const setState = useCallback(async (item: Item, status: ReadState) => {
     patch(new Map([[item.key, status]]));
@@ -250,6 +236,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     <div className="mj-pull" style={{ height: pull }} aria-hidden><span className={pull >= 70 ? "is-ready" : ""}><Icon name="rotate-ccw" /></span></div>
     {!online && <p className="mj-offline" role="status">Hors ligne — {view.data ? "dernière édition enregistrée sur cet appareil" : "aucune édition enregistrée"}.</p>}
     {online && view.data?.offline && <p className="mj-offline" role="status">Édition enregistrée affichée (réseau indisponible).</p>}
+    {view.error && view.data && <p className="mj-state is-warn" role="status">Synchronisation différée : {view.error}</p>}
     <IosInstallHint />
     <header className="mj-masthead">
       <p className="mj-kicker">WORLD RADAR · {view.data?.producer === "morgans+grok-bot" ? "MORGANS + Grok Bot" : view.data?.producer === "grok-bot" ? "Grok Bot" : "MORGANS & équipe"}</p>
@@ -295,7 +282,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
         <div className="mj-actions"><button autoFocus onClick={() => setConfirm(false)}>Annuler</button><button className="mj-primary" onClick={() => void bulkDone()}>Confirmer</button></div></div>
     </div>}
     {undo && <div className="mj-toast" role="status"><span>{undo.label}</span><button onClick={() => void undoBulk()}>Annuler</button></div>}
-    {reading && <Reader item={reading} list={ordered.length && ordered.some(i => i.key === reading.key) ? ordered : all} label={label}
+    {reading && <Reader preferences={preferences} savePreference={savePreference} item={reading} list={ordered.length && ordered.some(i => i.key === reading.key) ? ordered : all} label={label}
       onClose={() => setReadingId(null)} onNav={nav} onState={(i, s) => void setState(i, s)} />}
   </main>;
 }

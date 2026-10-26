@@ -77,3 +77,30 @@ export function validateJournalStateInput(body) {
   if (typeof body.workspaceId !== "string") return null;
   return { workspaceId: body.workspaceId, editionId: body.editionId, itemId: body.itemId, status: body.status };
 }
+
+// Progress wire contract: no caller identity, dates, article text or URLs.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function exactProgressObject(value, keys) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    && [Object.prototype, null].includes(Object.getPrototypeOf(value))
+    && Reflect.ownKeys(value).length === keys.length && keys.every(k => Object.hasOwn(value, k));
+}
+export function validateJournalProgressInput(body) {
+  if (!exactProgressObject(body, ['workspaceId', 'batchId', 'events']) || typeof body.workspaceId !== 'string' || !UUID.test(body.workspaceId)
+    || typeof body.batchId !== 'string' || !UUID.test(body.batchId) || !Array.isArray(body.events) || body.events.length < 1 || body.events.length > 20) return null;
+  const seen = new Set(); const events = []; let total = 0;
+  for (const event of body.events) {
+    if (!exactProgressObject(event, ['editionId', 'itemId', 'deltaSeconds', 'position'])
+      || typeof event.editionId !== 'string' || !ID.test(event.editionId) || typeof event.itemId !== 'string' || !ID.test(event.itemId)
+      || !Number.isInteger(event.deltaSeconds) || event.deltaSeconds < 0 || event.deltaSeconds > 120
+      || typeof event.position !== 'number' || !Number.isFinite(event.position) || event.position < 0 || event.position > 1
+      || Math.abs(event.position * 100 - Math.round(event.position * 100)) > 1e-8) return null;
+    const key = journalItemKey(event.editionId, event.itemId);
+    if (seen.has(key)) return null;
+    seen.add(key); total += event.deltaSeconds;
+    events.push({ editionId: event.editionId, itemId: event.itemId, deltaSeconds: event.deltaSeconds, position: event.position });
+  }
+  if (total > 120) return null;
+  events.sort((a, b) => journalItemKey(a.editionId, a.itemId).localeCompare(journalItemKey(b.editionId, b.itemId)));
+  return { workspaceId: body.workspaceId.toLowerCase(), batchId: body.batchId.toLowerCase(), events };
+}
