@@ -34,6 +34,16 @@ const mobileItems = [navItems[0], navItems[2], navItems[5], navItems[8]];
 // Retain only the expanded/collapsed preference between client-side navigations.
 let cachedExpanded: boolean | null = null;
 
+function initialDarkMode() {
+  if (typeof window === "undefined") return false;
+  try {
+    const saved = window.localStorage.getItem("atlas:theme");
+    return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  } catch {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+}
+
 // Route pages keep their existing <AppShell> wrappers, but the actual dock lives
 // once in the persistent root layout. Nested wrappers render only page content.
 const AppShellContext = createContext(false);
@@ -57,7 +67,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   // The dock itself remains mounted; only the page content changes.
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
   const [journalUnread, setJournalUnread] = useState<number | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(initialDarkMode);
   const isRoutePending = Boolean(navigatingTo && navigatingTo !== pathname);
 
   useEffect(() => {
@@ -93,11 +103,8 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   }, [pathname]);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("atlas:theme");
-    const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setDarkMode(dark);
-    document.documentElement.dataset.atlasTheme = dark ? "dark" : "light";
-  }, []);
+    document.documentElement.dataset.atlasTheme = darkMode ? "dark" : "light";
+  }, [darkMode]);
 
   const toggleTheme = () => setDarkMode(current => {
     const next = !current;
