@@ -101,7 +101,7 @@ BEGIN
  END IF;
  FOR v_event IN SELECT value FROM jsonb_array_elements(v_events) LOOP
   INSERT INTO public.feed_item_state(user_id,workspace_id,edition_id,item_id,status)
-   VALUES(v_uid,p_workspace,v_event->>'editionId',v_event->>'itemId','read') ON CONFLICT DO NOTHING;
+   VALUES(v_uid,p_workspace,v_event->>'editionId',v_event->>'itemId','new') ON CONFLICT DO NOTHING;
   SELECT seconds_read INTO v_before FROM public.feed_item_state
    WHERE user_id=v_uid AND workspace_id=p_workspace AND edition_id=v_event->>'editionId' AND item_id=v_event->>'itemId' FOR UPDATE;
   v_delta := least((v_event->>'deltaSeconds')::integer,86400-v_before);
