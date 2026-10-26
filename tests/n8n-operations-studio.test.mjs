@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const read=path=>readFile(new URL(path,import.meta.url),"utf8");
-test("Mes Apps exposes n8n early, as a true recommended Operations Studio",async()=>{
+test("n8n stays in the catalog as a recommended Operations Studio, without being claimed connected in Mes Apps",async()=>{
  const [catalog,directory,css]=await Promise.all([
   read("../src/lib/app-catalog.ts"),
   read("../src/components/apps-directory.tsx"),
@@ -12,10 +12,7 @@ test("Mes Apps exposes n8n early, as a true recommended Operations Studio",async
  const index=catalog.indexOf('slug: "n8n"');
  assert.ok(index>0&&index<catalog.indexOf('slug: "google-drive"'));
  assert.match(catalog,/slug: "n8n"[\s\S]*?recommended: true/);
- assert.match(directory,/href="\/apps\/n8n"/);
- assert.match(directory,/Ouvrir n8n Operations Studio/);
- assert.match(directory,/app\.slug === "n8n" \? " is-n8n"/);
- assert.match(directory,/app\.slug === "n8n" \? "Préconnexion"/);
+ assert.doesNotMatch(directory,/n8n/);
  assert.match(css,/\.atlas-app-tile\.is-n8n/);
  assert.match(css,/#f5b4ba/);
 });

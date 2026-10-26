@@ -53,8 +53,9 @@ test("missions and inbox are real workflow pages; transversal demos remain hones
 
 test("premium Mes Apps preserves its directory and offers the real GitHub connector", async () => {
   assert.match(apps, /<AppsDirectory/);
-  assert.match(apps, /<AppsDirectory githubConfigured/);
-  assert.doesNotMatch(apps, /<GitHubWorkspacePicker|from\("workspace_members"\)|auth\.getUser\(\)/);
+  assert.match(apps, /<AppsDirectory apps=\{apps\}/);
+  assert.match(apps, /listConnectedApps\(\)/);
+  assert.doesNotMatch(apps, /<GitHubWorkspacePicker|demoApps/);
   assert.match(agents, /<AgentsWorkspace/);
   assert.match(agentsWorkspace, /view=inventory/);
   assert.ok(agentsWorkspace.includes("/api/engines/mausbot/updates?"));

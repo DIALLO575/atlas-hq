@@ -51,10 +51,12 @@ test("Mes Apps links to Control Center and responsive styles are available", asy
     read("../src/app/apps/github/page.tsx"),
     read("../src/app/github-control-center.css"),
   ]);
-  assert.match(dir, /href="\/apps\/github"/);
-  assert.match(dir, /Ouvrir GitHub Control Center/);
+  assert.match(dir, /href=\{app\.href\}/);
+  assert.match(dir, /Ouvrir l’application/);
   assert.match(page, /GitHubControlCenter/);
   assert.match(layout, /github-control-center\.css/);
+  const connected = await read("../src/lib/connected-apps.ts");
+  assert.match(connected, /slug: "github"/);
   assert.match(css, /\.atlas-gh-content/);
   assert.match(css, /@media\(max-width:760px\)/);
   assert.match(css, /atlas-gh-stats/);
