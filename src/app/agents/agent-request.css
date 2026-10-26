@@ -322,3 +322,64 @@
 .atlas-chief-members .atlas-chief-portrait{width:22px;height:22px;flex-basis:22px;}
 .atlas-chief-dot{width:8px;height:8px;border-radius:50%;background:rgba(127,127,127,.4);display:inline-block;}
 @media (max-width:420px){.atlas-chief-grid{grid-template-columns:1fr;}.atlas-chief-card{padding:10px;}}
+
+/* Agents — clean card-first experience */
+.atlas-people-team-space{--agents-ink:#29223f;--agents-border:#e8e1f3;}
+.atlas-people-team-space .atlas-people-hero-compact{min-height:145px;padding:27px 30px;}
+.atlas-people-team-space .atlas-people-hero-copy>p:not(.atlas-people-overline){max-width:380px;}
+.atlas-agents-directory{display:grid;gap:16px;min-width:0;}
+.atlas-people-kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.atlas-people-kpi{display:grid;grid-template-columns:48px 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;min-width:0;padding:17px 19px;background:#fff;border:1px solid var(--agents-border);border-radius:18px;box-shadow:0 8px 25px rgba(35,25,75,.045);}
+.atlas-people-kpi-icon{grid-row:1/3;display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#f0eaff;color:#7555ce;}
+.atlas-people-kpi-icon.is-agents{background:#eaf5ff;color:#427cc0;}
+.atlas-people-kpi-icon.is-active{background:#e9f8f0;color:#27825d;}
+.atlas-people-kpi-icon svg{width:22px;height:22px;}
+.atlas-people-kpi strong{align-self:end;font-size:26px;letter-spacing:-.05em;line-height:1.1;color:var(--agents-ink);}
+.atlas-people-kpi small{align-self:start;font-size:11px;color:#80768f;font-weight:650;margin-top:4px;}
+.atlas-people-global-search{margin:0!important;max-width:none!important;min-height:48px;border:1px solid var(--agents-border);border-radius:14px;background:#fff;}
+.atlas-agents-directory .atlas-team-directory,.atlas-agents-directory .atlas-agent-directory{background:#fff;border:1px solid var(--agents-border);border-radius:21px;box-shadow:0 8px 28px rgba(35,25,75,.04);padding:22px;min-width:0;}
+.atlas-agents-directory .atlas-team-grid{margin-top:19px;}
+.atlas-agents-directory .atlas-team-card-v2{position:relative;min-height:230px;gap:12px;padding:19px;background:linear-gradient(135deg,#faf8ff 0%,#fff 66%);border:1px solid #eae3f6;box-shadow:0 3px 8px rgba(49,34,92,.03);overflow:hidden;}
+.atlas-agents-directory .atlas-team-card-v2:hover{transform:translateY(-3px);box-shadow:0 14px 31px rgba(60,35,119,.12);border-color:#cab8f3;}
+.atlas-team-card-v2 .atlas-team-card-top{display:flex;align-items:center;gap:11px;}
+.atlas-team-card-v2 .atlas-team-card-icon{width:47px;height:47px;border-radius:15px;}
+.atlas-card-arrow{display:grid;place-items:center;width:31px;height:31px;margin-left:auto;border-radius:10px;background:#f1edfa;color:#7457c6;}
+.atlas-team-card-v2 .atlas-team-card-name{font-size:19px;line-height:1.2;margin-top:2px;}
+.atlas-team-card-chief{display:flex;align-items:center;gap:7px;font-size:11px;color:#716385;min-height:16px;overflow-wrap:anywhere;}
+.atlas-team-card-chief svg{width:15px;height:15px;color:#856bc1;flex:none;}
+.atlas-team-card-portraits{display:flex;align-items:center;gap:10px;min-height:41px;font-size:11px;color:#82798d;margin-top:auto;}
+.atlas-team-avatar-stack{display:flex;align-items:center;padding-left:5px;}
+.atlas-team-stack-avatar{height:32px;width:32px;border-radius:50%;border:2px solid white;background:#ece7f8;margin-left:-6px;box-shadow:0 1px 5px rgba(31,20,57,.1);}
+.atlas-team-stack-empty{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#ede7f8;color:#7959c9;}
+.atlas-team-stack-empty svg{width:17px;}
+.atlas-team-card-v2 .atlas-team-card-footer{padding-top:11px;margin-top:0;border-top:1px solid #ede8f6;}
+.atlas-team-card-v2 .atlas-team-card-footer strong{display:flex;align-items:center;gap:6px;font-size:11px;color:#674ab6;white-space:nowrap;}
+.atlas-team-card-v2 .atlas-team-card-footer strong svg{width:14px;height:14px;}
+.atlas-status-indicator{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:10px;color:#736d7f;font-weight:650;overflow-wrap:anywhere;}
+.atlas-status-dot{width:8px;height:8px;flex:none;border-radius:50%;background:#ac9cba;}
+.atlas-status-dot.is-active{background:#30a574;box-shadow:0 0 0 3px #dff7ec;}
+.atlas-agent-directory .atlas-team-directory-heading{margin-bottom:18px;}
+.atlas-agent-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;}
+.atlas-agent-card-v2{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-width:0;min-height:205px;padding:16px;gap:7px;border:1px solid #e9e5f2;border-radius:18px;background:linear-gradient(145deg,#fff,#faf9fe);box-shadow:0 4px 10px rgba(44,30,78,.035);color:var(--agents-ink);cursor:pointer;font:inherit;transition:transform .16s,border-color .16s,box-shadow .16s;}
+.atlas-agent-card-v2:hover{transform:translateY(-3px);border-color:#c9b7ed;box-shadow:0 13px 26px rgba(54,33,106,.1);}
+.atlas-agent-card-head{width:100%;display:flex;align-items:flex-start;}
+.atlas-agent-card-avatar{height:51px;width:51px;border-radius:17px;background:#eee9ff;color:#7956d0;}
+.atlas-agent-card-v2>strong{font-size:14px;line-height:1.3;max-width:100%;overflow-wrap:anywhere;margin-top:3px;}
+.atlas-agent-card-role{color:#857a92;font-size:11px;min-height:14px;max-width:100%;overflow-wrap:anywhere;}
+.atlas-agent-card-tag{max-width:100%;padding:5px 9px;border-radius:999px;background:#f0ebfc;color:#7459b5;font-size:10px;font-weight:680;overflow-wrap:anywhere;}
+.atlas-agent-card-bottom{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid #eeeaf3;}
+.atlas-agent-card-chat{display:inline-flex;align-items:center;gap:4px;color:#6e4ac5;font-size:11px;font-weight:750;white-space:nowrap;}
+.atlas-agent-card-chat svg{width:14px;height:14px;}
+.atlas-show-agents{display:flex;justify-content:center;align-items:center;gap:7px;min-height:42px;margin:18px auto 0;padding:0 18px;border:1px solid #e3d8f8;border-radius:12px;background:#f7f3ff;color:#6643bf;font:inherit;font-size:12px;font-weight:720;cursor:pointer;}
+.atlas-show-agents:hover{background:#eee6ff;}
+.atlas-show-agents svg{width:15px;height:15px;}
+.atlas-team-detail .atlas-team-detail-header{background:linear-gradient(110deg,#f8f5ff 0%,#fff 65%);}
+.atlas-team-detail .atlas-team-detail-mark.atlas-agent-portrait{width:55px;height:55px;border-radius:17px;}
+.atlas-team-detail .atlas-people-console-team{border:1px solid var(--agents-border);border-radius:19px;box-shadow:0 8px 28px rgba(35,25,75,.045);overflow:hidden;}
+.atlas-team-detail .atlas-people-chat-heading{background:linear-gradient(90deg,#faf8ff,#fff);}
+.atlas-team-detail .atlas-people-bubble{overflow-wrap:anywhere;}
+@media(max-width:1160px){.atlas-agent-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:850px){.atlas-agent-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:700px){.atlas-people-kpi-grid{gap:7px;}.atlas-people-kpi{grid-template-columns:1fr;grid-template-rows:auto auto auto;padding:12px;gap:4px;}.atlas-people-kpi-icon{grid-row:auto;width:35px;height:35px;border-radius:11px;}.atlas-people-kpi-icon svg{width:17px;height:17px;}.atlas-people-kpi strong{font-size:22px;}.atlas-people-kpi small{font-size:10px;}.atlas-agents-directory .atlas-team-directory,.atlas-agents-directory .atlas-agent-directory{padding:15px;}.atlas-agents-directory .atlas-team-card-v2{min-height:210px;}.atlas-people-team-space .atlas-people-hero-compact{padding:21px;}.atlas-team-detail .atlas-people-console-team{border-radius:16px;}}
+@media(max-width:390px){.atlas-agent-grid{grid-template-columns:1fr;}.atlas-agent-card-v2{min-height:170px;}.atlas-people-kpi{padding:9px;}}
+@media(prefers-reduced-motion:reduce){.atlas-agent-card-v2{transition:none;}.atlas-agent-card-v2:hover{transform:none;}}
