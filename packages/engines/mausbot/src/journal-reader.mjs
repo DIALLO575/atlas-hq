@@ -72,3 +72,31 @@ export function bulkDonePlan(items, category) {
   return items.filter(i => (category === "all" || i.category === category) && i.state !== "done")
     .map(i => ({ key: i.key ?? journalItemKey(i.editionId, i.id), id: i.id, editionId: i.editionId, previous: i.state }));
 }
+
+/** Real reading time, distinct from readingMinutes (word-count estimate). */
+export function secondsToMinutes(seconds) {
+  return Number.isFinite(seconds) && seconds > 0 ? seconds / 60 : 0;
+}
+export function summarizeJournalReading(items, sessions = [], today = new Date().toISOString().slice(0, 10)) {
+  const todayMs = Date.parse(today + 'T00:00:00Z');
+  if (!Number.isFinite(todayMs) || new Date(todayMs).toISOString().slice(0, 10) !== today) throw new Error('Invalid UTC day');
+  const groups = { byCategory: {}, byProducer: {} };
+  let read = 0;
+  for (const item of items) {
+    const isRead = item.state === 'read' || item.state === 'done';
+    if (isRead) read++;
+    for (const [name, key] of [['byCategory', item.category ?? 'unknown'], ['byProducer', item.producer ?? 'unknown']]) {
+      const group = Object.hasOwn(groups[name], key) ? groups[name][key] : { total: 0, read: 0 };
+      group.total++; if (isRead) group.read++;
+      Object.defineProperty(groups[name], key, { value: group, enumerable: true, configurable: true });
+    }
+  }
+  let todaySeconds = 0, sevenDaySeconds = 0;
+  for (const row of sessions) {
+    const day = Date.parse(row.day + 'T00:00:00Z');
+    if (!Number.isFinite(day) || day > todayMs || day < todayMs - 6 * 86400000 || !Number.isInteger(row.seconds) || row.seconds < 0 || row.seconds > 86400) continue;
+    sevenDaySeconds += row.seconds; if (row.day === today) todaySeconds += row.seconds;
+  }
+  return { total: items.length, read, unread: items.length - read, percentRead: items.length ? Math.round(read * 100 / items.length) : 0,
+    todaySeconds, sevenDaySeconds, todayMinutes: secondsToMinutes(todaySeconds), sevenDayMinutes: secondsToMinutes(sevenDaySeconds), ...groups };
+}

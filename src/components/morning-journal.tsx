@@ -1,10 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cachedJournalWorkspace } from "@/lib/journal/cache-storage";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useJournalData } from "@/components/journal/use-journal-data";
 import { Icon } from "@/components/icon";
+import { useJournalUnread } from "@/components/app-shell";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import { RichText } from "@/components/journal-rich-text";
 import { FONT_STEPS, READER_THEMES, bulkDonePlan, neighbor, pickFeatured, readingMinutes, stepFont, swipeDirection } from "../../packages/engines/mausbot/src/journal-reader.mjs";
+import { JOURNAL_READ_THRESHOLD_SECONDS } from "../../packages/engines/mausbot/src/journal-progress.mjs";
 
 type Category = "ia" | "ia-sur-x" | "commerce" | "guinee" | "afrique" | "monde" | "economie";
 type ReadState = "new" | "read" | "done";
@@ -13,13 +19,15 @@ type Item = {
   certainty: "elevee" | "moyenne" | "faible" | null; status: "confirme" | "rapporte" | "a_verifier" | null;
   sourceUrl: string | null; sourceName: string | null; extraSources: { url: string; name: string | null }[];
   publishedAt: string | null; authorBot: string | null; state: ReadState; featured?: boolean;
+  secondsRead?: number; lastPosition?: number | null; firstReadAt?: string | null;
   cover: { storagePath: string; generated: boolean; alt: string; credit: string | null; sourceName: string | null } | null; coverUrl: string | null;
 };
 type Payload = { source: "supabase-read-only"; producer: string; demo: boolean; editionId: string; generatedAt: string | null; offline?: boolean;
   categories: { id: Category; label: string; count: number }[]; items: Item[]; stateAvailable: boolean };
-type View = { status: "loading" | "ready" | "offline" | "error"; data?: Payload; error?: string };
 type Theme = (typeof READER_THEMES)[number];
 type Undo = { label: string; plan: { key: string; id: string; editionId: string; previous: "new" | "read" }[] } | null;
+type ReadingSummary = { total: number; read: number; unread: number; percentRead: number; todayMinutes: number | null; sevenDayMinutes: number | null; progressAvailable: boolean; warning?: string; byCategory: Record<string, { total: number; read: number }>; byProducer: Record<string, { total: number; read: number }> };
+type JournalSection = "featured" | "categories" | "unread" | "stats";
 
 const CERTAINTY: Record<string, string> = { elevee: "Certitude élevée", moyenne: "Certitude moyenne", faible: "Certitude faible" };
 const STATUS: Record<string, string> = { confirme: "Confirmé", rapporte: "Rapporté", a_verifier: "À vérifier" };
@@ -36,14 +44,6 @@ function dateLabel(v: string | null, opts: Intl.DateTimeFormatOptions = { weekda
   if (!v) return null;
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : new Intl.DateTimeFormat("fr-FR", opts).format(d);
-}
-function usePref<T extends string | number>(key: string, initial: T): [T, (v: T) => void] {
-  // The reader is only mounted client-side after a tap, so reading localStorage in the initializer is safe.
-  const [v, setV] = useState<T>(() => {
-    try { const s = typeof window === "undefined" ? null : localStorage.getItem(key); if (s !== null) return (typeof initial === "number" ? Number(s) : s) as T; } catch {}
-    return initial;
-  });
-  return [v, (n: T) => { setV(n); try { localStorage.setItem(key, String(n)); } catch {} }];
 }
 
 function Cover({ item, large, label }: { item: Item; large?: boolean; label?: string }) {
@@ -67,20 +67,88 @@ function Badges({ item }: { item: Item }) {
 }
 function sourcesOf(item: Item) { return [...(item.sourceUrl ? [{ url: item.sourceUrl, name: item.sourceName }] : []), ...item.extraSources]; }
 
-function Reader({ item, list, label, onClose, onNav, onState }: {
+function Reader({ item, list, label, onClose, onNav, onState, preferences, savePreference, onProgress }: {
+  preferences: Record<string, string | number>; savePreference: (key: string, value: string | number) => void;
   item: Item; list: Item[]; label: (c: Category) => string; onClose: () => void; onNav: (i: Item) => void; onState: (i: Item, s: ReadState) => void;
+  onProgress: (item: Item, seconds: number, position: number) => Record<string, unknown> | null;
 }) {
-  const [size, setSize] = usePref<number>("mj.font", 1);
-  const [theme, setTheme] = usePref<Theme>("mj.theme", "light");
+  const size = typeof preferences.font === "number" && Number.isInteger(preferences.font) && preferences.font >= 0 && preferences.font < FONT_STEPS.length ? preferences.font : 1;
+  const theme: Theme = READER_THEMES.includes(preferences.theme as Theme) ? preferences.theme as Theme : "light";
+  const setSize = (value: number) => savePreference("font", value);
+  const setTheme = (value: Theme) => savePreference("theme", value);
   const [progress, setProgress] = useState(0);
   const scroller = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
+  const onProgressRef = useRef(onProgress);
+  useEffect(() => { onProgressRef.current = onProgress; }, [onProgress]);
   const prev = neighbor(list, item.key, -1), next = neighbor(list, item.key, 1);
   const minutes = readingMinutes(item.title, item.summary, item.whyItMatters);
   const sources = sourcesOf(item);
 
-  useEffect(() => { scroller.current?.scrollTo({ top: 0 }); closeBtn.current?.focus(); }, [item.key]);
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) {
+      const position = Math.max(0, Math.min(1, item.lastPosition ?? 0));
+      el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight) * position;
+      const max = el.scrollHeight - el.clientHeight;
+      setProgress(max > 0 ? 100 * el.scrollTop / max : 0);
+    }
+    closeBtn.current?.focus();
+  }, [item.key, item.lastPosition]);
+  useEffect(() => {
+    let lastActivity = Date.now();
+    let lastTick = lastActivity;
+    let pendingSeconds = 0;
+    const activity = () => { lastActivity = Date.now(); };
+    const position = () => {
+      const el = scroller.current;
+      if (!el) return 0;
+      const max = el.scrollHeight - el.clientHeight;
+      return max > 0 ? Math.round(Math.max(0, Math.min(1, el.scrollTop / max)) * 100) / 100 : 0;
+    };
+    const send = (beacon: boolean) => {
+      const seconds = Math.min(120, Math.floor(pendingSeconds));
+      if (seconds < 1) return;
+      pendingSeconds -= seconds;
+      const body = onProgressRef.current(item, seconds, position());
+      if (beacon && body && navigator.sendBeacon) {
+        navigator.sendBeacon("/api/engines/mausbot/journal/progress", new Blob([JSON.stringify(body)], { type: "application/json" }));
+      }
+    };
+    const tick = () => {
+      const now = Date.now();
+      const elapsed = Math.min(JOURNAL_READ_THRESHOLD_SECONDS, (now - lastTick) / 1000);
+      lastTick = now;
+      if (document.visibilityState === "visible" && document.hasFocus() && now - lastActivity <= 60_000) pendingSeconds += elapsed;
+      if (pendingSeconds >= 15) send(false);
+    };
+    const visibility = () => { lastTick = Date.now(); if (document.visibilityState === "visible") activity(); };
+    const flush = () => send(true);
+    const interval = window.setInterval(tick, 15000);
+    window.addEventListener("focus", visibility);
+    window.addEventListener("blur", visibility);
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", visibility);
+    const el = scroller.current;
+    el?.addEventListener("scroll", activity, { passive: true });
+    el?.addEventListener("touchstart", activity, { passive: true });
+    el?.addEventListener("keydown", activity);
+    el?.addEventListener("pointerdown", activity, { passive: true });
+    activity();
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", visibility);
+      window.removeEventListener("blur", visibility);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", visibility);
+      el?.removeEventListener("scroll", activity);
+      el?.removeEventListener("touchstart", activity);
+      el?.removeEventListener("keydown", activity);
+      el?.removeEventListener("pointerdown", activity);
+      send(false);
+    };
+  }, [item]);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
@@ -164,7 +232,7 @@ function IosInstallHint() {
 
 export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const [ws, setWs] = useState(workspaceId ?? "");
-  const [view, setView] = useState<View>({ status: "loading" });
+  const [section, setSection] = useState<JournalSection>("featured");
   const [filter, setFilter] = useState<Category | "all">("all");
   const [readingId, setReadingId] = useState<string | null>(null);
   const [hideDone, setHideDone] = useState(false);
@@ -173,6 +241,10 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const [undo, setUndo] = useState<Undo>(null);
   const [pull, setPull] = useState(0);
   const [nonce, setNonce] = useState(0);
+  const [summary, setSummary] = useState<ReadingSummary | null>(null);
+  const [summaryStatus, setSummaryStatus] = useState<"loading" | "ready" | "error">("loading");
+  const { view, setView, enqueue, preferences, savePreference } = useJournalData<Payload>(ws, nonce);
+  const shellUnread = useJournalUnread();
   const pullStart = useRef<number | null>(null);
 
   useEffect(() => {
@@ -184,46 +256,61 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     if (workspaceId) return;
     let alive = true;
     void listWorkspaces().then(r => { if (alive && r.status === "ready") setWs(r.selectedId); else if (alive) setView({ status: "error", error: "WORKSPACE_FORBIDDEN" }); })
-      .catch(() => { if (alive) setView({ status: navigator.onLine ? "error" : "offline", error: navigator.onLine ? undefined : "OFFLINE" }); });
+      .catch(async () => {
+        const session = await createSupabaseBrowserClient()?.auth.getSession();
+        const userId = session?.data.session?.user.id;
+        const cached = userId ? await cachedJournalWorkspace(userId).catch(() => null) : null;
+        if (alive && cached) setWs(cached); else if (alive) setView({ status: "offline", error: "OFFLINE" });
+      });
     return () => { alive = false; };
-  }, [workspaceId]);
+  }, [workspaceId, setView]);
   useEffect(() => {
     if (!ws) return;
-    const abort = new AbortController();
-    void (async () => {
+    let alive = true;
+    const load = async () => {
       try {
-        const res = await fetch("/api/engines/mausbot/journal?workspaceId=" + encodeURIComponent(ws), { credentials: "same-origin", signal: abort.signal });
-        const body = await res.json();
-        if (!res.ok) { setView(v => v.data ? v : { status: res.status === 503 || res.status === 404 ? "offline" : "error", error: body.error }); return; }
-        if (body.source !== "supabase-read-only" || !Array.isArray(body.items)) throw Error("bad");
-        setView({ status: "ready", data: body as Payload });
-      } catch { if (!abort.signal.aborted) setView(v => v.data ? v : { status: "error" }); }
-    })();
-    return () => abort.abort();
-  }, [ws, nonce]);
-
-  const postState = useCallback(async (editionId: string, itemId: string, status: ReadState) => {
-    const res = await fetch("/api/engines/mausbot/journal/state", { method: "POST", credentials: "same-origin",
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: ws, editionId, itemId, status }) });
-    if (!res.ok) throw Error("state");
+        const response = await fetch(`/api/engines/mausbot/journal/summary?workspaceId=${encodeURIComponent(ws)}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("summary unavailable");
+        const next = await response.json() as ReadingSummary;
+        if (alive) { setSummary(next); setSummaryStatus("ready"); }
+      } catch { if (alive) { setSummary(null); setSummaryStatus("error"); } }
+    };
+    const updated = (event: Event) => {
+      const eventWorkspace = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      if (!eventWorkspace || eventWorkspace === ws) void load();
+    };
+    window.addEventListener("journal:updated", updated);
+    void load();
+    return () => { alive = false; window.removeEventListener("journal:updated", updated); };
   }, [ws]);
-  const patch = useCallback((ids: Map<string, ReadState>) => setView(v => v.data ? { ...v, data: { ...v.data, items: v.data.items.map(i => ids.has(i.key) ? { ...i, state: ids.get(i.key)! } : i) } } : v), []);
+  const postState = useCallback(async (editionId: string, itemId: string, status: ReadState) => {
+    await enqueue({ id: crypto.randomUUID(), kind: "state", body: { workspaceId: ws, editionId, itemId, status } });
+  }, [ws, enqueue]);
+  const postProgress = useCallback((item: Item, seconds: number, position: number) => {
+    const batchId = crypto.randomUUID();
+    const body = { workspaceId: ws, batchId, events: [{ editionId: item.editionId, itemId: item.id, deltaSeconds: Math.min(120, Math.max(0, Math.floor(seconds))), position: Math.max(0, Math.min(1, Math.round(position * 100) / 100)) }] };
+    void enqueue({ id: batchId, kind: "progress", body });
+    return body;
+  }, [ws, enqueue]);
+
+  const patch = useCallback((ids: Map<string, ReadState>) => setView(v => v.data ? { ...v, data: { ...v.data, items: v.data.items.map(i => ids.has(i.key) ? { ...i, state: ids.get(i.key)! } : i) } } : v), [setView]);
   const setState = useCallback(async (item: Item, status: ReadState) => {
     patch(new Map([[item.key, status]]));
     try { await postState(item.editionId, item.id, status); } catch { patch(new Map([[item.key, item.state]])); }
   }, [patch, postState]);
 
   const all = useMemo(() => view.data?.items ?? [], [view.data]);
-  const items = useMemo(() => all.filter(i => (filter === "all" || i.category === filter) && (!hideDone || i.state !== "done")), [all, filter, hideDone]);
+  const items = useMemo(() => all.filter(i => (section !== "unread" || i.state === "new") && (filter === "all" || i.category === filter) && (!hideDone || i.state !== "done")), [all, filter, hideDone, section]);
   const featured = filter === "all" ? pickFeatured(items) : null;
   const rest = items.filter(i => i !== featured);
   const ordered = featured ? [featured, ...rest] : rest;
   const reading = readingId ? all.find(i => i.key === readingId) ?? null : null;
   const total = all.length;
-  const done = all.filter(i => i.state === "done").length;
+  const done = all.filter(i => i.state === "read" || i.state === "done").length;
+  const unreadCount = view.data ? all.filter(i => i.state === "new").length : shellUnread ?? summary?.unread ?? 0;
   const label = useCallback((c: Category) => view.data?.categories.find(x => x.id === c)?.label ?? c, [view.data]);
-  const open = (item: Item) => { setReadingId(item.key); if (item.state === "new") void setState(item, "read"); };
-  const nav = useCallback((item: Item) => { setReadingId(item.key); if (item.state === "new") void setState(item, "read"); }, [setState]);
+  const open = (item: Item) => { setReadingId(item.key); };
+  const nav = useCallback((item: Item) => { setReadingId(item.key); }, []);
   const plan = bulkDonePlan(all, filter);
   const filterLabel = filter === "all" ? "toute l’édition" : "« " + label(filter) + " »";
 
@@ -243,31 +330,61 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   };
   useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 8000); return () => clearTimeout(t); }, [undo]);
 
-  return <main className="mj-page" id="main-content"
-    onTouchStart={e => { pullStart.current = window.scrollY <= 0 && !reading ? e.touches[0].clientY : null; }}
+  const navigation: { id: JournalSection | "exit"; label: string; icon: "spark" | "layers" | "inbox" | "activity" | "arrow-left" }[] = [
+    { id: "featured", label: "À la une", icon: "spark" },
+    { id: "categories", label: "Catégories", icon: "layers" },
+    { id: "unread", label: "Non lus", icon: "inbox" },
+    { id: "stats", label: "Stats", icon: "activity" },
+    { id: "exit", label: "Quitter", icon: "arrow-left" },
+  ];
+  const chooseSection = (id: JournalSection) => { setSection(id); if (id === "featured" || id === "unread") setFilter("all"); };
+
+  return <div className="mj-app">
+    <aside className="mj-rail" aria-label="Navigation du Journal">
+      <Link className="mj-rail-brand" href="/" aria-label="Quitter le Journal et revenir à ATLAS HQ"><Icon name="spark" /></Link>
+      <nav>
+        {navigation.filter(item => item.id !== "exit").map(item => <button key={item.id} type="button" aria-label={item.label} title={item.label}
+          aria-current={section === item.id ? "page" : undefined} className={section === item.id ? "is-active" : ""} onClick={() => chooseSection(item.id as JournalSection)}>
+          <Icon name={item.icon} /><span>{item.label}</span>{item.id === "unread" && unreadCount > 0 && <b>{unreadCount > 99 ? "99+" : unreadCount}</b>}
+        </button>)}
+      </nav>
+      <Link className="mj-rail-exit" href="/" aria-label="Quitter le Journal"><Icon name="arrow-left" /><span>Quitter</span></Link>
+    </aside>
+    <main className="mj-page" id="main-content"
+    onTouchStart={e => { pullStart.current = e.currentTarget.scrollTop <= 0 && !reading ? e.touches[0].clientY : null; }}
     onTouchMove={e => { if (pullStart.current !== null) setPull(Math.max(0, Math.min(90, e.touches[0].clientY - pullStart.current))); }}
     onTouchEnd={() => { if (pull >= 70) setNonce(n => n + 1); pullStart.current = null; setPull(0); }}>
     <div className="mj-pull" style={{ height: pull }} aria-hidden><span className={pull >= 70 ? "is-ready" : ""}><Icon name="rotate-ccw" /></span></div>
     {!online && <p className="mj-offline" role="status">Hors ligne — {view.data ? "dernière édition enregistrée sur cet appareil" : "aucune édition enregistrée"}.</p>}
     {online && view.data?.offline && <p className="mj-offline" role="status">Édition enregistrée affichée (réseau indisponible).</p>}
+    {view.error && view.data && <p className="mj-state is-warn" role="status">Synchronisation différée : {view.error}</p>}
     <IosInstallHint />
     <header className="mj-masthead">
-      <p className="mj-kicker">WORLD RADAR · {view.data?.producer === "morgans+grok-bot" ? "MORGANS + Grok Bot" : view.data?.producer === "grok-bot" ? "Grok Bot" : "MORGANS & équipe"}</p>
+      <p className="mj-kicker">WORLD RADAR</p>
       <h1>Journal du matin</h1>
       {view.data && <p className="mj-edition">{dateLabel(view.data.generatedAt) ?? "Édition " + view.data.editionId}{view.data.demo && " · données de démonstration"}</p>}
-      {view.data && <div className="mj-progress" role="progressbar" aria-label="Articles terminés" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
-        <span style={{ width: total ? (100 * done / total) + "%" : "0%" }} /><b>{done}/{total} terminés</b>
+      {view.data && <div className="mj-progress" role="progressbar" aria-label="Articles lus ou terminés" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
+        <span style={{ width: total ? (100 * done / total) + "%" : "0%" }} /><b>{done}/{total} lus ou terminés</b>
       </div>}
     </header>
     {view.status === "loading" && <div className="mj-skeleton" aria-busy="true" aria-label="Chargement de l’édition"><span /><span /><span /></div>}
     {(view.status === "offline" || view.status === "error") && !view.data && <p className="mj-state is-warn" role="alert">{errorText(view.error)}</p>}
     {view.data && <>
-      <nav className="mj-tabs" aria-label="Thèmes">
+      {section === "categories" && <nav className="mj-tabs" aria-label="Thèmes">
         <button aria-pressed={filter === "all"} className={filter === "all" ? "is-active" : ""} onClick={() => setFilter("all")}>Tout <span>{total}</span></button>
         {view.data.categories.map(c => <button key={c.id} aria-pressed={filter === c.id} disabled={!c.count} className={(filter === c.id ? "is-active " : "") + "is-" + c.id} onClick={() => setFilter(c.id)}>{c.label} <span>{c.count}</span></button>)}
-      </nav>
-      {!view.data.stateAvailable && <p className="mj-state is-warn">Suivi lu/terminé indisponible (migration feed_item_state non appliquée).</p>}
-      <section className="mj-grid" aria-label="Articles">
+      </nav>}
+      {!view.data.stateAvailable && <p className="mj-state is-warn" role="status">La synchronisation du statut de lecture est indisponible.</p>}
+      {section === "stats" && <section className="mj-report" aria-labelledby="mj-report-title">
+        <header><p className="mj-kicker">VOTRE LECTURE</p><h2 id="mj-report-title">Rapport de lecture</h2><p>Temps reçu par le serveur, en UTC.</p></header>
+        {summaryStatus === "error" && <p className="mj-state is-warn" role="status">Les statistiques de lecture sont momentanément indisponibles.</p>}
+        {summaryStatus === "ready" && summary && !summary.progressAvailable && <p className="mj-state is-warn" role="status">Le temps de lecture n’est pas disponible sur ce serveur. Le suivi des articles reste affiché séparément.</p>}
+        <div className="mj-report-metrics"><article><span>Aujourd’hui</span><strong>{summary?.todayMinutes == null ? "—" : `${summary.todayMinutes} min`}</strong></article><article><span>7 derniers jours</span><strong>{summary?.sevenDayMinutes == null ? "—" : `${summary.sevenDayMinutes} min`}</strong></article><article><span>Articles lus</span><strong>{summary ? `${summary.read}/${summary.total}` : `${total - unreadCount}/${total}`}</strong></article></div>
+        <div className="mj-report-grid">{([["Par thème", summary?.byCategory ?? {}], ["Par producteur", summary?.byProducer ?? {}]] as const).map(([title, rows]) => <section key={title}><h3>{title}</h3>
+          {Object.entries(rows).length ? Object.entries(rows).map(([name, value]) => <div className="mj-report-row" key={name}><span>{name === "ia-sur-x" ? "IA sur X" : label(name as Category) === name ? name : label(name as Category)}</span><b>{value.read}/{value.total}</b></div>) : <p className="mj-state">Les statistiques apparaîtront après synchronisation.</p>}
+        </section>)}</div>
+      </section>}
+      {section !== "stats" && <section className="mj-grid" aria-label={section === "unread" ? "Articles non lus" : "Articles"}>
         {ordered.map(item => <article key={item.key} className={"mj-card" + (item === featured ? " is-lead" : "") + " is-state-" + item.state}>
           <button className="mj-card-open" onClick={() => open(item)} tabIndex={-1} aria-hidden><Cover item={item} large={item === featured} label={label(item.category)} /></button>
           <div className="mj-card-body">
@@ -275,6 +392,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
             <h2><button onClick={() => open(item)}>{item.title}</button></h2>
             <p className="mj-summary">{item.summary.replace(/[*_>#]|\[([^\]]+)\]\([^)]+\)/g, "$1")}</p>
             <p className="mj-card-meta">{item.sourceName ?? "Source non fournie"} · {readingMinutes(item.title, item.summary, item.whyItMatters)} min</p>
+            <p className="mj-card-state">{item.state === "new" ? "Nouveau" : item.state === "done" ? "Terminé" : item.lastPosition && item.lastPosition > 0 ? `Reprendre · ${Math.round(item.lastPosition * 100)} %` : "Lu"}</p>
             <div className="mj-actions">
               {item.state !== "done" ? <button onClick={() => void setState(item, "done")} aria-label={"Marquer terminé : " + item.title}>Terminé</button>
                 : <button onClick={() => void setState(item, "read")} aria-label={"Rouvrir : " + item.title}>Rouvrir</button>}
@@ -283,7 +401,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
           </div>
         </article>)}
         {!items.length && <p className="mj-state">Rien dans ce thème pour cette édition.</p>}
-      </section>
+      </section>}
       <div className="mj-actionbar" role="toolbar" aria-label="Actions du journal">
         <button aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>{hideDone ? "Afficher terminés" : "Masquer terminés"}</button>
         <button disabled={!plan.length} onClick={() => setConfirm(true)}>Tout marquer terminé</button>
@@ -295,7 +413,13 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
         <div className="mj-actions"><button autoFocus onClick={() => setConfirm(false)}>Annuler</button><button className="mj-primary" onClick={() => void bulkDone()}>Confirmer</button></div></div>
     </div>}
     {undo && <div className="mj-toast" role="status"><span>{undo.label}</span><button onClick={() => void undoBulk()}>Annuler</button></div>}
-    {reading && <Reader item={reading} list={ordered.length && ordered.some(i => i.key === reading.key) ? ordered : all} label={label}
+    {reading && <Reader preferences={preferences} savePreference={savePreference} item={reading} list={ordered.length && ordered.some(i => i.key === reading.key) ? ordered : all} label={label} onProgress={postProgress}
       onClose={() => setReadingId(null)} onNav={nav} onState={(i, s) => void setState(i, s)} />}
-  </main>;
+  </main>
+  <nav className="mj-mobile-nav" aria-label="Navigation du Journal">
+    {navigation.map(item => item.id === "exit" ? <Link key={item.id} href="/" aria-label="Quitter le Journal"><Icon name={item.icon} /><span>{item.label}</span></Link> : <button key={item.id} type="button" aria-current={section === item.id ? "page" : undefined} className={section === item.id ? "is-active" : ""} onClick={() => chooseSection(item.id as JournalSection)}>
+      <span className="mj-mobile-nav-icon"><Icon name={item.icon} />{item.id === "unread" && unreadCount > 0 && <b>{unreadCount > 99 ? "99+" : unreadCount}</b>}</span><span>{item.label}</span>
+    </button>)}
+  </nav>
+  </div>;
 }

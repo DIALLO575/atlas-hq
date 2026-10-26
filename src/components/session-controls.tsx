@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { purgeJournalCache } from "@/lib/journal/cache-storage";
 import { signOut } from "@/app/login/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
@@ -15,14 +16,18 @@ export function SessionControls() {
     if (!supabase) return;
 
     let alive = true;
+    let knownUser: string | null = null;
     void supabase.auth.getUser().then(({ data, error }) => {
       if (!alive) return;
+      knownUser = data.user?.id ?? null;
       setSession(error ? { status: "error" } : data.user ? { status: "ready", email: data.user.email ?? "Compte connecté" } : { status: "signed-out" });
     }).catch(() => {
       if (alive) setSession({ status: "error" });
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       if (!alive) return;
+      if (_event === 'SIGNED_OUT' || (knownUser && currentSession?.user.id !== knownUser)) void purgeJournalCache().catch(() => undefined);
+      knownUser = currentSession?.user.id ?? null;
       setSession(currentSession?.user ? { status: "ready", email: currentSession.user.email ?? "Compte connecté" } : { status: "signed-out" });
     });
 
@@ -39,7 +44,7 @@ export function SessionControls() {
     <div className="profile-row session-row">
       <span className="profile-avatar" aria-hidden="true">{session.status === "ready" ? session.email.slice(0, 2).toUpperCase() : "AT"}</span>
       <span className="session-label"><strong>{label}</strong><small>{detail}</small></span>
-      <form action={signOut}><button className="sign-out-button" type="submit" disabled={session.status !== "ready"}>Déconnexion</button></form>
+      <form action={async () => { await purgeJournalCache(); await signOut(); }}><button className="sign-out-button" type="submit" disabled={session.status !== "ready"}>Déconnexion</button></form>
     </div>
   );
 }

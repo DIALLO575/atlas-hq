@@ -1,0 +1,51 @@
+name: Journal cache browser
+on:
+  pull_request:
+    paths: ['public/journal-*', 'packages/engines/mausbot/src/journal-cache*', 'tests/browser/journal-*', 'scripts/*journal*', '.github/workflows/journal-cache-browser.yml']
+permissions:
+  contents: read
+jobs:
+  indexeddb-multitab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Verify offline module matches canonical primitives
+        run: node scripts/generate-journal-offline-cache.mjs --check
+      - name: Real Chromium IndexedDB, second-tab purge and cached render measurement
+        run: |
+          set -euo pipefail
+          server_pid=""
+          chrome_pid=""
+          server_log="$RUNNER_TEMP/journal-cache-http.log"
+          chrome_log="$RUNNER_TEMP/journal-chrome.log"
+          cleanup() {
+            if [[ -n "$chrome_pid" ]]; then kill "$chrome_pid" 2>/dev/null || true; fi
+            if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi
+          }
+          trap cleanup EXIT
+          wait_for_url() {
+            local url="$1" log="$2"
+            for _ in {1..30}; do
+              if curl -fsS "$url" > /dev/null; then return 0; fi
+              sleep 1
+            done
+            cat "$log"
+            return 1
+          }
+          google-chrome --version
+          python3 -m http.server 8765 --bind 127.0.0.1 > "$server_log" 2>&1 &
+          server_pid=$!
+          wait_for_url http://127.0.0.1:8765/tests/browser/journal-cache-real.html "$server_log"
+          google-chrome --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-popup-blocking --disable-background-timer-throttling --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/journal-test-profile" about:blank > "$chrome_log" 2>&1 &
+          chrome_pid=$!
+          wait_for_url http://127.0.0.1:9222/json/version "$chrome_log"
+          node scripts/verify-journal-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journal-cache-real-browser-result
+          path: journal-cache-browser-result.json

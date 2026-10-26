@@ -1,0 +1,2 @@
+:root{color-scheme:light dark}body{font:18px/1.6 system-ui;margin:auto;max-width:70ch;padding:24px}article{border-top:1px solid gray;margin-top:24px}p{white-space:pre-wrap}a,button{min-height:44px}img{max-width:100%}
+nav{display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:0;background:Canvas;padding:8px}button,select,a{font:inherit;padding:8px}#items article button{text-align:left}#article{white-space:pre-wrap;line-height:1.7}main{padding-bottom:env(safe-area-inset-bottom)}
