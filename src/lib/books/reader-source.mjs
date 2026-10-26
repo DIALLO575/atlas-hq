@@ -5,7 +5,11 @@ async function readJson(response) {
   if (response.redirected && new URL(response.url).pathname.startsWith("/login")) {
     throw new Error("AUTH_REQUIRED");
   }
-  if (!response.ok) throw new Error(response.status === 307 ? "AUTH_REQUIRED" : "BOOK_FILE_UNAVAILABLE");
+  if (!response.ok) {
+    const payload=await response.json().catch(()=>null);
+    if(payload?.error==="BOOK_FILE_MISSING")throw new Error("BOOK_FILE_MISSING");
+    throw new Error(response.status===307?"AUTH_REQUIRED":"BOOK_FILE_UNAVAILABLE");
+  }
   return response.json();
 }
 
