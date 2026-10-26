@@ -6,7 +6,7 @@ const css=readFileSync(new URL("../src/app/agents/agent-request.css",import.meta
 const vercel=JSON.parse(readFileSync(new URL("../vercel.json",import.meta.url),"utf8"));
 test("cards include agents outside teams",()=>{
  assert.match(ui,/atlas-agent-directory/);
- assert.match(ui,/inventory\.agents\.filter\(agent/);
+ assert.match(ui,/inventory\?\.agents\.filter\(agent/);
  assert.match(ui,/Indépendant/);
  assert.match(ui,/atlas-team-avatar-stack/);
  assert.match(ui,/atlas-agent-card-v2/);
