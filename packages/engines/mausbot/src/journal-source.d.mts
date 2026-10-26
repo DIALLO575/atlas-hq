@@ -9,3 +9,6 @@ export function readJournalDemo(): DisplayJournal;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function readJournalFromSupabase(supabase: any, workspaceId: string, opts?: { ttl?: number }): Promise<DisplayJournal>;
 export function validateJournalStateInput(body: unknown): { workspaceId: string; editionId: string; itemId: string; status: "new" | "read" | "done" } | null;
+export type JournalProgressEvent = { editionId: string; itemId: string; deltaSeconds: number; position: number };
+export type JournalProgressInput = { workspaceId: string; batchId: string; events: JournalProgressEvent[] };
+export function validateJournalProgressInput(body: unknown): JournalProgressInput | null;
