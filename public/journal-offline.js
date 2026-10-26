@@ -2,7 +2,7 @@ import { journalCacheStorage } from './journal-cache-storage.mjs';
 import { mergeJournalPayload } from './journal-offline-cache.mjs';
 const status = document.getElementById('status'), items = document.getElementById('items'), reader = document.getElementById('reader');
 let storage, token, payload, reading, seconds=0, lastTick=performance.now(), lastActivity=performance.now(), unreadOnly=false, alive=true, flushing=false;
-function deny(message) { alive=false; items.replaceChildren(); reader.hidden=true; document.getElementById('article').textContent=''; status.textContent=message; }
+function deny(message) { alive=false; payload=null; reading=null; items.replaceChildren(); reader.hidden=true; document.getElementById('title').textContent=''; document.getElementById('article').textContent=''; status.textContent=message; }
 function clear() { sessionStorage.removeItem('atlas.journal.offline-capability'); deny('Cache purgé. Ouvrez le Journal en ligne pour réautoriser cet onglet.'); }
 addEventListener('storage', e => { if(e.key==='atlas.journal.purge' || (e.key==='atlas.journal.scope' && e.newValue!==token?.scope)) clear(); });
 async function snapshot() { const root=await storage.cache.snapshot(token); if(!root) {clear();throw Error('Scope invalidated');} return root; }

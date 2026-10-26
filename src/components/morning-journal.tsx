@@ -80,7 +80,7 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
   const closeBtn = useRef<HTMLButtonElement>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const onProgressRef = useRef(onProgress);
-  onProgressRef.current = onProgress;
+  useEffect(() => { onProgressRef.current = onProgress; }, [onProgress]);
   const prev = neighbor(list, item.key, -1), next = neighbor(list, item.key, 1);
   const minutes = readingMinutes(item.title, item.summary, item.whyItMatters);
   const sources = sourcesOf(item);
@@ -262,7 +262,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
         if (alive && cached) setWs(cached); else if (alive) setView({ status: "offline", error: "OFFLINE" });
       });
     return () => { alive = false; };
-  }, [workspaceId]);
+  }, [workspaceId, setView]);
   useEffect(() => {
     if (!ws) return;
     let alive = true;
@@ -292,7 +292,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     return body;
   }, [ws, enqueue]);
 
-  const patch = useCallback((ids: Map<string, ReadState>) => setView(v => v.data ? { ...v, data: { ...v.data, items: v.data.items.map(i => ids.has(i.key) ? { ...i, state: ids.get(i.key)! } : i) } } : v), []);
+  const patch = useCallback((ids: Map<string, ReadState>) => setView(v => v.data ? { ...v, data: { ...v.data, items: v.data.items.map(i => ids.has(i.key) ? { ...i, state: ids.get(i.key)! } : i) } } : v), [setView]);
   const setState = useCallback(async (item: Item, status: ReadState) => {
     patch(new Map([[item.key, status]]));
     try { await postState(item.editionId, item.id, status); } catch { patch(new Map([[item.key, item.state]])); }
