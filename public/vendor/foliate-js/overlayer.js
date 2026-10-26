@@ -172,4 +172,3 @@ export class Overlayer {
         return image
     }
 }
-
