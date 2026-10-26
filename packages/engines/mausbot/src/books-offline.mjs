@@ -27,13 +27,14 @@ export function safeBookMetadata(book) {
 }
 
 export function validateBookQueueOperation(operation, workspaceId) {
-  if (!operation || !['progress', 'annotation'].includes(operation.kind) || !UUID.test(operation.sendId ?? '') || !operation.body || operation.body.workspaceId !== workspaceId || operation.body.sendId !== operation.sendId) return false;
+  if (!operation || !['progress', 'annotation', 'annotation_delete'].includes(operation.kind) || !UUID.test(operation.sendId ?? '') || !operation.body || operation.body.workspaceId !== workspaceId || operation.body.sendId !== operation.sendId) return false;
   if (operation.kind === 'progress') {
     const events = operation.body.events;
     return Array.isArray(events) && events.length > 0 && events.length <= 20 && events.every(event => UUID.test(event.bookId ?? '') && Number.isInteger(event.deltaSeconds) && event.deltaSeconds >= 0 && event.deltaSeconds <= 120 && Number.isFinite(event.position) && event.position >= 0 && event.position <= 1 && UUID.test(event.deviceId ?? '') && typeof event.clientUpdatedAt === 'string');
   }
   const note = operation.body;
-  return UUID.test(note.bookId ?? '') && ['note', 'highlight'].includes(note.kind) && typeof note.body === 'string' && note.body.length > 0 && note.body.length <= 10000 && Number.isFinite(note.position) && note.position >= 0 && note.position <= 1 && ['yellow', 'blue', 'green', 'pink'].includes(note.color) && (note.anchorCfi === null || typeof note.anchorCfi === 'string' && note.anchorCfi.length <= 4000);
+  if(operation.kind==='annotation_delete') return UUID.test(note.bookId ?? '') && UUID.test(note.id ?? '');
+  return UUID.test(note.bookId ?? '') && ['note', 'highlight', 'bookmark'].includes(note.kind) && typeof note.body === 'string' && note.body.length > 0 && note.body.length <= 10000 && Number.isFinite(note.position) && note.position >= 0 && note.position <= 1 && ['yellow', 'blue', 'green', 'pink'].includes(note.color) && (note.anchorCfi === null || typeof note.anchorCfi === 'string' && note.anchorCfi.length <= 4000);
 }
 
 /** Adapter.update(scope, transform) must serialize root writes across tabs. Files live in a separate object store. */

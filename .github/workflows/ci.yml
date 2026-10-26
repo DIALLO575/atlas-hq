@@ -79,6 +79,7 @@ jobs:
           -f supabase/migrations/20261026133000_atlas_book_covers.sql
           -f supabase/migrations/20261026133500_atlas_book_annotation_anchor.sql
           -f supabase/migrations/20261026140000_atlas_books_offline_sync.sql
+          -f supabase/migrations/20261026143000_atlas_books_annotations_stats.sql
           -f tests/sql/books-checks.sql
 
   engine-foundation-postgres:
