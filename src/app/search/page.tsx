@@ -1,20 +1,50 @@
-"use client";
-
-import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { DemoNotice, EmptyPanel, PageHeading } from "@/components/page-elements";
-import { searchableItems } from "@/lib/demo-data";
+import { EmptyPanel, PageHeading } from "@/components/page-elements";
 import { Icon } from "@/components/icon";
+import { readAtlasWorkflow } from "@/lib/atlas-workflow";
 
-export default function SearchPage() {
-  const [query, setQuery] = useState("");
-  const results = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("fr");
-    return normalized ? searchableItems.filter((item) => `${item.title} ${item.detail} ${item.type}`.toLocaleLowerCase("fr").includes(normalized)) : [];
-  }, [query]);
+export const dynamic = "force-dynamic";
 
-  return <AppShell><main className="main-content" id="main-content"><PageHeading eyebrow="RETROUVER" title="Recherche" description="Cherchez dans les sections et le catalogue d’exemple d’ATLAS HQ."/><DemoNotice/><form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}><Icon name="search"/><label className="sr-only" htmlFor="atlas-search">Votre recherche</label><input id="atlas-search" type="search" placeholder="Rechercher une app ou une section…" value={query} onChange={(event) => setQuery(event.target.value)} autoComplete="off"/><kbd aria-hidden="true">Entrée</kbd></form>
-    <section className="search-results" aria-label="Résultats de recherche" aria-live="polite" aria-busy="false">{query.trim() ? results.length ? <><p className="results-count">{results.length} résultat{results.length > 1 ? "s" : ""} dans les exemples</p><ul className="results-list">{results.map((item) => <li key={`${item.type}-${item.title}`}><Link href={item.href}><span className="result-icon"><Icon name={item.type === "Application" ? "layers" : "grid"}/></span><span><strong>{item.title}</strong><small>{item.detail}</small></span><span className="result-type">{item.type}</span><Icon name="arrow-up-right"/></Link></li>)}</ul></> : <EmptyPanel title="Aucun résultat">Essayez un autre terme. La recherche porte uniquement sur le catalogue de démonstration.</EmptyPanel> : <EmptyPanel title="Que souhaitez-vous retrouver ?" icon="search">Saisissez un nom d’application ou une section. Les données réelles ne sont pas encore connectées.</EmptyPanel>}</section>
+type Query = { q?: string; workspaceId?: string };
+export default async function SearchPage({ searchParams }: { searchParams: Promise<Query> }) {
+  const params = await searchParams;
+  const query = (params.q ?? "").trim().slice(0, 100);
+  const data = await readAtlasWorkflow(params.workspaceId);
+  const normalized = query.toLocaleLowerCase("fr");
+  const results = data.status === "ready" && data.selected && normalized
+    ? data.missions.filter((mission) =>
+      (mission.title + " " + mission.description).toLocaleLowerCase("fr").includes(normalized))
+    : [];
+  return <AppShell><main className="main-content" id="main-content">
+    <PageHeading eyebrow="RETROUVER" title="Recherche" description="Recherchez les missions réelles de votre workspace. Aucun résultat de démonstration." />
+    {data.status === "error" ? <section role="alert"><EmptyPanel title="Recherche indisponible">{data.message}</EmptyPanel></section>
+      : !data.selected ? <EmptyPanel title="Aucun workspace accessible">Créez un workspace ou demandez l'accès à un espace pour rechercher ses missions.</EmptyPanel>
+      : <>
+        <form className="search-form" role="search" method="get" action="/search">
+          <Icon name="search" />
+          <input type="hidden" name="workspaceId" value={data.selected.id} />
+          <label className="sr-only" htmlFor="atlas-search">Rechercher une mission</label>
+          <input id="atlas-search" name="q" type="search" placeholder="Rechercher une mission…" defaultValue={query} maxLength={100} autoComplete="off" />
+          <button type="submit">Rechercher</button>
+        </form>
+        <nav aria-label="Choisir le workspace">
+          {data.spaces.map((workspace) => <Link key={workspace.id}
+            href={"/search?workspaceId=" + encodeURIComponent(workspace.id) + "&q=" + encodeURIComponent(query)}
+            aria-current={workspace.id === data.selected?.id ? "page" : undefined}>{workspace.name}</Link>)}
+        </nav>
+        <section className="search-results" aria-label="Résultats de recherche" aria-live="polite">
+          {!query ? <EmptyPanel title="Que souhaitez-vous retrouver ?" icon="search">Saisissez un terme. La recherche porte uniquement sur les missions visibles de « {data.selected.name} » (200 dernières au maximum).</EmptyPanel>
+          : results.length ? <><p className="results-count">{results.length} résultat{results.length > 1 ? "s" : ""} parmi les missions chargées</p>
+            <ul className="results-list">{results.map((mission) => <li key={mission.id}>
+              <Link href={"/missions?workspaceId=" + encodeURIComponent(mission.workspaceId) + "&missionId=" + encodeURIComponent(mission.id)}>
+                <span className="result-icon"><Icon name="layers" /></span>
+                <span><strong>{mission.title}</strong><small>{mission.description || "Aucune description"}</small></span>
+                <span className="result-type">Mission</span><Icon name="arrow-up-right" />
+              </Link></li>)}</ul></>
+          : <EmptyPanel title="Aucune mission correspondante" icon="search">Aucune mission visible ne correspond à « {query} » dans cet espace. Vérifiez un autre terme ou un autre workspace.</EmptyPanel>}
+          {data.missions.length === 200 && <p>Résultats limités aux 200 missions récentes chargées dans cet espace.</p>}
+        </section>
+      </>}
   </main></AppShell>;
 }
