@@ -1,5 +1,6 @@
 import type { JournalItem } from "./journal.mjs";
-export type DisplayJournal = { coverExpiresAt: string | null; editionId: string; generatedAt: string | null; producer: string; format: "json"; demo: boolean; skipped: number; items: (JournalItem & { key: string; coverUrl: string | null })[] };
+export type DisplayJournalEdition = { editionId: string; generatedAt: string | null; receivedAt: string | null; producer: string };
+export type DisplayJournal = { coverExpiresAt: string | null; editionId: string; generatedAt: string | null; receivedAt: string | null; editions: DisplayJournalEdition[]; producer: string; format: "json"; demo: boolean; skipped: number; items: (JournalItem & { key: string; coverUrl: string | null })[] };
 export const JOURNAL_BUCKET: "journal-covers";
 export const SIGNED_URL_TTL_SECONDS: number;
 export const JOURNAL_FIXTURE: unknown;

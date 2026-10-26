@@ -1,5 +1,6 @@
 // Journal source: ATLAS only READS Supabase (filled by n8n) and displays. No MausBot calls here.
 import { journalItemKey, journalItemsFromRows, parseJournalJson } from "./journal.mjs";
+import { editionTimestamp, rankEditions } from "./journal-ranking.mjs";
 
 export const JOURNAL_BUCKET = "journal-covers";
 export const SIGNED_URL_TTL_SECONDS = 3600;
@@ -24,7 +25,8 @@ export function journalDemoAllowed(env) {
 }
 export function readJournalDemo() {
   const e = parseJournalJson(JOURNAL_FIXTURE);
-  return { ...e, coverExpiresAt: null, demo: true, producer: "morgans", items: e.items.map(i => ({ ...i, key: journalItemKey(i.editionId, i.id), coverUrl: null })) };
+  const metadata = { editionId: e.editionId, generatedAt: e.generatedAt, receivedAt: null, producer: "morgans" };
+  return { ...e, editions: [metadata], coverExpiresAt: null, demo: true, producer: "morgans", items: e.items.map(i => ({ ...i, key: journalItemKey(i.editionId, i.id), coverUrl: null })) };
 }
 // "*" so the optional `featured` column (migration 20261025224000) is read when present without breaking before it.
 const ITEM_COLUMNS = "*";
@@ -36,7 +38,7 @@ const ITEM_COLUMNS = "*";
 export async function readJournalFromSupabase(supabase, workspaceId, { ttl = SIGNED_URL_TTL_SECONDS } = {}) {
   const editions = await Promise.all(["morgans", "grok-bot"].map(async producer => {
     const { data, error } = await supabase.from("journal_editions")
-      .select("edition_id,generated_at,producer,schema_version")
+      .select("edition_id,generated_at,received_at,producer,schema_version")
       .eq("workspace_id", workspaceId).eq("producer", producer)
       .order("generated_at", { ascending: false }).limit(1).maybeSingle();
     if (error) throw new JournalSourceError("JOURNAL_SOURCE_UNAVAILABLE");
@@ -51,11 +53,11 @@ export async function readJournalFromSupabase(supabase, workspaceId, { ttl = SIG
     if (error) throw new JournalSourceError("JOURNAL_SOURCE_UNAVAILABLE");
     return { edition, items: journalItemsFromRows(edition.edition_id, data).slice(0, 40) };
   }));
-  // Stable editorial order keeps MORGANS first while retaining each item's own edition id for state writes.
-  rowsByEdition.sort((a, b) => ["morgans", "grok-bot"].indexOf(a.edition.producer) - ["morgans", "grok-bot"].indexOf(b.edition.producer));
+  rowsByEdition.sort((a, b) => editionTimestamp(b.edition) - editionTimestamp(a.edition));
   const items = rowsByEdition.flatMap(({ items }) => items);
-  const latest = available.slice().sort((a, b) => Date.parse(b.generated_at) - Date.parse(a.generated_at))[0];
+  const latest = rankEditions(available)[0];
   const producer = rowsByEdition.map(({ edition }) => edition.producer).join("+");
+  const editionsMetadata = rowsByEdition.map(({ edition }) => ({ editionId: edition.edition_id, generatedAt: edition.generated_at ?? null, receivedAt: edition.received_at ?? null, producer: edition.producer }));
   const paths = [...new Set(items.map(i => i.cover?.storagePath).filter(Boolean))].map(p => workspaceId + "/" + p);
   const signed = new Map();
   if (paths.length) {
@@ -63,7 +65,7 @@ export async function readJournalFromSupabase(supabase, workspaceId, { ttl = SIG
     for (const s of data ?? []) if (s?.signedUrl && !s.error && s.path) signed.set(s.path, s.signedUrl);
   }
   return {
-    coverExpiresAt: new Date(Date.now() + ttl * 1000).toISOString(), editionId: latest.edition_id, generatedAt: latest.generated_at, producer, format: "json", demo: false, skipped: 0,
+    coverExpiresAt: new Date(Date.now() + ttl * 1000).toISOString(), editionId: latest.edition_id, generatedAt: latest.generated_at ?? latest.received_at ?? null, receivedAt: latest.received_at ?? null, editions: editionsMetadata, producer, format: "json", demo: false, skipped: 0,
     items: items.map(i => ({ ...i, key: journalItemKey(i.editionId, i.id), coverUrl: i.cover ? signed.get(workspaceId + "/" + i.cover.storagePath) ?? null : null })),
   };
 }

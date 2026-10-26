@@ -151,9 +151,9 @@ export function parseJournalJson(input) {
   if (!editionId || !Array.isArray(data.items)) throw new Error("JOURNAL_JSON_INVALID");
   const seen = new Set();
   const items = [];
-  for (const raw of data.items.slice(0, 200)) {
+  for (const [position, raw] of data.items.slice(0, 200).entries()) {
     const item = normalizeItem(raw, editionId);
-    if (item && !seen.has(item.id)) { seen.add(item.id); items.push(item); }
+    if (item && !seen.has(item.id)) { seen.add(item.id); items.push({ ...item, position }); }
   }
   const generatedAt = typeof data.generated_at === "string" && !Number.isNaN(Date.parse(data.generated_at)) ? data.generated_at : null;
   return { editionId, generatedAt, format: "json", items, skipped: data.items.length - items.length };
@@ -161,9 +161,9 @@ export function parseJournalJson(input) {
 /** Maps Supabase journal_items rows (snake_case, cover jsonb) to display items. Invalid rows skipped. */
 export function journalItemsFromRows(editionId, rows) {
   const items = [];
-  for (const r of Array.isArray(rows) ? rows : []) {
+  for (const [index, r] of (Array.isArray(rows) ? rows : []).entries()) {
     const item = normalizeItem({ ...r, id: r?.item_id }, editionId);
-    if (item) items.push(item);
+    if (item) items.push({ ...item, position: Number.isInteger(r?.position) && r.position >= 0 ? r.position : index });
   }
   return items;
 }

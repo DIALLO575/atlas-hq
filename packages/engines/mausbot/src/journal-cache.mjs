@@ -2,6 +2,17 @@ import { validateJournalProgressInput, validateJournalStateInput } from './journ
 export const CACHE_VERSION = 2;
 export const SOFT_TTL_MS = 60000;
 export const MAX_CACHE_BYTES = 2 * 1024 * 1024;
+export function journalPayloadTimestamp(payload) {
+  const generated = Date.parse(payload?.generatedAt ?? '');
+  if (Number.isFinite(generated)) return generated;
+  const received = Date.parse(payload?.receivedAt ?? '');
+  return Number.isFinite(received) ? received : 0;
+}
+export function readJournalPreferences(preferences = {}) {
+  const normalized = Object.fromEntries(Object.entries(preferences).filter(([,value]) => typeof value === 'string' || typeof value === 'number'));
+  normalized.hideDone = normalized.hideDone === 0 ? 0 : 1;
+  return normalized;
+}
 export function journalCacheScope(userId, workspaceId) {
   if (!userId || !workspaceId) throw new Error('Journal scope required');
   return JSON.stringify([userId, workspaceId]);
@@ -20,7 +31,7 @@ export function mergeJournalPayload(previous, incoming, queue = []) {
 }
 export function trimJournalEditions(editions, now) {
   const kept = editions.filter(e => e.cacheVersion === CACHE_VERSION && now - e.savedAt <= 7 * 86400000)
-    .sort((a,b) => b.savedAt-a.savedAt).slice(0,7);
+    .sort((a,b) => journalPayloadTimestamp(b.payload) - journalPayloadTimestamp(a.payload) || b.savedAt-a.savedAt).slice(0,7);
   while (kept.length && new TextEncoder().encode(JSON.stringify(kept)).length > MAX_CACHE_BYTES) kept.pop();
   return kept;
 }
@@ -43,7 +54,10 @@ export function createJournalCache(adapter) {
       return adapter.update(root => {
         if (!valid(root,token)) return [root,false];
         const entry = { cacheVersion: CACHE_VERSION, key: JSON.stringify([token.scope,payload.editionId]), savedAt: now, etag, payload };
-        root.editions = trimJournalEditions([entry, ...root.editions.filter(e => e.key !== entry.key)], now);
+        const current = root.editions.slice().sort((a,b) => journalPayloadTimestamp(b.payload) - journalPayloadTimestamp(a.payload))[0];
+        if (current && current.payload?.editionId !== payload.editionId && journalPayloadTimestamp(payload) < journalPayloadTimestamp(current.payload)) return [root,true];
+        const editions = current && current.payload?.editionId !== payload.editionId ? [] : root.editions.filter(e => e.key !== entry.key);
+        root.editions = trimJournalEditions([entry, ...editions], now);
         return [root,true];
       });
     },

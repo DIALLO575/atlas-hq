@@ -4,7 +4,7 @@ import "../morning-journal.css";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Journal du matin · ATLAS HQ",
+  title: "Journal ATLAS · ATLAS HQ",
   manifest: "/journal.webmanifest",
   appleWebApp: { capable: true, title: "Journal", statusBarStyle: "black-translucent" },
 };

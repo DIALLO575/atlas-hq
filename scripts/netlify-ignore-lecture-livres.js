@@ -1,2 +1,2 @@
 // Skip automatic Netlify build/deploy previews for books-only PR branches.
-process.exitCode = ["feat/lecture-livres-l1", "fix/lecture-open-book-r1"].includes(process.env.BRANCH) ? 0 : 1;
+process.exitCode = ["feat/lecture-livres-l1", "fix/lecture-open-book-r1", "fix/journal-unread-edition-order-20261026"].includes(process.env.BRANCH) ? 0 : 1;

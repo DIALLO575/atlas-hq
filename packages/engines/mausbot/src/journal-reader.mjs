@@ -50,7 +50,8 @@ export function readingMinutes(...texts) {
 /** Featured ("à la une"): first item flagged featured, else the first item. */
 export function pickFeatured(items) {
   if (!Array.isArray(items) || !items.length) return null;
-  return items.find(i => i?.featured === true) ?? items[0];
+  const eligible = items.filter(i => i?.state !== "done");
+  return eligible.find(i => i?.featured === true) ?? eligible[0] ?? null;
 }
 
 export const FONT_STEPS = Object.freeze([16, 18, 20, 22, 24]);

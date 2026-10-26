@@ -4,7 +4,7 @@ export function safeLink(url: unknown): string | null;
 export function parseInline(text: unknown): Inline[];
 export function parseBlocks(text: unknown): Block[];
 export function readingMinutes(...texts: (string | null | undefined)[]): number;
-export function pickFeatured<T extends { featured?: boolean }>(items: T[]): T | null;
+export function pickFeatured<T extends { featured?: boolean; state?: string }>(items: T[]): T | null;
 export const FONT_STEPS: readonly number[];
 export function stepFont(index: number, delta: number): number;
 export const READER_THEMES: readonly ("light" | "sepia" | "dark")[];

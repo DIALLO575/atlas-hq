@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const stateMap = Object.fromEntries((states ?? []).map((s: { edition_id: string; item_id: string; status: string; seconds_read?: number; last_position?: number | null; first_read_at?: string | null }) => [JSON.stringify([s.edition_id, s.item_id]), s]));
     const payload = {
       source: "supabase-read-only", demo: edition.demo, editionId: edition.editionId, producer: edition.producer,
-      generatedAt: edition.generatedAt, coverExpiresAt: edition.coverExpiresAt, categories: groupJournal(edition),
+      generatedAt: edition.generatedAt, receivedAt: edition.receivedAt, editions: edition.editions, coverExpiresAt: edition.coverExpiresAt, categories: groupJournal(edition),
       items: edition.items.map(i => {
         const state = stateMap[i.key];
         return { ...i, state: state?.status ?? "new", secondsRead: state?.seconds_read ?? 0,

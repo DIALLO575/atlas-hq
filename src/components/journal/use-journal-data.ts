@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { journalCacheStorage, purgeJournalCache } from '@/lib/journal/cache-storage';
-import { journalCacheScope, journalPayloadEqual, mergeJournalPayload, safeCachedPayload } from '../../../packages/engines/mausbot/src/journal-cache.mjs';
+import { journalCacheScope, journalPayloadEqual, journalPayloadTimestamp, mergeJournalPayload, readJournalPreferences, safeCachedPayload } from '../../../packages/engines/mausbot/src/journal-cache.mjs';
 type Item = { id: string; key: string; editionId: string; state: 'new' | 'read' | 'done' };
 type Payload = { editionId: string; source: string; items: Item[]; coverExpiresAt?: string; offline?: boolean };
 type Operation = { previousState?: Item['state']; id: string; kind: 'state' | 'progress'; body: { workspaceId: string; [key: string]: unknown } };
@@ -39,8 +39,10 @@ export function useJournalData<T extends Payload>(workspaceId: string, nonce: nu
         sessionStorage.setItem('atlas.journal.offline-capability',JSON.stringify(token));
         if (!alive) { storage.close(); return; }
         const snapshot = await storage.cache.snapshot(token);
-        const cached = snapshot?.editions[0];
-        if (alive) setPreferences(Object.fromEntries(Object.entries(snapshot?.preferences ?? {}).filter((entry): entry is [string, string | number] => typeof entry[1] === 'string' || typeof entry[1] === 'number')));
+        const cached = snapshot?.editions.slice().sort((a,b) => journalPayloadTimestamp(b.payload) - journalPayloadTimestamp(a.payload) || b.savedAt - a.savedAt)[0];
+        const loadedPreferences = readJournalPreferences(snapshot?.preferences);
+        if (alive) setPreferences(loadedPreferences);
+        if (snapshot && !Object.hasOwn(snapshot.preferences, 'hideDone')) await storage.cache.preferences(token, { hideDone: 1 });
         const context = { cache: storage.cache, token, data: cached?.payload as T | undefined, etag: cached?.etag as string | undefined, refreshing: false };
         active.current = context; setVisibleWorkspace(workspaceId); setView({ status: 'loading' });
         if (cached && alive) setView({ status: 'ready', data: safeCachedPayload(cached.payload,Date.now()) as T });
@@ -74,6 +76,7 @@ export function useJournalData<T extends Payload>(workspaceId: string, nonce: nu
             const body = await response.json();
             if (!response.ok) throw new Error(body.error ?? 'JOURNAL_UNAVAILABLE');
             if (body.source !== 'supabase-read-only' || !Array.isArray(body.items)) throw new Error('JOURNAL_PAYLOAD_INVALID');
+            if (context.data && journalPayloadTimestamp(body) < journalPayloadTimestamp(context.data)) return;
             const latest = await context.cache.snapshot(token); if (!latest || !alive) return;
             const next = mergeJournalPayload(context.data,body,latest.queue) as T;
             const changed = !journalPayloadEqual(context.data,next);
