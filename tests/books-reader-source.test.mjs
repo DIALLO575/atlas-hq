@@ -77,7 +77,17 @@ test("missing storage objects are diagnosed and can be safely reimported", async
   assert.match(route, /action==='prepare'/);
   assert.match(route, /input\.action!=='finalize'/);
   assert.match(route, /BOOK_FILE_UPLOAD_INCOMPLETE/);
-  assert.match(component, /await finalizeBookFile\(workspaceId, created\.book\.id/);
+  assert.match(component, /uploadBookFileResilient\(workspaceId,created\.book,newFile,created\.upload/);
   assert.match(component, /Réimporter le fichier/);
   assert.match(component, /BOOK_FILE_MISSING/);
+});
+
+test("book uploads preserve the selected file while retrying transient network failures", async () => {
+  const component = await readFile(new URL("../src/components/books/book-library.tsx", import.meta.url), "utf8");
+  assert.match(component, /uploadBookFileResilient/);
+  assert.match(component, /waitForOnline/);
+  assert.match(component, /for\(let attempt=1;attempt<=3;attempt\+\+\)/);
+  assert.match(component, /Nouvelle tentative dans/);
+  assert.match(component, /atlas-books-import-status/);
+  assert.match(component, /finalizeBookFile\(workspaceId,book\.id,ticket\.path/);
 });
