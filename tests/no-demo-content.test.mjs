@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../src/", import.meta.url));
 const forbidden = [
   { rule: /(?:from\s*["']|import\s*\(["'])[^"']*(?:demo-data|mock-data|fake-data)["']/i, reason: "import of demo/mock data" },
-  { rule: /\b(?:demoApps|searchableItems|sampleQuestions)\b/, reason: "hard-coded demo catalog or canned Chief questions" },
+  { rule: /\b(?:demoApps|searchableItems|sampleQuestions|DemoNotice)\b/, reason: "hard-coded demo catalog or canned Chief questions" },
   { rule: /\b(?:fakeMissions|mockMissions|demoMissions|demoAgents|mockAgents)\s*=/i, reason: "fictional operational dataset" },
 ];
 async function sourceFiles(dir) {
