@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { poll } from "@/lib/agent-gateway";
+import { historyForObject, poll } from "@/lib/agent-gateway";
 import { agentError } from "@/lib/agent-gateway/access";
 
 export const runtime = "nodejs";
@@ -8,8 +8,15 @@ const headers = { "Cache-Control": "private, no-store" };
 export async function GET(request: NextRequest) {
   try {
     const query = request.nextUrl.searchParams;
-    const data = await poll(query.get("workspaceId") ?? "", query.get("threadId") ?? "",
-      query.get("afterId") ?? undefined);
+    const workspaceId = query.get("workspaceId") ?? "";
+    const id = query.get("threadId");
+    const pageKey = query.get("pageKey");
+    if ((id && pageKey) || (!id && pageKey !== "missions") ||
+      (pageKey && query.has("afterId")))
+      return NextResponse.json({ error: "INVALID_THREAD_REQUEST" }, { status: 400, headers });
+    const data = id
+      ? await poll(workspaceId, id, query.get("afterId") ?? undefined)
+      : await historyForObject(workspaceId, pageKey!, query.get("objectId"));
     return NextResponse.json(data, { headers });
   } catch (error) {
     const safe = agentError(error);

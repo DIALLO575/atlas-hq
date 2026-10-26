@@ -178,3 +178,54 @@ export async function poll(workspaceId: string, threadId: string, afterId?: stri
   const index = afterId ? messages.findIndex((message: AtlasAgentMessage) => message.id === afterId) : -1;
   return { threadId, messages: index >= 0 ? messages.slice(index + 1) : messages, pending: false };
 }
+
+
+/**
+ * Restore the existing REAL thread for a workspace page/object. No inserts,
+ * outbound MausBot writes, test data or schema changes. The object and entity
+ * are verified server-side before revealing the tenant's existing transcript.
+ */
+export async function historyForObject(workspaceId: string, pageKey: string, objectId: string | null) {
+  if (!UUID.test(workspaceId) || pageKey !== "missions" ||
+    (objectId !== null && !UUID.test(objectId)))
+    throw new GatewayError("INVALID_THREAD_REQUEST", 400);
+  const { supabase } = await requireAgentOwner(workspaceId);
+  const setting = await readAgentSetting(supabase, workspaceId, pageKey);
+  if (setting.entity === "*")
+    return { threadId: null, messages: [] as AtlasAgentMessage[], pending: false };
+  const context: AtlasPageContext = {
+    workspaceId, pageKey, entity: setting.entity,
+    objectType: objectId ? "mission" : "page", objectId,
+  };
+  await verifyScope(supabase, context);
+  const thread = await findThread(supabase, context);
+  if (!thread) return { threadId: null, messages: [] as AtlasAgentMessage[], pending: false };
+  if (thread.agent_id !== setting.agentId) throw new GatewayError("THREAD_AGENT_CHANGED", 409);
+  return poll(workspaceId, thread.id);
+}
+
+/**
+ * B2 interrupt preparation: owner + tenant thread verification + hard release
+ * gate, and absolutely NO call to interrupt_conversation or MausBot mutations.
+ */
+export async function prepareInterrupt(workspaceId: unknown, threadId: unknown) {
+  if (typeof workspaceId !== "string" || !UUID.test(workspaceId) ||
+    typeof threadId !== "string" || !UUID.test(threadId))
+    throw new GatewayError("INVALID_THREAD_REQUEST", 400);
+  const { supabase } = await requireAgentOwner(workspaceId);
+  const { data: thread, error } = await supabase.from("agent_threads")
+    .select("id,page_key,entity,object_id").eq("workspace_id", workspaceId)
+    .eq("id", threadId).maybeSingle();
+  if (error) throw new GatewayError("AGENT_THREAD_UNAVAILABLE", 503);
+  if (!thread) throw new GatewayError("THREAD_NOT_FOUND", 404);
+  await verifyScope(supabase, {
+    workspaceId, pageKey: thread.page_key, entity: thread.entity,
+    objectType: thread.object_id ? "mission" : "page", objectId: thread.object_id,
+  });
+  if (!mausbotReleaseState(process.env).mutationsEnabled)
+    throw new GatewayError("MAUSBOT_DURABLE_APPROVAL_REQUIRED", 423);
+  const gate = mausbotReleasePermission(process.env, "execute");
+  if (!gate.allowed) throw new GatewayError(gate.code, gate.status);
+  // Even if an unrelated gate changes, B2 never implements provider interrupt.
+  throw new GatewayError("MAUSBOT_DURABLE_APPROVAL_REQUIRED", 423);
+}
