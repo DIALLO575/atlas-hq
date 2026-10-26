@@ -37,6 +37,8 @@ test("rejects an EPUB/PDF mismatch and makes authentication failure visible", as
   await assert.rejects(loadBookReaderFile({ book: { id: bookId, format: "epub" }, workspaceId, offlineFile: new Blob([pdf]) }), /BOOK_FORMAT_INVALID/);
   const authResponse = { ok: false, status: 200, redirected: true, url: "https://atlas.example/login?next=%2Flecture", json: async () => ({}) };
   await assert.rejects(loadBookReaderFile({ book: { id: bookId, format: "pdf" }, workspaceId, fetchImpl: async () => authResponse }), /AUTH_REQUIRED/);
+  const missingResponse = { ok: false, status: 409, redirected: false, url: "https://atlas.example/api/engines/mausbot/books/file", json: async () => ({ error: "BOOK_FILE_MISSING" }) };
+  await assert.rejects(loadBookReaderFile({ book: { id: bookId, format: "pdf" }, workspaceId, fetchImpl: async () => missingResponse }), /BOOK_FILE_MISSING/);
 });
 
 test("card navigation leaves file loading to the reader route, including its offline cache", async () => {
@@ -66,4 +68,16 @@ test("upload success is not obscured by an optional cover failure, and progress 
   assert.match(component, /document\.addEventListener\('visibilitychange', visibility\)/);
   assert.match(component, /keepalive: force/);
   assert.match(component, /deltaSeconds, position/);
+});
+
+test("missing storage objects are diagnosed and can be safely reimported", async () => {
+  const component = await readFile(new URL("../src/components/books/book-library.tsx", import.meta.url), "utf8");
+  const route = await readFile(new URL("../src/app/api/engines/mausbot/books/[id]/file/route.ts", import.meta.url), "utf8");
+  assert.match(route, /BOOK_FILE_MISSING/);
+  assert.match(route, /action==='prepare'/);
+  assert.match(route, /input\.action!=='finalize'/);
+  assert.match(route, /BOOK_FILE_UPLOAD_INCOMPLETE/);
+  assert.match(component, /await finalizeBookFile\(workspaceId, created\.book\.id/);
+  assert.match(component, /Réimporter le fichier/);
+  assert.match(component, /BOOK_FILE_MISSING/);
 });
