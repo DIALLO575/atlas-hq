@@ -26,7 +26,7 @@ jobs:
           chrome_pid=$!
           trap 'kill "$chrome_pid" "$server_pid"' EXIT
           for attempt in 1 2 3 4 5; do curl -fsS http://127.0.0.1:9222/json/version > /dev/null && break || sleep 1; done
-          node scripts/test-journal-browser.mjs
+          node scripts/verify-journal-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
