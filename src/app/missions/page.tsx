@@ -169,7 +169,7 @@ export default async function MissionsPage({ searchParams }: { searchParams: Pro
         </aside>
       </div>
     </>}
-    {data.status === "ready" && data.selected?.role === "owner" && <AgentPanel
+    {data.status === "ready" && data.selected?.role === "owner" && <AgentPanel key={data.selected.id}
       workspaceId={data.selected.id} missionId={selectedMissionId ?? null} />}
   </main></AppShell>;
 }

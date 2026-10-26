@@ -42,7 +42,6 @@ export function AgentPanel({ workspaceId,missionId }: { workspaceId: string; mis
   const context = useAgentContext({workspaceId,pageKey:"missions",entity:settings?.entity ?? "*",objectId:missionId});
   useEffect(() => {
     const controller = new AbortController();
-    setReady(false);setError(null);setThreadId(null);setMessages([]);
     fetch("/api/agent/settings?workspaceId=" + encodeURIComponent(workspaceId) + "&pageKey=missions", {
       credentials:"same-origin",cache:"no-store",signal:controller.signal,
     }).then(async (response) => {
@@ -75,11 +74,13 @@ export function AgentPanel({ workspaceId,missionId }: { workspaceId: string; mis
   },[workspaceId]);
   useEffect(() => {
     if (!threadId || !open) return;
-    void poll(threadId).catch((e) => setError(explain(e instanceof Error ? e.message : "AGENT_GATEWAY_UNAVAILABLE")));
+    const immediate = setTimeout(() => {
+      void poll(threadId).catch((e) => setError(explain(e instanceof Error ? e.message : "AGENT_GATEWAY_UNAVAILABLE")));
+    }, 0);
     const handle = setInterval(() => {
       void poll(threadId).catch((e) => setError(explain(e instanceof Error ? e.message : "AGENT_GATEWAY_UNAVAILABLE")));
     },5000);
-    return () => clearInterval(handle);
+    return () => { clearTimeout(immediate);clearInterval(handle); };
   },[open,threadId,poll]);
   const save = async () => {
     if (saving) return;

@@ -72,39 +72,36 @@ grant update(mausbot_task_id,agent_id,updated_at) on public.agent_threads to aut
 grant select,insert on public.agent_send_receipts to authenticated;
 grant update(state,mausbot_message_id) on public.agent_send_receipts to authenticated;
 
--- Every policy requires a workspace OWNER, never mere 'authenticated' or admin.
+-- Owner check uses a locked SECURITY DEFINER helper, because the caller must
+-- NOT be granted raw access to workspace_members to evaluate RLS.
+create function private.is_agent_workspace_owner(_workspace uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.workspace_members wm
+    where wm.workspace_id = _workspace and wm.user_id = auth.uid() and wm.role = 'owner')
+$$;
+revoke all on function private.is_agent_workspace_owner(uuid) from public,anon;
+grant execute on function private.is_agent_workspace_owner(uuid) to authenticated;
+
 create policy agent_page_settings_owner_select on public.agent_page_settings for select to authenticated
-using (exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_page_settings.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+using (private.is_agent_workspace_owner(workspace_id));
 create policy agent_page_settings_owner_insert on public.agent_page_settings for insert to authenticated
-with check (updated_by=(select auth.uid()) and exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_page_settings.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+with check (updated_by=(select auth.uid()) and private.is_agent_workspace_owner(workspace_id));
 create policy agent_page_settings_owner_update on public.agent_page_settings for update to authenticated
-using (exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_page_settings.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'))
-with check (exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_page_settings.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+using (private.is_agent_workspace_owner(workspace_id))
+with check (private.is_agent_workspace_owner(workspace_id));
 
 create policy agent_threads_owner_select on public.agent_threads for select to authenticated
-using (exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_threads.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+using (private.is_agent_workspace_owner(workspace_id));
 create policy agent_threads_owner_insert on public.agent_threads for insert to authenticated
-with check (created_by=(select auth.uid()) and exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_threads.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+with check (created_by=(select auth.uid()) and private.is_agent_workspace_owner(workspace_id));
 create policy agent_threads_owner_update on public.agent_threads for update to authenticated
-using (created_by=(select auth.uid()) and exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_threads.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'))
-with check (created_by=(select auth.uid()) and exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_threads.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+using (created_by=(select auth.uid()) and private.is_agent_workspace_owner(workspace_id))
+with check (created_by=(select auth.uid()) and private.is_agent_workspace_owner(workspace_id));
 
 create policy agent_send_receipts_owner_select on public.agent_send_receipts for select to authenticated
-using (created_by=(select auth.uid()) and exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_send_receipts.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+using (created_by=(select auth.uid()) and private.is_agent_workspace_owner(workspace_id));
 create policy agent_send_receipts_owner_insert on public.agent_send_receipts for insert to authenticated
-with check (created_by=(select auth.uid()) and exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_send_receipts.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+with check (created_by=(select auth.uid()) and private.is_agent_workspace_owner(workspace_id));
 create policy agent_send_receipts_owner_update on public.agent_send_receipts for update to authenticated
-using (created_by=(select auth.uid()) and exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_send_receipts.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'))
-with check (created_by=(select auth.uid()) and exists (select 1 from public.workspace_members wm
-  where wm.workspace_id=agent_send_receipts.workspace_id and wm.user_id=(select auth.uid()) and wm.role='owner'));
+using (created_by=(select auth.uid()) and private.is_agent_workspace_owner(workspace_id))
+with check (created_by=(select auth.uid()) and private.is_agent_workspace_owner(workspace_id));
