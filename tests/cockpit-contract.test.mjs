@@ -31,7 +31,7 @@ test("cockpit navigation exposes six primary destinations and transversal access
   assert.match(shell, /Aller au contenu principal/);
 });
 
-test("missions and inbox are real workflow pages; transversal demos remain honest", () => {
+test("missions and inbox show real workflow; secondary pages have honest empty states", () => {
   for (const page of [related, settings]) {
     assert.match(page, /<DemoNotice\/>/);
     assert.match(page, /<EmptyPanel/);
