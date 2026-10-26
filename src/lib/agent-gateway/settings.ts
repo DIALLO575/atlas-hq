@@ -14,7 +14,8 @@ export async function readAgentSetting(supabase: AgentClient, workspaceId: strin
   if (error) throw new GatewayError("AGENT_SETTINGS_UNAVAILABLE", 503);
   const row = (data ?? []).find((item) => item.page_key === pageKey) ??
     (data ?? []).find((item) => item.page_key === "*");
-  if (!row) throw new GatewayError("AGENT_SETTINGS_UNAVAILABLE", 503);
+  if (!row) return { pageKey, entity: "*", agentId: pageKey === "journal" ? "MORGANS" : "ROGER",
+    isFallback: true, updatedAt: null }; // Real default, explicitly not a persisted preference.
   return { pageKey, entity: row.entity as AtlasEntity | "*", agentId: row.agent_id,
     isFallback: row.page_key !== pageKey, updatedAt: row.updated_at };
 }
