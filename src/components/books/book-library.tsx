@@ -201,9 +201,14 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
       const created = await safeJson<{ book: Book; upload: { path: string; token: string } }>(await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, title: title.trim() || newFile.name.replace(/\.(epub|pdf)$/i, ""), author, format, mimeType, byteSize: newFile.size }) }));
       const storage = createSupabaseBrowserClient()?.storage.from("books"); if (!storage) throw new Error("STORAGE_UNAVAILABLE");
       const uploaded = await storage.uploadToSignedUrl(created.upload.path, created.upload.token, newFile, { contentType: mimeType }); if (uploaded.error) throw new Error("BOOK_UPLOAD_FAILED");
-      if (newCover) { if (!['image/jpeg', 'image/png', 'image/webp'].includes(newCover.type)) throw new Error("Choisissez une image JPEG, PNG ou WebP."); await putCover(workspaceId, created.book.id, await resizedImage(newCover, title, author, palette, palette)); }
-      else { await generateAndUpload(created.book.id, null, 0, created.book.title, created.book.author); }
-      setTitle(""); setAuthor(""); setNewFile(null); setNewCover(null); if (fileInput.current) fileInput.current.value = ""; if (coverInput.current) coverInput.current.value = ""; setRefreshKey(x => x + 1); setMessage("Livre ajouté à votre bibliothèque.");
+      // A cover is an enhancement. Never report a successful book upload as failed because
+      // the optional image conversion or signed-cover upload had a transient problem.
+      let coverWarning = false;
+      try {
+        if (newCover) { if (!['image/jpeg', 'image/png', 'image/webp'].includes(newCover.type)) throw new Error("COVER_TYPE_INVALID"); await putCover(workspaceId, created.book.id, await resizedImage(newCover, title, author, palette, palette)); }
+        else { await generateAndUpload(created.book.id, null, 0, created.book.title, created.book.author); }
+      } catch { coverWarning = true; }
+      setTitle(""); setAuthor(""); setNewFile(null); setNewCover(null); if (fileInput.current) fileInput.current.value = ""; if (coverInput.current) coverInput.current.value = ""; setRefreshKey(x => x + 1); setMessage(coverWarning ? "Livre ajouté. La couverture n’a pas pu être créée : vous pourrez la générer ou la remplacer depuis la bibliothèque." : "Livre ajouté à votre bibliothèque.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "BOOK_CREATE_UNAVAILABLE"); }
     finally { setBusy(false); fileRef.current = null; }
   };
@@ -235,8 +240,45 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
     void start(); return () => { alive = false; view = null; readerDocs.current = []; host.replaceChildren(); };
   }, [readerFile, readerBook]);
   useEffect(() => { if (!reader || !readerBook) return; let alive = true; const refreshNotes = async () => { try { const result = await safeJson<{ notes: typeof notes }>(await fetch(`${API}/notes?workspaceId=${encodeURIComponent(workspaceId)}&bookId=${readerBook.id}`, { cache: "no-store" })); if (alive) { sameSet(setNotes, result.notes); for (const note of result.notes) if (note.kind === "highlight" && note.anchor_cfi) { try { await reader.addAnnotation({ value: note.anchor_cfi, color: note.color }); } catch {} } } } catch {} }; void refreshNotes(); return () => { alive = false; }; }, [reader, readerBook, workspaceId]);
-  useEffect(() => { if (!reader || !readerBook) return; let active = true; const tick = async () => { const now = Date.now(); if (lastTick.current && active && document.visibilityState === "visible" && document.hasFocus()) { const delta = Math.min(15, Math.max(0, Math.floor((now - lastTick.current) / 1000))); if (delta > 0) { const sendId=crypto.randomUUID(); const body={workspaceId,sendId,events:[{bookId:readerBook.id,deltaSeconds:delta,position:positionRef.current,pagesRead:null,clientUpdatedAt:new Date().toISOString(),deviceId:deviceId()}]}; try { if(offlineToken){const offlineStorageModule=await importPublicModule('/books-offline-storage.mjs') as OfflineModule;const store=await offlineStorageModule.booksOfflineStorage();try{await store.cache.enqueue(offlineToken,{kind:'progress',sendId,queuedAt:Date.now(),body});await store.cache.saveBook(offlineToken,{...readerBook,localPosition:positionRef.current,localDeviceId:deviceId()});if('serviceWorker' in navigator&&'SyncManager' in window){const registration=await navigator.serviceWorker.ready as ServiceWorkerRegistration&{sync?:{register:(tag:string)=>Promise<void>}};await registration.sync?.register('atlas-books-sync');}}finally{store.close();}} const response=await fetch(`${API}/progress`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(response.ok&&offlineToken){const offlineStorageModule=await importPublicModule('/books-offline-storage.mjs') as {booksOfflineStorage:()=>Promise<{cache:{acknowledge:(t:unknown,id:string)=>Promise<void>};close:()=>void}>};const store=await offlineStorageModule.booksOfflineStorage();try{await store.cache.acknowledge(offlineToken,sendId);}finally{store.close();}} } catch {} } } lastTick.current = now; };
-    lastTick.current = Date.now(); const timer = window.setInterval(() => void tick(), 15000); return () => { active = false; window.clearInterval(timer); };
+  useEffect(() => {
+    if (!reader || !readerBook) return;
+    let active = true; let pendingSeconds = 0; let sending = false; let lastSentPosition: number | null = null;
+    const collectElapsed = () => {
+      const now = Date.now();
+      if (lastTick.current && document.visibilityState === "visible" && document.hasFocus()) pendingSeconds += Math.min(120, Math.max(0, Math.floor((now - lastTick.current) / 1000)));
+      lastTick.current = now;
+    };
+    const flush = async (force = false) => {
+      if (!active || sending) return;
+      const position = positionRef.current;
+      if (pendingSeconds < 1 && (!force || lastSentPosition === position)) return;
+      sending = true;
+      const deltaSeconds = Math.min(120, Math.max(0, pendingSeconds)); pendingSeconds = Math.max(0, pendingSeconds - deltaSeconds);
+      const sendId = crypto.randomUUID(); const clientUpdatedAt = new Date().toISOString(); const id = deviceId();
+      const body = { workspaceId, sendId, events: [{ bookId: readerBook.id, deltaSeconds, position, pagesRead: null, clientUpdatedAt, deviceId: id }] };
+      try {
+        if (offlineToken) {
+          const offlineStorageModule = await importPublicModule('/books-offline-storage.mjs') as OfflineModule; const store = await offlineStorageModule.booksOfflineStorage();
+          try { await store.cache.enqueue(offlineToken, { kind: 'progress', sendId, queuedAt: Date.now(), body }); await store.cache.saveBook(offlineToken, { ...readerBook, localPosition: position, localDeviceId: id }); if ('serviceWorker' in navigator && 'SyncManager' in window) { const registration = await navigator.serviceWorker.ready as ServiceWorkerRegistration & { sync?: { register: (tag: string) => Promise<void> } }; await registration.sync?.register('atlas-books-sync'); } } finally { store.close(); }
+        }
+        const response = await fetch(`${API}/progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: force });
+        if (!response.ok) throw new Error('BOOK_PROGRESS_UNAVAILABLE');
+        lastSentPosition = position;
+        if (offlineToken) { const offlineStorageModule = await importPublicModule('/books-offline-storage.mjs') as { booksOfflineStorage: () => Promise<{ cache: { acknowledge: (t: unknown, id: string) => Promise<void> }; close: () => void }> }; const store = await offlineStorageModule.booksOfflineStorage(); try { await store.cache.acknowledge(offlineToken, sendId); } finally { store.close(); } }
+        if (active) setBooks(old => {
+          const next = old.map(book => book.id !== readerBook.id ? book : { ...book, status: position >= .98 ? 'finished' : book.status, book_reading_state: [{ ...(book.book_reading_state?.[0] ?? {}), position, client_updated_at: clientUpdatedAt, device_id: id }] });
+          return JSON.stringify(old) === JSON.stringify(next) ? old : next;
+        });
+      } catch {
+        pendingSeconds += deltaSeconds;
+        if (active && navigator.onLine) setMessage('La progression sera resynchronisée dès que possible.');
+      } finally { sending = false; }
+    };
+    const tick = () => { collectElapsed(); void flush(); };
+    const flushBeforeLeaving = () => { collectElapsed(); void flush(true); };
+    const visibility = () => { if (document.visibilityState === 'hidden') flushBeforeLeaving(); };
+    lastTick.current = Date.now(); const timer = window.setInterval(tick, 15000); window.addEventListener('pagehide', flushBeforeLeaving); document.addEventListener('visibilitychange', visibility);
+    return () => { flushBeforeLeaving(); active = false; window.clearInterval(timer); window.removeEventListener('pagehide', flushBeforeLeaving); document.removeEventListener('visibilitychange', visibility); };
   }, [reader, readerBook, workspaceId, offlineToken]);
   const saveNote = async (kind: "note" | "highlight" | "bookmark", content = noteText) => { if (!readerBook || !content.trim()) return; const range = selectedRange.current; const anchorCfi = range && reader ? reader.getCFI(range.index, range.range) : null; const sendId=crypto.randomUUID(); const body={workspaceId,bookId:readerBook.id,sendId,kind,body:content.trim(),position:positionRef.current,color:"yellow",anchorCfi}; try { if(offlineToken){const offlineStorageModule=await importPublicModule('/books-offline-storage.mjs') as OfflineModule;const store=await offlineStorageModule.booksOfflineStorage();try{await store.cache.enqueue(offlineToken,{kind:'annotation',sendId,queuedAt:Date.now(),body:editingNote?{...body,id:editingNote}:body});if('serviceWorker' in navigator&&'SyncManager' in window){const registration=await navigator.serviceWorker.ready as ServiceWorkerRegistration&{sync?:{register:(tag:string)=>Promise<void>}};await registration.sync?.register('atlas-books-sync');}}finally{store.close();}} const response=await fetch(`${API}/notes`,{method:editingNote?'PATCH':'POST',headers:{"Content-Type":"application/json"},body:JSON.stringify(editingNote?{...body,id:editingNote}:body)}); if(!response.ok)throw new Error('BOOK_NOTE_UNAVAILABLE'); if(offlineToken){const offlineStorageModule=await importPublicModule('/books-offline-storage.mjs') as OfflineModule;const store=await offlineStorageModule.booksOfflineStorage();try{await store.cache.acknowledge(offlineToken,sendId);}finally{store.close();}} if (kind === "highlight" && anchorCfi) { try { await reader?.addAnnotation({ value: anchorCfi, color: "yellow", note: content.trim() }); } catch {} } setNoteText(""); setSelectedText(""); setEditingNote(null); selectedRange.current = null; const list = await safeJson<{ notes: typeof notes }>(await fetch(`${API}/notes?workspaceId=${encodeURIComponent(workspaceId)}&bookId=${readerBook.id}`, { cache: "no-store" })); sameSet(setNotes, list.notes); } catch { setMessage('Note mise en attente de synchronisation.'); setNoteText(''); setSelectedText(''); setEditingNote(null); selectedRange.current=null; } };
 
