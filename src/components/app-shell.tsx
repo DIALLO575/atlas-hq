@@ -7,6 +7,8 @@ import { Icon } from "@/components/icon";
 import { SessionControls } from "@/components/session-controls";
 import { WorkspaceSelector } from "@/components/workspace-selector";
 import { useFloatingDock } from "@/components/use-floating-dock";
+import { listWorkspaces } from "@/app/workspaces/actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const navItems = [
   { label: "Accueil", icon: "grid" as const, href: "/" },
@@ -26,7 +28,7 @@ const utilityItems = [
   { label: "Paramètres", icon: "settings" as const, href: "/settings" },
 ];
 
-const mobileItems = [navItems[0], navItems[2], navItems[5]];
+const mobileItems = [navItems[0], navItems[2], navItems[5], navItems[7]];
 
 // Retain only the expanded/collapsed preference between client-side navigations.
 let cachedExpanded: boolean | null = null;
@@ -34,6 +36,9 @@ let cachedExpanded: boolean | null = null;
 // Route pages keep their existing <AppShell> wrappers, but the actual dock lives
 // once in the persistent root layout. Nested wrappers render only page content.
 const AppShellContext = createContext(false);
+const JournalUnreadContext = createContext<number | null>(null);
+
+export function useJournalUnread() { return useContext(JournalUnreadContext); }
 
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const insidePersistentShell = useContext(AppShellContext);
@@ -50,7 +55,40 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   // Give instant visual feedback while Next.js loads the next route.
   // The dock itself remains mounted; only the page content changes.
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+  const [journalUnread, setJournalUnread] = useState<number | null>(null);
   const isRoutePending = Boolean(navigatingTo && navigatingTo !== pathname);
+
+  useEffect(() => {
+    if (pathname === "/journal") return;
+    let alive = true;
+    let request = 0;
+    const refreshUnread = async () => {
+      const current = ++request;
+      try {
+        const workspaces = await listWorkspaces();
+        if (workspaces.status !== "ready" || !workspaces.selectedId) {
+          if (alive && current === request) setJournalUnread(null);
+          return;
+        }
+        const response = await fetch(`/api/engines/mausbot/journal/summary?workspaceId=${encodeURIComponent(workspaces.selectedId)}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("summary unavailable");
+        const summary = await response.json() as { unread?: unknown };
+        if (alive && current === request) setJournalUnread(typeof summary.unread === "number" ? summary.unread : null);
+      } catch { if (alive) setJournalUnread(null); }
+    };
+    const update = () => { void refreshUnread(); };
+    const onVisible = () => { if (document.visibilityState === "visible") void refreshUnread(); };
+    const supabase = createSupabaseBrowserClient();
+    const auth = supabase?.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") { request++; setJournalUnread(null); }
+      else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") void refreshUnread();
+    });
+    window.addEventListener("journal:updated", update);
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    void refreshUnread();
+    return () => { alive = false; auth?.data.subscription.unsubscribe(); window.removeEventListener("journal:updated", update); window.removeEventListener("focus", onVisible); document.removeEventListener("visibilitychange", onVisible); };
+  }, [pathname]);
 
   const {
     dockRef, side: dockSide, dragging: dockDragging, dockStyle,
@@ -131,8 +169,20 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   const linkClass = (href: string) => "atlas-dock-link" + (pathname === href ? " atlas-dock-active" : "");
   const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "Atlas";
 
+  if (pathname === "/journal") return (
+    <AppShellContext.Provider value={true}>
+      <JournalUnreadContext.Provider value={null}>
+        <div className="app-shell atlas-shell atlas-journal-shell">
+          <a className="skip-link" href="#main-content">Aller au contenu principal</a>
+          <div className="atlas-main-frame">{children}</div>
+        </div>
+      </JournalUnreadContext.Provider>
+    </AppShellContext.Provider>
+  );
+
   return (
     <AppShellContext.Provider value={true}>
+    <JournalUnreadContext.Provider value={journalUnread}>
     <div data-dock-side={dockSide} className={"app-shell atlas-shell" + (expanded ? " atlas-expanded" : "") + (menuOpen ? " atlas-mobile-open" : "") + (dockDragging ? " atlas-dock-is-dragging" : "")}>
       <a className="skip-link" href="#main-content">Aller au contenu principal</a>
 
@@ -201,7 +251,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
               onClick={() => handleRouteClick(item.href)}
               onMouseEnter={() => prefetchRoute(item.href)}
               onFocus={() => prefetchRoute(item.href)}>
-              <Icon name={item.icon} /><span className="atlas-dock-label">{item.label}</span>
+              <Icon name={item.icon} />{item.href === "/journal" && journalUnread !== null && journalUnread > 0 && <span className="atlas-journal-unread-badge">{journalUnread > 99 ? "99+" : journalUnread}</span>}<span className="atlas-dock-label">{item.label}</span>
             </Link>
           ))}
         </nav>
@@ -273,7 +323,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
           <Link key={item.href} href={item.href} className={"mobile-nav-item" + (pathname === item.href ? " mobile-nav-active" : "")}
             aria-current={pathname === item.href ? "page" : undefined} onClick={() => handleRouteClick(item.href)}
             onMouseEnter={() => prefetchRoute(item.href)} onFocus={() => prefetchRoute(item.href)}>
-            <Icon name={item.icon} /><span>{item.label}</span>
+            <span className="atlas-mobile-nav-icon"><Icon name={item.icon} />{item.href === "/journal" && journalUnread !== null && journalUnread > 0 && <span className="atlas-journal-unread-badge">{journalUnread > 99 ? "99+" : journalUnread}</span>}</span><span>{item.label}</span>
           </Link>
         ))}
         <button className={"mobile-nav-item" + (menuOpen ? " mobile-nav-active" : "")} type="button"
@@ -282,6 +332,7 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
         </button>
       </nav>
     </div>
+    </JournalUnreadContext.Provider>
     </AppShellContext.Provider>
   );
 }

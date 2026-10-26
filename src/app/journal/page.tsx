@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { AppShell } from "@/components/app-shell";
 import { MorningJournal } from "@/components/morning-journal";
 import "../morning-journal.css";
 
@@ -16,5 +15,5 @@ export const viewport: Viewport = {
 
 export default async function JournalPage({ searchParams }: { searchParams: Promise<{ workspaceId?: string }> }) {
   const params = await searchParams;
-  return <AppShell><MorningJournal workspaceId={typeof params.workspaceId === "string" ? params.workspaceId : undefined} /></AppShell>;
+  return <MorningJournal workspaceId={typeof params.workspaceId === "string" ? params.workspaceId : undefined} />;
 }
