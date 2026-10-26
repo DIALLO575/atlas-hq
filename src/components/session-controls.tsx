@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { purgeJournalCache } from "@/lib/journal/cache-storage";
+function purgeBooks() { return import(/* webpackIgnore: true */ new URL("/books-offline-storage.mjs", window.location.origin).href).then((offlineModule: { purgeBooksOfflineCache: () => Promise<void> }) => offlineModule.purgeBooksOfflineCache()); }
 import { signOut } from "@/app/login/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
@@ -26,7 +27,7 @@ export function SessionControls() {
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       if (!alive) return;
-      if (_event === 'SIGNED_OUT' || (knownUser && currentSession?.user.id !== knownUser)) void purgeJournalCache().catch(() => undefined);
+      if (_event === 'SIGNED_OUT' || (knownUser && currentSession?.user.id !== knownUser)) void Promise.all([purgeJournalCache(), purgeBooks()]).catch(() => undefined);
       knownUser = currentSession?.user.id ?? null;
       setSession(currentSession?.user ? { status: "ready", email: currentSession.user.email ?? "Compte connecté" } : { status: "signed-out" });
     });
@@ -44,7 +45,7 @@ export function SessionControls() {
     <div className="profile-row session-row">
       <span className="profile-avatar" aria-hidden="true">{session.status === "ready" ? session.email.slice(0, 2).toUpperCase() : "AT"}</span>
       <span className="session-label"><strong>{label}</strong><small>{detail}</small></span>
-      <form action={async () => { await purgeJournalCache(); await signOut(); }}><button className="sign-out-button" type="submit" disabled={session.status !== "ready"}>Déconnexion</button></form>
+      <form action={async () => { await Promise.all([purgeJournalCache().catch(() => undefined), purgeBooks().catch(() => undefined)]); await signOut(); }}><button className="sign-out-button" type="submit" disabled={session.status !== "ready"}>Déconnexion</button></form>
     </div>
   );
 }

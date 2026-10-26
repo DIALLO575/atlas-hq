@@ -45,7 +45,7 @@ test('SW stores public shell only; hook 304 returns before body/React replacemen
  assert.match(sw,/url.pathname.startsWith\('\/api\/'\)\) return/);assert.doesNotMatch(sw,/cache.put\("\/journal"/);
  assert.match(sw,/journal-offline.html/);assert.match(sw,/keys.length-150/);
  const hook=read('src/components/journal/use-journal-data.ts');assert(hook.indexOf('response.status === 304')<hook.indexOf('const body = await response.json()'));
- assert.match(read('src/components/session-controls.tsx'),/await purgeJournalCache\(\); await signOut\(\)/);
+ assert.match(read('src/components/session-controls.tsx'),/Promise.all\(\[purgeJournalCache\(\)\.catch\(\(\) => undefined\), purgeBooks\(\)\.catch\(\(\) => undefined\)\]\); await signOut\(\)/);
 });
 
 test('offline cold reader requires matching per-tab capability and queues validated operations',()=>{

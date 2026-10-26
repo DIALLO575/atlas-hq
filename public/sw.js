@@ -1,6 +1,7 @@
 importScripts("/journal-sw-core.js");
-const CACHE_NAME = "atlas-hq-v4";
-const APP_SHELL = ["/manifest.webmanifest", "/journal.webmanifest", "/icon.svg", "/apple-touch-icon.png", "/journal-sw-core.js", "/journal-offline.html", "/journal-offline.js", "/journal-offline.css", "/journal-offline-cache.mjs", "/journal-cache-storage.mjs"];
+importScripts('/books-offline-assets.js');
+const CACHE_NAME = 'atlas-hq-v5';
+const APP_SHELL = ["/manifest.webmanifest", "/journal.webmanifest", "/icon.svg", "/apple-touch-icon.png", "/journal-sw-core.js", "/journal-offline.html", "/journal-offline.js", "/journal-offline.css", "/journal-offline-cache.mjs", "/journal-cache-storage.mjs", "/books-offline-cache.mjs", "/books-offline-storage.mjs", "/books-offline-assets.js", "/lecture-offline.html", "/lecture-offline.css", "/lecture-offline.js", ...self.AtlasBookOfflineAssets];
 const J = self.JournalSwCore;
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", event => {
@@ -13,7 +14,7 @@ self.addEventListener("fetch", event => {
   // Never cache authenticated HTML or API responses. IndexedDB is scoped by user/workspace.
   if (url.pathname.startsWith('/api/')) return;
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(async () => J.isJournalPage(url) ? (await caches.match('/journal-offline.html')) || Response.error() : Response.error()));
+    event.respondWith(fetch(request).catch(async () => J.isJournalPage(url) ? (await caches.match('/journal-offline.html')) || Response.error() : url.pathname === '/lecture' || url.pathname.startsWith('/lecture/') ? (await caches.match('/lecture-offline.html')) || Response.error() : Response.error()));
     return;
   }
   if (!APP_SHELL.includes(url.pathname) && !url.pathname.startsWith('/_next/static/')) return;
@@ -26,4 +27,6 @@ self.addEventListener("fetch", event => {
 });
 self.addEventListener('message', event => {
   if(event.data?.type === 'journal:clear') event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('atlas-journal')).map(key=>caches.delete(key)))));
+  if(event.data?.type === 'books:sync') event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(clients=>clients.forEach(client=>client.postMessage({type:'books:sync'}))));
 });
+self.addEventListener('sync', event => { if(event.tag==='atlas-books-sync') event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(clients=>clients.forEach(client=>client.postMessage({type:'books:sync'})))); });

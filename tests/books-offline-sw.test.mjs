@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+const cache=readFileSync(new URL('../public/books-offline-cache.mjs',import.meta.url),'utf8');
+const sw=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8'),offline=readFileSync(new URL('../public/lecture-offline.js',import.meta.url),'utf8'),storage=readFileSync(new URL('../public/books-offline-storage.mjs',import.meta.url),'utf8');
+test('offline book app-shell falls back for lecture routes and never caches book file responses',()=>{assert.match(sw,/lecture-offline\.html/);assert.match(sw,/url\.pathname\.startsWith\('\/lecture\/'\)/);assert.match(sw,/if \(url\.pathname\.startsWith\('\/api\/'\)\) return/);assert.match(storage,/createObjectStore\('files'\)/);assert.match(offline,/storage\.getFile\(token,book\.id\)/);assert.doesNotMatch(sw,/book_files.*cache\.put|storage_path.*cache\.put/);});
+test('offline reader queues scoped progress with a stable id and checksum verified content',()=>{assert.match(offline,/deviceId/);assert.match(offline,/storage\.cache\.enqueue/);assert.match(storage,/SHA-256/);assert.match(cache,/bookCacheScope/);});

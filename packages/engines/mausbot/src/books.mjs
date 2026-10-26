@@ -17,9 +17,9 @@ export function validateProgress(value) {
   const seen = new Set(); let seconds = 0;
   for (const event of value.events) {
     if (!event || typeof event !== 'object' || !isBookUuid(event.bookId) || !Number.isInteger(event.deltaSeconds) || event.deltaSeconds < 0 || event.deltaSeconds > 120
-      || typeof event.position !== 'number' || !Number.isFinite(event.position) || event.position < 0 || event.position > 1
+      || typeof event.position !== 'number' || !Number.isFinite(event.position) || event.position < 0 || event.position > 1 || !isBookUuid(event.deviceId)
       || !Number.isSafeInteger(Date.parse(event.clientUpdatedAt)) || !(event.pagesRead === null || (Number.isInteger(event.pagesRead) && event.pagesRead >= 0))
-      || Object.keys(event).sort().join(',') !== 'bookId,clientUpdatedAt,deltaSeconds,pagesRead,position') return null;
+      || Object.keys(event).sort().join(',') !== 'bookId,clientUpdatedAt,deltaSeconds,deviceId,pagesRead,position') return null;
     if (seen.has(event.bookId)) return null;
     seen.add(event.bookId); seconds += event.deltaSeconds;
   }
