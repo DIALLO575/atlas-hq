@@ -47,6 +47,7 @@ export function journalCacheScope(userId, workspaceId) {
 }
 export function journalCacheKey(userId, workspaceId, editionId) { return JSON.stringify([CACHE_VERSION, userId, workspaceId, editionId]); }
 export function cacheIsStale(entry, now) { return !entry || now - entry.savedAt >= SOFT_TTL_MS; }
+export function journalPayloadEqual(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
 export function mergeJournalPayload(previous, incoming, queue = []) {
   const overrides = new Map(queue.filter(q => q.kind === 'state').map(q => [JSON.stringify([q.body.editionId, q.body.itemId]), q.body.status]));
   const old = new Map((previous?.items ?? []).map(i => [i.key, i]));

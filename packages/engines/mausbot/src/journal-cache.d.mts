@@ -3,6 +3,7 @@ import type { JournalProgressInput } from "./journal-source.mjs";
 export const CACHE_VERSION: 2;
 export const SOFT_TTL_MS: number;
 export const MAX_CACHE_BYTES: number;
+export function journalPayloadEqual(a: unknown, b: unknown): boolean;
 export type JournalCacheToken = { scope: string; epoch: string };
 export type JournalQueueOperation =
   | { id: string; kind: "state"; body: { workspaceId: string; editionId: string; itemId: string; status: "new" | "read" | "done" }; previousState?: "new" | "read" | "done" }

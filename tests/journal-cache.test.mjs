@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CACHE_VERSION, createJournalCache, journalCacheScope, journalCacheKey, mergeJournalPayload, trimJournalEditions, cacheIsStale, safeCachedPayload } from '../packages/engines/mausbot/src/journal-cache.mjs';
+import { CACHE_VERSION, createJournalCache, journalCacheScope, journalCacheKey, mergeJournalPayload, trimJournalEditions, cacheIsStale, safeCachedPayload, journalPayloadEqual } from '../packages/engines/mausbot/src/journal-cache.mjs';
 import { journalEtag, journalEtagMatches } from '../packages/engines/mausbot/src/journal-etag.mjs';
 function memoryAdapter() { let root=null; return { update: async fn => { const [next,result]=fn(structuredClone(root)); root=structuredClone(next); return result; } }; }
 const ws='11111111-1111-4111-8111-111111111111';
@@ -34,6 +34,21 @@ test('merge keeps stable references, pending state, new content and strips expir
  const result=mergeJournalPayload(payload,structuredClone(payload));assert.equal(result.items[0],payload.items[0]);
  const changed=mergeJournalPayload(payload,{...payload,items:[{...payload.items[0],title:'new'}]},[state]); assert.equal(changed.items[0].title,'new');assert.equal(changed.items[0].state,'read');
  assert.equal(safeCachedPayload(payload,Date.parse('2026-10-26T11:00:00Z')).items[0].coverUrl,null);
+});
+test('identical 200 payloads do not need to publish a React update; changed content does',()=>{
+ const same=mergeJournalPayload(payload,structuredClone(payload));
+ assert(journalPayloadEqual(payload,same));
+ assert(!journalPayloadEqual(payload,{...same,items:[{...same.items[0],secondsRead:15}]}));
+ const hook=readFileSync(new URL('../src/components/journal/use-journal-data.ts',import.meta.url),'utf8');
+ assert.match(hook,/const changed = !journalPayloadEqual\(context\.data,next\)/);
+ assert.match(hook,/if \(changed\) window\.dispatchEvent\(new CustomEvent\('journal:updated'/);
+ const component=readFileSync(new URL('../src/components/morning-journal.tsx',import.meta.url),'utf8');
+ assert.match(component,/onProgressRef\.current\(itemRef\.current, seconds, position\(\)\)/);
+ assert.match(component,/\}, \[item\.key\]\);/);
+});
+test('journal-flicker branch skips Vercel deployments while its draft PR is reviewed',()=>{
+ const config=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
+ assert.equal(config.git.deploymentEnabled['fix/journal-flicker'],false);
 });
 test('ETag stable across signed URL rotation, changes for content/state and owner',()=>{
  const tag=journalEtag(payload,'u',ws);assert.equal(journalEtag({...payload,coverExpiresAt:'later',items:[{...payload.items[0],coverUrl:'new-signed'}]},'u',ws),tag);
