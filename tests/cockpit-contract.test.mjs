@@ -3,14 +3,13 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [shell, apps, agents, search, loading, errors, demoData, workspaces, missions, inbox, related, chief, settings] = await Promise.all([
+const [shell, apps, agents, search, loading, errors, workspaces, missions, inbox, related, chief, settings] = await Promise.all([
   read("../src/components/app-shell.tsx"),
   read("../src/app/apps/page.tsx"),
   read("../src/app/agents/page.tsx"),
   read("../src/app/search/page.tsx"),
   read("../src/components/route-states.tsx"),
   Promise.all(["apps", "agents", "search", "workspaces", "missions", "inbox", "related", "chief", "settings"].map((route) => read(`../src/app/${route}/error.tsx`))),
-  read("../src/lib/demo-data.ts"),
   read("../src/app/workspaces/page.tsx"),
   read("../src/app/missions/page.tsx"),
   read("../src/app/inbox/page.tsx"),
@@ -32,9 +31,9 @@ test("cockpit navigation exposes six primary destinations and transversal access
   assert.match(shell, /Aller au contenu principal/);
 });
 
-test("missions and inbox are real workflow pages; transversal demos remain honest", () => {
+test("missions and inbox show real workflow; secondary pages have honest empty states", () => {
   for (const page of [related, settings]) {
-    assert.match(page, /<DemoNotice\/>/);
+    assert.doesNotMatch(page, /<DemoNotice\/>/);
     assert.match(page, /<EmptyPanel/);
   }
   assert.match(chief, /<ChiefCommandDeck/);
@@ -66,14 +65,14 @@ test("premium Mes Apps preserves its directory and offers the real GitHub connec
   assert.ok(agentsWorkspace.includes('href="/engines"'));
   assert.match(agentsWorkspace, /Idempotency-Key/);
   assert.match(agentsWorkspace, /canWrite/);
-  assert.match(demoData, /export const demoApps/);
-  assert.match(demoData, /Google Calendar/);
+  assert.match(search, /readAtlasWorkflow\(params\.workspaceId\)/);
+  assert.match(search, /data\.missions\.filter/);
 });
 
 test("search has accessible live results and a no-match state", () => {
   assert.match(search, /role="search"/);
   assert.match(search, /aria-live="polite"/);
-  assert.match(search, /Aucun résultat/);
+  assert.match(search, /Aucune mission correspondante/);
   assert.match(search, /toLocaleLowerCase\("fr"\)/);
 });
 

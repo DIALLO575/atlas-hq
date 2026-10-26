@@ -15,12 +15,6 @@ type GitHubView = {
   repositories: number; truncated: boolean; pullCount: number | null;
   pullTruncated: boolean; firstRepo: string | null; verified: number;
 };
-const sampleQuestions = [
-  "Fais le point sur mes missions",
-  "Quelles décisions m’attendent ?",
-  "Montre la répartition des missions",
-  "Quels dépôts GitHub sont accessibles ?",
-];
 const stages: Record<string,string> = {planned:"À lancer",active:"En cours",review:"En validation",done:"Terminée"};
 const formatDate = (raw:string) => {
   const d=new Date(raw);
@@ -256,11 +250,6 @@ export function ChiefCommandDeck({workspace,workspaces,initialReply}:{
         </div>
         <div className="atlas-chief-input-area">
           {notice && <p role="alert" className="atlas-chief-message-error">{notice}</p>}
-          <div className="atlas-chief-prompts">
-            {sampleQuestions.map(prompt=><button key={prompt} type="button"
-              disabled={sending} onClick={()=>void send(prompt)}>
-              <Icon name="spark"/>{prompt}</button>)}
-          </div>
           <form className="atlas-chief-composer" onSubmit={event=>{event.preventDefault();void send(draft);}}>
             <label className="sr-only" htmlFor="atlas-chief-input">Demandez quelque chose au Chief</label>
             <textarea id="atlas-chief-input" rows={1} value={draft} maxLength={700}
