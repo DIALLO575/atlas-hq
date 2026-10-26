@@ -3,3 +3,7 @@
 .atlas-book-reader-status button,.atlas-book-reader-status a{display:inline-flex;align-items:center;justify-content:center;min-height:38px;margin:.1rem;padding:0 14px;border:1px solid #c9b59a;border-radius:9px;background:#393b32;color:#fff8ea;text-decoration:none;font-family:inherit;font-size:12px;font-weight:700;line-height:1.2;cursor:pointer}
 .is-night .atlas-book-reader-status{border-color:#454039;background:#201f1d;color:#eee5d4}
 .is-night .atlas-book-reader-status button,.is-night .atlas-book-reader-status a{border-color:#514a3d;background:#39372f;color:#f1e8d8}
+
+.atlas-book-reader-status .atlas-book-repair-label{display:inline-grid;gap:7px;text-align:left;margin:8px 3px 0;padding:12px;border:1px solid #c9b59a;border-radius:9px;background:#fff9ee;color:#393b32;font-size:13px;font-weight:700}
+.atlas-book-reader-status .atlas-book-repair-label input{display:block;width:min(100%,280px);max-width:100%;font-size:13px;color:inherit}
+.is-night .atlas-book-reader-status .atlas-book-repair-label{background:#2b2925;border-color:#595042;color:#f1e8d8}
