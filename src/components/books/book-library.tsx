@@ -228,7 +228,7 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
       const mimeType=format==="pdf"?"application/pdf":"application/epub+zip";
       const created=await safeJson<{book:Book;upload:{path:string;token:string}}>(await fetch(API,{
        method:"POST",headers:{"Content-Type":"application/json"},
-       body:JSON.stringify({workspaceId,title:title.trim()||newFile.name.replace(/\\.(epub|pdf)$/i,""),author,format,mimeType,byteSize:newFile.size})
+       body:JSON.stringify({workspaceId,title:title.trim()||newFile.name.replace(/\.(epub|pdf)$/i,""),author,format,mimeType,byteSize:newFile.size})
       }));
       createdId=created.book.id;
       await sendBookFile(workspaceId,created.book.id,newFile,created.upload);
