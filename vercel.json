@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "fix/journal-flicker": false,
-      "feat/lecture-livres-l1": false
+      "feat/lecture-livres-l1": false,
+      "fix/lecture-open-book-r1": false
     }
   }
 }
