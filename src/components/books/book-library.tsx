@@ -58,6 +58,29 @@ async function resizedImage(file: File, title: string, author: string, palette: 
   });
   const result = await Promise.all([render(720), render(240)]); image.close(); return result as readonly [File, File];
 }
+
+/** Try direct signed upload first, then owner-scoped proxy for small files. */
+async function sendBookFile(workspaceId:string,bookId:string,file:File,signed?:{path:string;token:string}){
+ if(signed){
+  const storage=createSupabaseBrowserClient()?.storage.from("books");
+  if(storage)try{
+   const mime=file.name.toLowerCase().endsWith(".pdf")||file.type==="application/pdf"?"application/pdf":"application/epub+zip";
+   const saved=await storage.uploadToSignedUrl(signed.path,signed.token,file,{contentType:mime,cacheControl:"3600"});
+   if(!saved.error){
+    const verified=await fetch(`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`,{cache:"no-store"});
+    if(verified.ok)return;
+   }
+  }catch{/* continue with authenticated fallback */}
+ }
+ if(file.size>3_800_000)throw new Error("Envoi direct interrompu. Réessayez avec une connexion stable.");
+ const body=new FormData();body.set("file",file);
+ const response=await fetch(`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`,{method:"POST",body});
+ if(response.ok||response.status===409)return;
+ if(response.status===422)throw new Error("Le fichier ne correspond pas à l’original (format et taille).");
+ if(response.status===413)throw new Error("Fichier trop volumineux pour la récupération.");
+ throw new Error("Transfert du fichier impossible. Réessayez.");
+}
+
 async function putCover(workspaceId: string, bookId: string, files: readonly [File, File]) {
   const response = await fetch(`${API}/${bookId}/cover`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId }) });
   const signed = await safeJson<{ cover: { path: string; token: string }; thumb: { path: string; token: string } }>(response);
@@ -71,7 +94,7 @@ async function putCover(workspaceId: string, bookId: string, files: readonly [Fi
 export function BookLibrary({ readerId }: { readerId?: string }) {
   const router = useRouter(); const [workspaceId, setWorkspaceId] = useState(""); const [books, setBooks] = useState<Book[]>([]); const [covers, setCovers] = useState<Record<string, CoverUrls>>({}); const [summary, setSummary] = useState<Summary | null>(null);
   const [offlineToken, setOfflineToken] = useState<{scope:string;epoch:string;userId:string;workspaceId:string}|null>(null); const [offlineIds,setOfflineIds]=useState<string[]>([]);
-  const [filter, setFilter] = useState("Tous"); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [newFile, setNewFile] = useState<File | null>(null); const [newCover, setNewCover] = useState<File | null>(null); const [title, setTitle] = useState(""); const [author, setAuthor] = useState(""); const [readerBook, setReaderBook] = useState<Book | null>(null); const [readerFile, setReaderFile] = useState<File | null>(null); const [readerLoading, setReaderLoading] = useState(false); const [reader, setReader] = useState<ReaderApi | null>(null); const [readerError, setReaderError] = useState(""); const [notes, setNotes] = useState<{ id:string;kind:string;body:string;position:number;color:string;anchor_cfi?:string|null;deleted_at?:string|null }[]>([]); const [editingNote,setEditingNote]=useState<string|null>(null); const [goalDraft,setGoalDraft]=useState("30"); const [noteText, setNoteText] = useState(""); const [selectedText, setSelectedText] = useState(""); const [settingsOpen, setSettingsOpen] = useState(false); const [font, setFont] = useState("Georgia, serif"); const [fontSize, setFontSize] = useState(18); const [theme, setTheme] = useState("sepia"); const [palette, setPalette] = useState(0); const [readerProgress, setReaderProgress] = useState(0);
+  const [filter, setFilter] = useState("Tous"); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [newFile, setNewFile] = useState<File | null>(null); const [newCover, setNewCover] = useState<File | null>(null); const [title, setTitle] = useState(""); const [author, setAuthor] = useState(""); const [readerBook, setReaderBook] = useState<Book | null>(null); const [readerFile, setReaderFile] = useState<File | null>(null); const [readerLoading, setReaderLoading] = useState(false); const [repairBusy, setRepairBusy] = useState(false); const [reader, setReader] = useState<ReaderApi | null>(null); const [readerError, setReaderError] = useState(""); const [notes, setNotes] = useState<{ id:string;kind:string;body:string;position:number;color:string;anchor_cfi?:string|null;deleted_at?:string|null }[]>([]); const [editingNote,setEditingNote]=useState<string|null>(null); const [goalDraft,setGoalDraft]=useState("30"); const [noteText, setNoteText] = useState(""); const [selectedText, setSelectedText] = useState(""); const [settingsOpen, setSettingsOpen] = useState(false); const [font, setFont] = useState("Georgia, serif"); const [fontSize, setFontSize] = useState(18); const [theme, setTheme] = useState("sepia"); const [palette, setPalette] = useState(0); const [readerProgress, setReaderProgress] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null); const coverInput = useRef<HTMLInputElement>(null); const readerHost = useRef<HTMLDivElement>(null); const fileRef = useRef<File | null>(null); const positionRef = useRef(0); const lastTick = useRef(0); const currentBookId = useRef(""); const selectedRange = useRef<{ index: number; range: Range } | null>(null); const currentSection = useRef(0); const notesRef = useRef(notes); const [refreshKey, setRefreshKey] = useState(0); const listEtag=useRef(""); const resumeOverride=useRef<number|null>(null);
   useEffect(() => { notesRef.current = notes; }, [notes]);
   const readerPrefs = useRef({ font, fontSize, theme }); const readerDocs = useRef<Document[]>([]);
@@ -192,20 +215,51 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
     await putCover(workspaceId, bookId, pair);
   }, [author, title, workspaceId]);
 
+
   const addBook = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); if (!workspaceId || !newFile || busy) return;
-    if (newCover && (!['image/jpeg', 'image/png', 'image/webp'].includes(newCover.type) || newCover.size < 1 || newCover.size > 15 * 1024 * 1024)) { setMessage("Choisissez une image JPEG, PNG ou WebP de moins de 15 Mo."); return; }
-    setBusy(true); setMessage(""); fileRef.current = newFile;
-    try {
-      const format = newFile.type === "application/pdf" || newFile.name.toLowerCase().endsWith(".pdf") ? "pdf" : "epub"; const mimeType = format === "pdf" ? "application/pdf" : "application/epub+zip";
-      const created = await safeJson<{ book: Book; upload: { path: string; token: string } }>(await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, title: title.trim() || newFile.name.replace(/\.(epub|pdf)$/i, ""), author, format, mimeType, byteSize: newFile.size }) }));
-      const storage = createSupabaseBrowserClient()?.storage.from("books"); if (!storage) throw new Error("STORAGE_UNAVAILABLE");
-      const uploaded = await storage.uploadToSignedUrl(created.upload.path, created.upload.token, newFile, { contentType: mimeType }); if (uploaded.error) throw new Error("BOOK_UPLOAD_FAILED");
-      if (newCover) { if (!['image/jpeg', 'image/png', 'image/webp'].includes(newCover.type)) throw new Error("Choisissez une image JPEG, PNG ou WebP."); await putCover(workspaceId, created.book.id, await resizedImage(newCover, title, author, palette, palette)); }
-      else { await generateAndUpload(created.book.id, null, 0, created.book.title, created.book.author); }
-      setTitle(""); setAuthor(""); setNewFile(null); setNewCover(null); if (fileInput.current) fileInput.current.value = ""; if (coverInput.current) coverInput.current.value = ""; setRefreshKey(x => x + 1); setMessage("Livre ajouté à votre bibliothèque.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "BOOK_CREATE_UNAVAILABLE"); }
-    finally { setBusy(false); fileRef.current = null; }
+    event.preventDefault(); if(!workspaceId||!newFile||busy)return;
+    if(newCover&&(!['image/jpeg','image/png','image/webp'].includes(newCover.type)||newCover.size<1||newCover.size>15*1024*1024)){
+      setMessage("Choisissez une image JPEG, PNG ou WebP de moins de 15 Mo.");return;
+    }
+    setBusy(true);setMessage("");fileRef.current=newFile;
+    let createdId:string|null=null,fileReady=false;
+    try{
+      const format=newFile.type==="application/pdf"||newFile.name.toLowerCase().endsWith(".pdf")?"pdf":"epub";
+      const mimeType=format==="pdf"?"application/pdf":"application/epub+zip";
+      const created=await safeJson<{book:Book;upload:{path:string;token:string}}>(await fetch(API,{
+       method:"POST",headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({workspaceId,title:title.trim()||newFile.name.replace(/\\.(epub|pdf)$/i,""),author,format,mimeType,byteSize:newFile.size})
+      }));
+      createdId=created.book.id;
+      await sendBookFile(workspaceId,created.book.id,newFile,created.upload);
+      fileReady=true;
+      let coverIssue=false;
+      try{
+        if(newCover)await putCover(workspaceId,created.book.id,await resizedImage(newCover,title,author,palette,palette));
+        else await generateAndUpload(created.book.id,null,0,created.book.title,created.book.author);
+      }catch{coverIssue=true;}
+      setTitle("");setAuthor("");setNewFile(null);setNewCover(null);
+      if(fileInput.current)fileInput.current.value="";
+      if(coverInput.current)coverInput.current.value="";
+      setRefreshKey(x=>x+1);
+      setMessage(coverIssue?"Livre ajouté et lisible. Couverture à régénérer.":"Livre ajouté à votre bibliothèque.");
+    }catch(error){
+      if(createdId&&!fileReady)try{
+        await fetch(`${API}/${createdId}?workspaceId=${encodeURIComponent(workspaceId)}`,{method:"DELETE"});
+      }catch{}
+      setMessage(error instanceof Error?error.message:"BOOK_CREATE_UNAVAILABLE");
+    }finally{setBusy(false);fileRef.current=null;}
+  };
+
+  const repairBookFile=async(file:File)=>{
+    if(!readerBook||!workspaceId||repairBusy)return;
+    setRepairBusy(true);setReaderError("");
+    try{
+      await sendBookFile(workspaceId,readerBook.id,file);
+      await loadReader(readerBook);
+      setRefreshKey(x=>x+1);
+    }catch(error){setReaderError(error instanceof Error?error.message:"Impossible de réimporter le livre.");}
+    finally{setRepairBusy(false);}
   };
 
   const savePhoto = async (book: Book, file: File) => { setBusy(true); try { await putCover(workspaceId, book.id, await resizedImage(file, book.title, book.author, palette, palette)); setRefreshKey(x => x + 1); } catch (error) { setMessage(error instanceof Error ? error.message : "BOOK_COVER_UNAVAILABLE"); } finally { setBusy(false); } };
@@ -259,7 +313,11 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
   if (readerId) return <main className={`atlas-book-reader is-${theme}`}>
     <header className="atlas-book-reader-top"><Link href={`/lecture?workspaceId=${encodeURIComponent(workspaceId)}`} onClick={() => { setReaderFile(null); setReader(null); setReaderBook(null); }}>← Bibliothèque</Link><strong>{readerBook?.title ?? "Lecture"}</strong><div><button type="button" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>Réglages</button></div></header>
     {settingsOpen && <section className="atlas-book-settings" aria-label="Réglages de lecture"><label>Taille <input type="range" min="14" max="28" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} /></label><label>Police <select value={font} onChange={e => setFont(e.target.value)}><option value="Georgia, serif">Serif</option><option value="Arial, sans-serif">Sans</option><option value="monospace">Mono</option></select></label><label>Thème <select value={theme} onChange={e => setTheme(e.target.value)}><option value="light">Clair</option><option value="sepia">Sépia</option><option value="night">Nuit</option></select></label></section>}
-    <div className="atlas-book-reader-layout"><div className="atlas-book-reader-pages"><div className="atlas-book-reader-controls"><button type="button" onClick={() => void reader?.prev()} aria-label="Page précédente">‹</button><button type="button" onClick={() => void reader?.next()} aria-label="Page suivante">›</button></div><div ref={readerHost} className="atlas-book-reader-host"/>{readerLoading && <p role="status" className="atlas-book-reader-status">{readerBook ? `Ouverture de « ${readerBook.title} »…` : "Chargement du livre…"}</p>}{readerError && <div className="atlas-book-reader-status" role="alert"><p>{readerError === "AUTH_REQUIRED" ? "Votre session a expiré. Reconnectez-vous pour ouvrir ce livre." : readerError === "BOOK_FILE_DOWNLOAD_FAILED" ? "Le téléchargement du livre a échoué. Vérifiez votre connexion puis réessayez." : readerError === "BOOK_FORMAT_INVALID" || readerError === "BOOK_FORMAT_MISMATCH" ? "Le fichier ne correspond pas au format enregistré pour ce livre." : readerError}</p>{readerError === "AUTH_REQUIRED" ? <a href={`/login?next=${encodeURIComponent(`/lecture/${readerId}?workspaceId=${workspaceId}`)}`}>Se reconnecter</a> : readerBook && <button type="button" onClick={() => void loadReader(readerBook)}>Réessayer</button>}</div>}<div className="atlas-book-progress-row"><input aria-label="Aller à une position dans le livre" type="range" min="0" max="100" value={Math.round(readerProgress * 100)} disabled={!reader} onChange={event => void reader?.goTo({ fraction: Number(event.currentTarget.value) / 100 })} className="atlas-book-progress" /><output aria-live="off">{Math.round(readerProgress * 100)} %</output></div></div>
+    <div className="atlas-book-reader-layout"><div className="atlas-book-reader-pages"><div className="atlas-book-reader-controls"><button type="button" onClick={() => void reader?.prev()} aria-label="Page précédente">‹</button><button type="button" onClick={() => void reader?.next()} aria-label="Page suivante">›</button></div><div ref={readerHost} className="atlas-book-reader-host"/>{readerLoading && <p role="status" className="atlas-book-reader-status">{readerBook ? `Ouverture de « ${readerBook.title} »…` : "Chargement du livre…"}</p>}{readerError && <div className="atlas-book-reader-status" role="alert"><p>{readerError === "AUTH_REQUIRED" ? "Votre session a expiré. Reconnectez-vous pour ouvrir ce livre." : readerError === "BOOK_FILE_DOWNLOAD_FAILED" ? "Le téléchargement du livre a échoué. Vérifiez votre connexion puis réessayez." : readerError === "BOOK_FILE_MISSING" ? "Fichier absent du stockage. Réimportez le PDF ou EPUB original pour réparer ce livre." : readerError === "BOOK_FORMAT_INVALID" || readerError === "BOOK_FORMAT_MISMATCH" ? "Le fichier ne correspond pas au format enregistré pour ce livre." : readerError}</p>{readerError === "AUTH_REQUIRED" ? <a href={`/login?next=${encodeURIComponent(`/lecture/${readerId}?workspaceId=${workspaceId}`)}`}>Se reconnecter</a> : readerBook && <button type="button" onClick={() => void loadReader(readerBook)}>Réessayer</button>}{readerError === "BOOK_FILE_MISSING" && readerBook && <label className="atlas-book-repair-label">
+  {repairBusy?"Transfert…":"Réimporter le fichier original"}
+  <input type="file" disabled={repairBusy} accept={readerBook.format==="pdf"?".pdf,application/pdf":".epub,application/epub+zip"}
+    onChange={event=>{const file=event.currentTarget.files?.[0];if(file)void repairBookFile(file);event.currentTarget.value="";}} />
+  </label>}</div>}<div className="atlas-book-progress-row"><input aria-label="Aller à une position dans le livre" type="range" min="0" max="100" value={Math.round(readerProgress * 100)} disabled={!reader} onChange={event => void reader?.goTo({ fraction: Number(event.currentTarget.value) / 100 })} className="atlas-book-progress" /><output aria-live="off">{Math.round(readerProgress * 100)} %</output></div></div>
       <aside className="atlas-book-notes">
         <h2>Notes, surlignages &amp; signets</h2>
         {readerBook && <a href={`${API}/notes/export?workspaceId=${encodeURIComponent(workspaceId)}&bookId=${readerBook.id}`}>Exporter en Markdown</a>}

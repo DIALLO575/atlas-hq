@@ -57,3 +57,8 @@ test("reader loading stays visible on the responsive desktop and mobile layouts"
   assert.match(styles, /@media\(max-width:900px\)/);
   assert.match(styles, /@media\(max-width:600px\)/);
 });
+
+test("missing PDF in storage gives recoverable error",async()=>{
+ await assert.rejects(loadBookReaderFile({book:{id:bookId,format:"pdf"},workspaceId,
+ fetchImpl:async()=>Response.json({error:"BOOK_FILE_MISSING"},{status:409})}),/BOOK_FILE_MISSING/);
+});
