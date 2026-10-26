@@ -81,7 +81,9 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
   const closeBtn = useRef<HTMLButtonElement>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const onProgressRef = useRef(onProgress);
+  const itemRef = useRef(item);
   useEffect(() => { onProgressRef.current = onProgress; }, [onProgress]);
+  useEffect(() => { itemRef.current = item; }, [item]);
   const prev = neighbor(list, item.key, -1), next = neighbor(list, item.key, 1);
   const minutes = readingMinutes(item.title, item.summary, item.whyItMatters);
   const sources = sourcesOf(item);
@@ -111,7 +113,7 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
       const seconds = Math.min(120, Math.floor(pendingSeconds));
       if (seconds < 1) return;
       pendingSeconds -= seconds;
-      const body = onProgressRef.current(item, seconds, position());
+      const body = onProgressRef.current(itemRef.current, seconds, position());
       if (beacon && body && navigator.sendBeacon) {
         navigator.sendBeacon("/api/engines/mausbot/journal/progress", new Blob([JSON.stringify(body)], { type: "application/json" }));
       }
@@ -148,7 +150,7 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
       el?.removeEventListener("pointerdown", activity);
       send(false);
     };
-  }, [item]);
+  }, [item.key]);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
@@ -228,6 +230,13 @@ function IosInstallHint() {
   if (!show) return null;
   return <div className="mj-install" role="note"><span>Installer le journal : touchez <b>Partager</b> puis <b>Sur l’écran d’accueil</b>.</span>
     <button className="mj-icon-btn" aria-label="Masquer" onClick={() => { setShow(false); try { localStorage.setItem("mj.iosHint", "1"); } catch {} }}><Icon name="close" /></button></div>;
+}
+
+type JournalBookSummary = {id:string;title:string;author:string;status:string;book_reading_state?:{position:number}[]};
+function JournalBookReadingCard({workspaceId}:{workspaceId:string}) {
+ const [book,setBook]=useState<JournalBookSummary|null>(null),[minutes,setMinutes]=useState(0);
+ useEffect(()=>{let alive=true;const load=async()=>{try{const [listResponse,summaryResponse]=await Promise.all([fetch(`/api/engines/mausbot/books?workspaceId=${encodeURIComponent(workspaceId)}`,{cache:'no-store'}),fetch(`/api/engines/mausbot/books/summary?workspaceId=${encodeURIComponent(workspaceId)}`,{cache:'no-store'})]);if(!listResponse.ok||!summaryResponse.ok)return;const list=await listResponse.json() as {books:JournalBookSummary[]};const summary=await summaryResponse.json() as {todaySeconds:number};const next=list.books.filter(item=>item.status!=='finished'&&(item.book_reading_state?.[0]?.position??0)>0&&(item.book_reading_state?.[0]?.position??0)<.98).sort((a,b)=>(b.book_reading_state?.[0]?.position??0)-(a.book_reading_state?.[0]?.position??0))[0]??null;if(alive){setBook(old=>JSON.stringify(old)===JSON.stringify(next)?old:next);setMinutes(old=>old===Math.round(summary.todaySeconds/60)?old:Math.round(summary.todaySeconds/60));}}catch{/* Keep the last rendered card during transient network errors. */}};const update=()=>{if(document.visibilityState==='visible')void load();};void load();const timer=window.setInterval(update,300000);window.addEventListener('focus',update);window.addEventListener('online',update);return()=>{alive=false;window.clearInterval(timer);window.removeEventListener('focus',update);window.removeEventListener('online',update);};},[workspaceId]);
+ if(!book)return null;const position=book.book_reading_state?.[0]?.position??0;return <section className="mj-book-reading" aria-label="Lecture en cours"><div><span>LECTURE EN COURS</span><h2>{book.title}</h2><p>{book.author||'Auteur non renseigné'} · {Math.round(position*100)} % · {minutes} min aujourd’hui</p></div><Link href={`/lecture/${book.id}?workspaceId=${encodeURIComponent(workspaceId)}`}>Reprendre</Link></section>;
 }
 
 export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
@@ -359,6 +368,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     {online && view.data?.offline && <p className="mj-offline" role="status">Édition enregistrée affichée (réseau indisponible).</p>}
     {view.error && view.data && <p className="mj-state is-warn" role="status">Synchronisation différée : {view.error}</p>}
     <IosInstallHint />
+    {ws && <JournalBookReadingCard workspaceId={ws} />}
     <header className="mj-masthead">
       <p className="mj-kicker">WORLD RADAR</p>
       <h1>Journal du matin</h1>

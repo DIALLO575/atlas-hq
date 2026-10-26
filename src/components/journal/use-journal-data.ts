@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { journalCacheStorage, purgeJournalCache } from '@/lib/journal/cache-storage';
-import { journalCacheScope, mergeJournalPayload, safeCachedPayload } from '../../../packages/engines/mausbot/src/journal-cache.mjs';
+import { journalCacheScope, journalPayloadEqual, mergeJournalPayload, safeCachedPayload } from '../../../packages/engines/mausbot/src/journal-cache.mjs';
 type Item = { id: string; key: string; editionId: string; state: 'new' | 'read' | 'done' };
 type Payload = { editionId: string; source: string; items: Item[]; coverExpiresAt?: string; offline?: boolean };
 type Operation = { previousState?: Item['state']; id: string; kind: 'state' | 'progress'; body: { workspaceId: string; [key: string]: unknown } };
@@ -76,11 +76,13 @@ export function useJournalData<T extends Payload>(workspaceId: string, nonce: nu
             if (body.source !== 'supabase-read-only' || !Array.isArray(body.items)) throw new Error('JOURNAL_PAYLOAD_INVALID');
             const latest = await context.cache.snapshot(token); if (!latest || !alive) return;
             const next = mergeJournalPayload(context.data,body,latest.queue) as T;
+            const changed = !journalPayloadEqual(context.data,next);
             const etag = response.headers.get('etag') ?? undefined;
             if (!await context.cache.save(token,next,etag,Date.now()) || !alive) return;
             context.data = next; context.etag = etag;
-            setView({ status: 'ready', data: next });
-            window.dispatchEvent(new CustomEvent('journal:updated', { detail: { workspaceId } }));
+            setView(previous => previous.status === 'ready' && !previous.error && journalPayloadEqual(previous.data,next)
+              ? previous : { status: 'ready', data: next });
+            if (changed) window.dispatchEvent(new CustomEvent('journal:updated', { detail: { workspaceId } }));
           } catch (error) {
             if (alive) setView(previous => previous.data ? { ...previous, error: error instanceof Error ? error.message : 'JOURNAL_UNAVAILABLE' } : { status: navigator.onLine ? 'error' : 'offline', error: 'OFFLINE' });
           } finally { context.refreshing = false; }

@@ -19,6 +19,7 @@ const navItems = [
   { label: "Mes Apps", icon: "apps" as const, href: "/apps" },
   { label: "Inbox", icon: "inbox" as const, href: "/inbox" },
   { label: "Journal", icon: "spark" as const, href: "/journal" },
+  { label: "Lecture", icon: "layers" as const, href: "/lecture" },
 ];
 
 const utilityItems = [
@@ -28,7 +29,7 @@ const utilityItems = [
   { label: "Paramètres", icon: "settings" as const, href: "/settings" },
 ];
 
-const mobileItems = [navItems[0], navItems[2], navItems[5], navItems[7]];
+const mobileItems = [navItems[0], navItems[2], navItems[5], navItems[8]];
 
 // Retain only the expanded/collapsed preference between client-side navigations.
 let cachedExpanded: boolean | null = null;
@@ -169,10 +170,10 @@ export function AppShellFrame({ children }: Readonly<{ children: React.ReactNode
   const linkClass = (href: string) => "atlas-dock-link" + (pathname === href ? " atlas-dock-active" : "");
   const currentLabel = [...navItems, ...utilityItems].find((item) => item.href === pathname)?.label ?? "Atlas";
 
-  if (pathname === "/journal") return (
+  if (pathname === "/journal" || pathname.startsWith("/lecture/")) return (
     <AppShellContext.Provider value={true}>
       <JournalUnreadContext.Provider value={null}>
-        <div className="app-shell atlas-shell atlas-journal-shell">
+        <div className={"app-shell atlas-shell atlas-journal-shell" + (pathname.startsWith("/lecture/") ? " atlas-book-reader-shell" : "")}>
           <a className="skip-link" href="#main-content">Aller au contenu principal</a>
           <div className="atlas-main-frame">{children}</div>
         </div>

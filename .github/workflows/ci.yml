@@ -45,6 +45,43 @@ jobs:
           -f supabase/migrations/20261026070000_atlas_journal_reading_progress.sql
           -f tests/sql/journal-progress-checks.sql
 
+  books-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-password
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Verify books owner isolation, private storage, idempotent replay and LWW
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f tests/sql/books-base-fixture.sql
+          -f supabase/migrations/20261026120000_atlas_books.sql
+          -f supabase/migrations/20261026133000_atlas_book_covers.sql
+          -f supabase/migrations/20261026133500_atlas_book_annotation_anchor.sql
+          -f supabase/migrations/20261026140000_atlas_books_offline_sync.sql
+          -f supabase/migrations/20261026143000_atlas_books_annotations_stats.sql
+          -f tests/sql/books-checks.sql
+
   engine-foundation-postgres:
     runs-on: ubuntu-latest
     services:

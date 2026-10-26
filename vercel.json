@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "fix/journal-flicker": false,
+      "feat/lecture-livres-l1": false
+    }
+  }
+}

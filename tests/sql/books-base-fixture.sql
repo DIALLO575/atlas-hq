@@ -1,0 +1,16 @@
+CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;
+CREATE SCHEMA auth; CREATE SCHEMA storage;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+CREATE TABLE public.workspaces(id uuid PRIMARY KEY);
+CREATE TABLE public.workspace_members(workspace_id uuid NOT NULL REFERENCES public.workspaces(id),user_id uuid NOT NULL REFERENCES auth.users(id),role text NOT NULL,PRIMARY KEY(workspace_id,user_id));
+CREATE SCHEMA IF NOT EXISTS storage;
+CREATE TABLE storage.buckets(id text PRIMARY KEY,name text NOT NULL,public boolean NOT NULL,file_size_limit bigint,allowed_mime_types text[]);
+CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text NOT NULL REFERENCES storage.buckets(id),name text NOT NULL);
+CREATE FUNCTION storage.foldername(text) RETURNS text[] LANGUAGE sql IMMUTABLE AS $$ SELECT string_to_array($1,'/') $$;
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+INSERT INTO auth.users VALUES('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222');
+INSERT INTO public.workspaces VALUES('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+INSERT INTO public.workspace_members VALUES('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','owner'),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','22222222-2222-4222-8222-222222222222','owner');
+GRANT USAGE ON SCHEMA public,auth,storage TO authenticated,anon;
+GRANT SELECT ON public.workspace_members TO authenticated;
