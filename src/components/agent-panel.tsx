@@ -60,7 +60,7 @@ export function AgentPanel({workspaceId,missionId}:{workspaceId:string;missionId
   const lastMeasuredMessageId=useRef<string|null>(null);
   const context=useAgentContext({workspaceId,pageKey:"missions",entity:settings?.entity??"*",objectId:missionId});
   const dirty=!settings||entity!==settings.entity||agentId!==settings.agentId||settings.isFallback;
-  const writeLocked=release?.mutationsEnabled!==true;
+  const writeLocked=release?.mutationsEnabled===false||release===null;
 
   useEffect(()=>{
     const controller=new AbortController();
