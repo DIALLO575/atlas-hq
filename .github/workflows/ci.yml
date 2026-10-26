@@ -129,6 +129,9 @@ jobs:
           -f tests/sql/engine-team-request-checks.sql
           -f supabase/proposals/engine-mission-agent-assignment-v1.sql
           -f tests/sql/engine-mission-agent-assignment-checks.sql
+          -f supabase/migrations/20261026153500_atlas_agent_page_gateway.sql
+          -f tests/sql/agent-gateway-checks.sql
+          -f supabase/rollbacks/20261026153500_atlas_agent_page_gateway_rollback.sql
 
       - name: Verify concurrent agent-profile request idempotence
         env:

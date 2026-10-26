@@ -5,6 +5,7 @@ import { createAtlasMission, requestAtlasMissionReview, updateAtlasMission } fro
 import { readAtlasWorkflow, type AtlasMission } from "@/lib/atlas-workflow";
 import { NotionObservationsPanel } from "@/components/notion-observations-panel";
 import { N8nCoordinationPanel } from "@/components/n8n-coordination-panel";
+import { AgentPanel } from "@/components/agent-panel";
 
 export const dynamic = "force-dynamic";
 type Query = { workspaceId?: string; status?: string; q?: string; result?: string; missionId?: string };
@@ -168,5 +169,7 @@ export default async function MissionsPage({ searchParams }: { searchParams: Pro
         </aside>
       </div>
     </>}
+    {data.status === "ready" && data.selected?.role === "owner" && <AgentPanel key={data.selected.id}
+      workspaceId={data.selected.id} missionId={selectedMissionId ?? null} />}
   </main></AppShell>;
 }
