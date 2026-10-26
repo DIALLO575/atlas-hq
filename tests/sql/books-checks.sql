@@ -4,12 +4,22 @@ DO $$ DECLARE x jsonb; n integer; BEGIN
  IF has_table_privilege('authenticated','public.book_progress_batches','SELECT') OR has_table_privilege('authenticated','public.book_reading_state','UPDATE') THEN RAISE EXCEPTION 'progress internals are directly writable/readable'; END IF;
  IF NOT has_function_privilege('authenticated','public.book_record_progress_batch(uuid,uuid,jsonb)','EXECUTE') OR has_function_privilege('anon','public.book_record_progress_batch(uuid,uuid,jsonb)','EXECUTE') THEN RAISE EXCEPTION 'progress RPC grants incorrect'; END IF;
  IF (SELECT public FROM storage.buckets WHERE id='books') IS DISTINCT FROM false THEN RAISE EXCEPTION 'books storage must be private'; END IF;
+ IF NOT ((SELECT allowed_mime_types FROM storage.buckets WHERE id='books') @> ARRAY['image/webp']) THEN RAISE EXCEPTION 'private books storage must accept compressed cover images'; END IF;
+ IF (SELECT count(*) FROM pg_attribute WHERE attrelid='public.books'::regclass AND attname IN ('cover_path','cover_thumb_path') AND NOT attisdropped)<>2 THEN RAISE EXCEPTION 'book cover paths missing'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid='public.book_annotations'::regclass AND attname='anchor_cfi' AND NOT attisdropped) THEN RAISE EXCEPTION 'annotation anchor missing'; END IF;
 END $$;
 INSERT INTO public.books(id,workspace_id,owner_id,title,format) VALUES
  ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','Fixture owner one','epub'),
  ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','22222222-2222-4222-8222-222222222222','Fixture owner two','pdf');
+UPDATE public.books SET cover_path='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/covers/cover-12345678-1234-4234-8234-123456789abc.webp', cover_thumb_path='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/covers/thumb-12345678-1234-4234-8234-123456789abc.webp' WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+DO $$ BEGIN
+ BEGIN UPDATE public.books SET cover_path='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/cccccccc-cccc-4ccc-8ccc-cccccccccccc/covers/cover-12345678-1234-4234-8234-123456789abc.webp' WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc'; RAISE EXCEPTION 'cover path outside its owner scope was accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+END $$;
 SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'; SET ROLE authenticated;
 DO $$ DECLARE x jsonb; s public.book_reading_state%rowtype; d integer; b text; BEGIN
+ INSERT INTO public.book_annotations(workspace_id,book_id,user_id,kind,body,position,anchor_cfi) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','cccccccc-cccc-4ccc-8ccc-cccccccccccc','11111111-1111-4111-8111-111111111111','highlight','Selected passage',0.1,'epubcfi(/6/2[chapter]!/4/1:0)');
+ IF NOT EXISTS (SELECT 1 FROM public.book_annotations WHERE book_id='cccccccc-cccc-4ccc-8ccc-cccccccccccc' AND anchor_cfi='epubcfi(/6/2[chapter]!/4/1:0)') THEN RAISE EXCEPTION 'book annotation CFI anchor not saved'; END IF;
  x:=public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":30,"position":0.5,"clientUpdatedAt":"2026-10-26T12:00:00Z","pagesRead":10}]'::jsonb);
  IF x->>'duplicate'<>'false' THEN RAISE EXCEPTION 'first batch not recorded as new: %',x; END IF;
  x:=public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":30,"position":0.5,"clientUpdatedAt":"2026-10-26T12:00:00Z","pagesRead":10}]'::jsonb);

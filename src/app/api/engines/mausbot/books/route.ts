@@ -7,7 +7,7 @@ export async function GET(request:NextRequest) {
  const workspaceId=request.nextUrl.searchParams.get('workspaceId');
  if([...request.nextUrl.searchParams.keys()].some(k=>k!=='workspaceId')||request.nextUrl.searchParams.getAll('workspaceId').length!==1)return engineFailure('BOOKS_QUERY_INVALID',400);
  const access=await requireBookOwner(workspaceId,request.url); if(!access.ok)return access.response;
- const {data,error}=await access.supabase.from('books').select('id,title,author,format,status,created_at,updated_at,book_reading_state(position,pages_read,finished_at),book_files(id,mime_type,byte_size)').eq('workspace_id',workspaceId!).eq('owner_id',access.userId).order('updated_at',{ascending:false}).limit(200);
+ const {data,error}=await access.supabase.from('books').select('id,title,author,format,status,cover_path,cover_thumb_path,created_at,updated_at,book_reading_state(position,pages_read,finished_at),book_files(id,mime_type,byte_size)').eq('workspace_id',workspaceId!).eq('owner_id',access.userId).order('updated_at',{ascending:false}).limit(200);
  if(error)return engineFailure('BOOKS_UNAVAILABLE',503);
  const payload={books:data??[]}; const etag=booksEtag(payload,access.userId,workspaceId!); const headers={'Cache-Control':'private, no-store','ETag':etag,'Vary':'Cookie'};
  if(etagMatches(request.headers.get('if-none-match'),etag))return new NextResponse(null,{status:304,headers}); return NextResponse.json(payload,{headers});

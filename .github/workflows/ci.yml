@@ -76,6 +76,8 @@ jobs:
           psql -X -v ON_ERROR_STOP=1
           -f tests/sql/books-base-fixture.sql
           -f supabase/migrations/20261026120000_atlas_books.sql
+          -f supabase/migrations/20261026133000_atlas_book_covers.sql
+          -f supabase/migrations/20261026133500_atlas_book_annotation_anchor.sql
           -f tests/sql/books-checks.sql
 
   engine-foundation-postgres:
