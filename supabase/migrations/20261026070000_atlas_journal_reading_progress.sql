@@ -2,11 +2,11 @@
 -- No content, URL, IP or user-agent. Receipt payload contains only opaque ids/deltas/position.
 BEGIN;
 ALTER TABLE public.feed_item_state
- ADD COLUMN first_read_at timestamptz,
- ADD COLUMN seconds_read integer NOT NULL DEFAULT 0 CHECK (seconds_read BETWEEN 0 AND 86400),
- ADD COLUMN last_position numeric CHECK (last_position BETWEEN 0 AND 1);
+ ADD COLUMN IF NOT EXISTS first_read_at timestamptz,
+ ADD COLUMN IF NOT EXISTS seconds_read integer NOT NULL DEFAULT 0 CHECK (seconds_read BETWEEN 0 AND 86400),
+ ADD COLUMN IF NOT EXISTS last_position numeric CHECK (last_position BETWEEN 0 AND 1);
 
-CREATE TABLE public.journal_reading_sessions (
+CREATE TABLE IF NOT EXISTS public.journal_reading_sessions (
  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
  workspace_id uuid NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
  edition_id text NOT NULL CHECK (edition_id ~ '^[A-Za-z0-9._:-]{1,120}$'),
@@ -16,8 +16,8 @@ CREATE TABLE public.journal_reading_sessions (
  updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(user_id,workspace_id,edition_id,item_id,day)
 );
-CREATE INDEX journal_reading_sessions_day_idx ON public.journal_reading_sessions(user_id,workspace_id,day);
-CREATE TABLE public.journal_progress_batches (
+CREATE INDEX IF NOT EXISTS journal_reading_sessions_day_idx ON public.journal_reading_sessions(user_id,workspace_id,day);
+CREATE TABLE IF NOT EXISTS public.journal_progress_batches (
  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
  workspace_id uuid NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
  batch_id uuid NOT NULL,
@@ -27,9 +27,11 @@ CREATE TABLE public.journal_progress_batches (
 );
 ALTER TABLE public.journal_reading_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.journal_progress_batches ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS journal_progress_batches_created_at_idx ON public.journal_progress_batches(created_at);
 REVOKE ALL ON public.journal_reading_sessions, public.journal_progress_batches FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.journal_reading_sessions TO authenticated;
--- Receipts have no client grants/policies: internal RPC-only ledger. Never prune while retries may exist.
+-- Receipts have no client grants/policies: internal RPC-only ledger, retained for 90 days.
+DROP POLICY IF EXISTS journal_reading_sessions_owner_select ON public.journal_reading_sessions;
 CREATE POLICY journal_reading_sessions_owner_select ON public.journal_reading_sessions FOR SELECT TO authenticated
  USING (user_id = (select auth.uid()) AND EXISTS (SELECT 1 FROM public.workspace_members m
  WHERE m.workspace_id = journal_reading_sessions.workspace_id AND m.user_id = (select auth.uid()) AND m.role = 'owner'));
@@ -51,12 +53,14 @@ CREATE POLICY feed_item_state_owner_update ON public.feed_item_state FOR UPDATE 
 
 -- SECURITY DEFINER intentionally encapsulates counters + private dedupe ledger;
 -- explicit auth + owner checks below replace bypassed RLS. No caller-supplied user_id.
-CREATE FUNCTION public.journal_record_progress_batch(p_workspace uuid, p_batch uuid, p_events jsonb)
+CREATE OR REPLACE FUNCTION public.journal_record_progress_batch(p_workspace uuid, p_batch uuid, p_events jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE
  v_uid uuid := (select auth.uid()); v_event jsonb; v_events jsonb; v_prior jsonb;
  v_inserted integer; v_before integer; v_delta integer; v_total integer := 0;
  v_day date := (now() AT TIME ZONE 'UTC')::date;
+ v_read_threshold_seconds CONSTANT integer := 30;
+ v_receipt_retention CONSTANT interval := interval '90 days';
 BEGIN
  IF v_uid IS NULL OR p_workspace IS NULL OR p_batch IS NULL THEN RAISE EXCEPTION 'unauthorized' USING ERRCODE='42501'; END IF;
  -- Locks membership against concurrent role revocation for this transaction.
@@ -85,6 +89,8 @@ BEGIN
   RAISE EXCEPTION 'invalid totals or duplicate item' USING ERRCODE='22023'; END IF;
  -- Canonical order also prevents deadlocks for overlapping multi-item batches.
  SELECT jsonb_agg(value ORDER BY value->>'editionId' COLLATE "C", value->>'itemId' COLLATE "C") INTO v_events FROM jsonb_array_elements(p_events);
+ -- Bound the idempotency ledger; retries remain protected for 90 days.
+ DELETE FROM public.journal_progress_batches WHERE created_at < now() - v_receipt_retention;
  INSERT INTO public.journal_progress_batches(user_id,workspace_id,batch_id,events) VALUES(v_uid,p_workspace,p_batch,v_events)
  ON CONFLICT DO NOTHING;
  GET DIAGNOSTICS v_inserted = ROW_COUNT;
@@ -99,8 +105,9 @@ BEGIN
   SELECT seconds_read INTO v_before FROM public.feed_item_state
    WHERE user_id=v_uid AND workspace_id=p_workspace AND edition_id=v_event->>'editionId' AND item_id=v_event->>'itemId' FOR UPDATE;
   v_delta := least((v_event->>'deltaSeconds')::integer,86400-v_before);
-  UPDATE public.feed_item_state SET status=CASE WHEN status='new' THEN 'read' ELSE status END,
-   first_read_at=coalesce(first_read_at,now()),seconds_read=seconds_read+v_delta,last_position=(v_event->>'position')::numeric,updated_at=now()
+  UPDATE public.feed_item_state SET status=CASE WHEN status='new' AND v_before+v_delta >= v_read_threshold_seconds THEN 'read' ELSE status END,
+   first_read_at=coalesce(first_read_at,CASE WHEN v_before+v_delta >= v_read_threshold_seconds THEN now() END),
+   seconds_read=seconds_read+v_delta,last_position=(v_event->>'position')::numeric,updated_at=now()
    WHERE user_id=v_uid AND workspace_id=p_workspace AND edition_id=v_event->>'editionId' AND item_id=v_event->>'itemId';
   INSERT INTO public.journal_reading_sessions(user_id,workspace_id,edition_id,item_id,day,seconds)
    VALUES(v_uid,p_workspace,v_event->>'editionId',v_event->>'itemId',v_day,v_delta)

@@ -54,5 +54,6 @@ test('offline cold reader requires matching per-tab capability and queues valida
  assert.match(offline,/storage.cache.snapshot\(token\)/);assert.match(offline,/kind:'state'/);assert.match(offline,/kind:'progress'/);
  assert.match(offline,/document.visibilityState==='visible'&&document.hasFocus\(\)/);assert.match(offline,/lastActivity<60000/);
  const storage=read('public/journal-cache-storage.mjs');assert.match(storage,/window.dispatchEvent\(new Event\('journal:purged'\)\)/);
+  assert.match(storage,/localStorage\.removeItem\('atlas\.journal\.scope'\)/);
  assert.match(read('src/lib/journal/cache-storage.ts'),/public\/journal-cache-storage.mjs/);
 });

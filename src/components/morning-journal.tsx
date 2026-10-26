@@ -10,6 +10,7 @@ import { useJournalUnread } from "@/components/app-shell";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import { RichText } from "@/components/journal-rich-text";
 import { FONT_STEPS, READER_THEMES, bulkDonePlan, neighbor, pickFeatured, readingMinutes, stepFont, swipeDirection } from "../../packages/engines/mausbot/src/journal-reader.mjs";
+import { JOURNAL_READ_THRESHOLD_SECONDS } from "../../packages/engines/mausbot/src/journal-progress.mjs";
 
 type Category = "ia" | "ia-sur-x" | "commerce" | "guinee" | "afrique" | "monde" | "economie";
 type ReadState = "new" | "read" | "done";
@@ -117,7 +118,7 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
     };
     const tick = () => {
       const now = Date.now();
-      const elapsed = Math.min(30, (now - lastTick) / 1000);
+      const elapsed = Math.min(JOURNAL_READ_THRESHOLD_SECONDS, (now - lastTick) / 1000);
       lastTick = now;
       if (document.visibilityState === "visible" && document.hasFocus() && now - lastActivity <= 60_000) pendingSeconds += elapsed;
       if (pendingSeconds >= 15) send(false);
@@ -305,11 +306,11 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const ordered = featured ? [featured, ...rest] : rest;
   const reading = readingId ? all.find(i => i.key === readingId) ?? null : null;
   const total = all.length;
-  const done = all.filter(i => i.state === "done").length;
+  const done = all.filter(i => i.state === "read" || i.state === "done").length;
   const unreadCount = view.data ? all.filter(i => i.state === "new").length : shellUnread ?? summary?.unread ?? 0;
   const label = useCallback((c: Category) => view.data?.categories.find(x => x.id === c)?.label ?? c, [view.data]);
-  const open = (item: Item) => { setReadingId(item.key); if (item.state === "new") void setState(item, "read"); };
-  const nav = useCallback((item: Item) => { setReadingId(item.key); if (item.state === "new") void setState(item, "read"); }, [setState]);
+  const open = (item: Item) => { setReadingId(item.key); };
+  const nav = useCallback((item: Item) => { setReadingId(item.key); }, []);
   const plan = bulkDonePlan(all, filter);
   const filterLabel = filter === "all" ? "toute l’édition" : "« " + label(filter) + " »";
 
@@ -342,7 +343,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     <aside className="mj-rail" aria-label="Navigation du Journal">
       <Link className="mj-rail-brand" href="/" aria-label="Quitter le Journal et revenir à ATLAS HQ"><Icon name="spark" /></Link>
       <nav>
-        {navigation.filter(item => item.id !== "exit").map(item => <button key={item.id} type="button" aria-label={item.label}
+        {navigation.filter(item => item.id !== "exit").map(item => <button key={item.id} type="button" aria-label={item.label} title={item.label}
           aria-current={section === item.id ? "page" : undefined} className={section === item.id ? "is-active" : ""} onClick={() => chooseSection(item.id as JournalSection)}>
           <Icon name={item.icon} /><span>{item.label}</span>{item.id === "unread" && unreadCount > 0 && <b>{unreadCount > 99 ? "99+" : unreadCount}</b>}
         </button>)}
@@ -359,11 +360,11 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     {view.error && view.data && <p className="mj-state is-warn" role="status">Synchronisation différée : {view.error}</p>}
     <IosInstallHint />
     <header className="mj-masthead">
-      <p className="mj-kicker">WORLD RADAR · {view.data?.producer === "morgans+grok-bot" ? "MORGANS + Grok Bot" : view.data?.producer === "grok-bot" ? "Grok Bot" : "MORGANS & équipe"}</p>
+      <p className="mj-kicker">WORLD RADAR</p>
       <h1>Journal du matin</h1>
       {view.data && <p className="mj-edition">{dateLabel(view.data.generatedAt) ?? "Édition " + view.data.editionId}{view.data.demo && " · données de démonstration"}</p>}
-      {view.data && <div className="mj-progress" role="progressbar" aria-label="Articles terminés" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
-        <span style={{ width: total ? (100 * done / total) + "%" : "0%" }} /><b>{done}/{total} terminés</b>
+      {view.data && <div className="mj-progress" role="progressbar" aria-label="Articles lus ou terminés" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
+        <span style={{ width: total ? (100 * done / total) + "%" : "0%" }} /><b>{done}/{total} lus ou terminés</b>
       </div>}
     </header>
     {view.status === "loading" && <div className="mj-skeleton" aria-busy="true" aria-label="Chargement de l’édition"><span /><span /><span /></div>}

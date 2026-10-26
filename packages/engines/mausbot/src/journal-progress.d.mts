@@ -1,5 +1,8 @@
 import type { JournalProgressInput } from "./journal-source.mjs";
 
+export const JOURNAL_READ_THRESHOLD_SECONDS: 30;
+export function journalReadThresholdReached(secondsRead: number, deltaSeconds?: number): boolean;
+
 export type JournalSummary = {
   total: number;
   read: number;

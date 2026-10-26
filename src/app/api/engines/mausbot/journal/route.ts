@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const edition = journalDemoAllowed(process.env) ? readJournalDemo() : await readJournalFromSupabase(access.supabase, workspaceId!);
     const editionIds = [...new Set(edition.items.map(i => i.editionId))];
-    const { data: states } = await access.supabase.from("feed_item_state").select("*")
+    const { data: states } = await access.supabase.from("feed_item_state").select("edition_id,item_id,status,seconds_read,last_position,first_read_at")
       .eq("workspace_id", workspaceId!).eq("user_id", access.userId).in("edition_id", editionIds);
     const stateMap = Object.fromEntries((states ?? []).map((s: { edition_id: string; item_id: string; status: string; seconds_read?: number; last_position?: number | null; first_read_at?: string | null }) => [JSON.stringify([s.edition_id, s.item_id]), s]));
     const payload = {

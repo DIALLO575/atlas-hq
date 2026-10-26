@@ -1,4 +1,10 @@
 import { validateJournalProgressInput } from './journal-source.mjs';
+export const JOURNAL_READ_THRESHOLD_SECONDS = 30;
+export function journalReadThresholdReached(secondsRead, deltaSeconds = 0) {
+  return Number.isInteger(secondsRead) && Number.isInteger(deltaSeconds)
+    && secondsRead >= 0 && deltaSeconds >= 0
+    && secondsRead + deltaSeconds >= JOURNAL_READ_THRESHOLD_SECONDS;
+}
 export function journalProgressMigrationMissing(error) {
   return ['PGRST202', 'PGRST205', '42P01', '42703', '42883'].includes(error?.code);
 }
@@ -31,7 +37,7 @@ export async function readJournalSummary(supabase, workspaceId, userId, today = 
     if (error) throw new Error('JOURNAL_SUMMARY_UNAVAILABLE');
     for (const row of data ?? []) items.push({ id: row.item_id, editionId: row.edition_id, category: normalizeJournalTopic(row.topic) ?? 'unknown', producer: edition.producer });
   }
-  const { data: states, error: stateError } = await supabase.from('feed_item_state').select('*').eq('workspace_id', workspaceId).eq('user_id', userId).in('edition_id', editions.map(e => e.edition_id));
+  const { data: states, error: stateError } = await supabase.from('feed_item_state').select('edition_id,item_id,status').eq('workspace_id', workspaceId).eq('user_id', userId).in('edition_id', editions.map(e => e.edition_id));
   if (stateError) throw new Error('JOURNAL_SUMMARY_UNAVAILABLE');
   const stateMap = new Map((states ?? []).map(s => [journalItemKey(s.edition_id, s.item_id), s.status]));
   const start = new Date(Date.parse(today + 'T00:00:00Z') - 6 * 86400000).toISOString().slice(0, 10);

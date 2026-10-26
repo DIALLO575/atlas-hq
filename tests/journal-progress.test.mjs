@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { validateJournalProgressInput } from '../packages/engines/mausbot/src/journal-source.mjs';
 import { summarizeJournalReading, secondsToMinutes } from '../packages/engines/mausbot/src/journal-reader.mjs';
 import { rankItems } from '../packages/engines/mausbot/src/journal-ranking.mjs';
-import { recordJournalProgress, readJournalSummary } from '../packages/engines/mausbot/src/journal-progress.mjs';
+import { JOURNAL_READ_THRESHOLD_SECONDS, journalReadThresholdReached, recordJournalProgress, readJournalSummary } from '../packages/engines/mausbot/src/journal-progress.mjs';
 const event = { editionId: 'edition:1', itemId: 'item.1', deltaSeconds: 30, position: 0.25 };
 const body = { workspaceId: '11111111-1111-4111-8111-111111111111', batchId: '22222222-2222-4222-8222-222222222222', events: [event] };
 test('strict bounded batch with detached canonical output', () => {
@@ -24,6 +24,35 @@ test('aggregates actual seconds, UTC today/seven days, read percent and groups',
   assert.equal(summary.todayMinutes, 0.5); assert.equal(summary.sevenDayMinutes, 2); assert.equal(summary.percentRead, 50); assert.equal(summary.unread, 1);
   assert.deepEqual(summary.byProducer['grok-bot'], { total: 1, read: 1 }); assert.equal(summary.byCategory['ia-sur-x'].read, 1);
   assert.equal(summarizeJournalReading([], [], '2026-10-26').percentRead, 0); assert.equal(secondsToMinutes(-1), 0);
+});
+test('automatic read threshold is 30 accumulated seconds and SQL applies it only after crossing', async () => {
+  assert.equal(JOURNAL_READ_THRESHOLD_SECONDS, 30);
+  assert.equal(journalReadThresholdReached(0, 29), false);
+  assert.equal(journalReadThresholdReached(29, 0), false);
+  assert.equal(journalReadThresholdReached(29, 1), true);
+  assert.equal(journalReadThresholdReached(30, 0), true);
+  assert.equal(journalReadThresholdReached(-1, 30), false);
+  const { readFileSync } = await import('node:fs');
+  const migration = readFileSync(new URL('../supabase/migrations/20261026070000_atlas_journal_reading_progress.sql', import.meta.url), 'utf8');
+  assert.match(migration, /v_read_threshold_seconds CONSTANT integer := 30/);
+  assert.match(migration, /status='new' AND v_before\+v_delta >= v_read_threshold_seconds THEN 'read'/);
+  assert.match(migration, /first_read_at,CASE WHEN v_before\+v_delta >= v_read_threshold_seconds THEN now\(\) END/);
+  const component = readFileSync(new URL('../src/components/morning-journal.tsx', import.meta.url), 'utf8');
+  assert.match(component, /const open = \(item: Item\) => \{ setReadingId\(item.key\); \}/);
+});
+test('journal progress migration can be rerun and receipt cleanup has a bounded retention window', async () => {
+  const { readFileSync } = await import('node:fs');
+  const migration = readFileSync(new URL('../supabase/migrations/20261026070000_atlas_journal_reading_progress.sql', import.meta.url), 'utf8');
+  const rollback = readFileSync(new URL('../supabase/rollbacks/20261026070000_atlas_journal_reading_progress.sql', import.meta.url), 'utf8');
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS first_read_at/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.journal_reading_sessions/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.journal_progress_batches/);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.journal_record_progress_batch/);
+  assert.match(migration, /DROP POLICY IF EXISTS journal_reading_sessions_owner_select/);
+  assert.match(migration, /v_receipt_retention CONSTANT interval := interval '90 days'/);
+  assert.match(migration, /DELETE FROM public\.journal_progress_batches WHERE created_at < now\(\) - v_receipt_retention/);
+  assert.match(rollback, /DESTRUCTIVE AND IRREVERSIBLE/);
+  assert.match(rollback, /Counters, daily totals and retry history are/);
 });
 test('ranking preserves editorial order without mutating array', () => {
   const items = [{ id: 2 }, { id: 1 }]; assert.deepEqual(rankItems(items), items); assert.notEqual(rankItems(items), items);
@@ -57,7 +86,10 @@ test('route boundaries require owner before service and restrict query/payload',
   const { readFileSync } = await import('node:fs');
   const progress = readFileSync(new URL('../src/app/api/engines/mausbot/journal/progress/route.ts', import.meta.url), 'utf8');
   const summary = readFileSync(new URL('../src/app/api/engines/mausbot/journal/summary/route.ts', import.meta.url), 'utf8');
+  const journal = readFileSync(new URL('../src/app/api/engines/mausbot/journal/route.ts', import.meta.url), 'utf8');
   assert(progress.indexOf('await requireJournalOwner') < progress.indexOf('await recordJournalProgress'));
   assert(summary.indexOf('await requireJournalOwner') < summary.indexOf('await readJournalSummary'));
   assert.match(progress, /8192/); assert.match(summary, /getAll\('workspaceId'\).length !== 1/);
+  assert.match(journal, /select\("edition_id,item_id,status,seconds_read,last_position,first_read_at"\)/);
+  assert.doesNotMatch(journal, /select\("\*"\)/);
 });

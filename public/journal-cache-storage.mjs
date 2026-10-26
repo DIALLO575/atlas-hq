@@ -36,7 +36,12 @@ export async function journalCacheStorage() {
 
 export async function purgeJournalCache() {
   const storage = await journalCacheStorage();
-  try { await storage.cache.purge(); localStorage.removeItem(FALLBACK); sessionStorage.removeItem('atlas.journal.offline-capability'); } finally { storage.close(); }
+  try {
+    await storage.cache.purge();
+    localStorage.removeItem(FALLBACK);
+    localStorage.removeItem('atlas.journal.scope');
+    sessionStorage.removeItem('atlas.journal.offline-capability');
+  } finally { storage.close(); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.controller?.postMessage({ type: 'journal:clear' });
   if ('caches' in window) for (const key of await caches.keys()) if (key.startsWith('atlas-journal')) await caches.delete(key);
   window.dispatchEvent(new Event('journal:purged'));
