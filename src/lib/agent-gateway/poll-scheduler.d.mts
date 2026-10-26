@@ -8,4 +8,4 @@ export function createAgentPollScheduler(options: {
   setTimer?: typeof setTimeout;
   clearTimer?: typeof clearTimeout;
   now?: () => number;
-}): { start(): void; stop(): void };
+}): { start(): void; refresh(): void; stop(): void };

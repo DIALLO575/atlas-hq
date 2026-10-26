@@ -56,6 +56,11 @@ export function createAgentPollScheduler({
       visibility.addEventListener("visibilitychange", visibilityChange);
       if (!hidden()) schedule(0);
     },
+    refresh() {
+      // Accepted real send: replace a dormant 15s timer with the 2s cadence.
+      if (started && !hidden() && !inFlight)
+        schedule(Math.max(0, AGENT_POLL_ACTIVE_MS - (now() - lastStartedAt)));
+    },
     stop() {
       if (!started) return;
       started = false;

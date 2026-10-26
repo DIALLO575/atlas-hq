@@ -200,6 +200,7 @@ export async function historyForObject(workspaceId: string, pageKey: string, obj
   await verifyScope(supabase, context);
   const thread = await findThread(supabase, context);
   if (!thread) return { threadId: null, messages: [] as AtlasAgentMessage[], pending: false };
+  if (thread.agent_id !== setting.agentId) throw new GatewayError("THREAD_AGENT_CHANGED", 409);
   return poll(workspaceId, thread.id);
 }
 

@@ -15,6 +15,7 @@ const errors:Record<string,string> = {
   MAUSBOT_DURABLE_APPROVAL_REQUIRED:"Interruption et envoi bloqués : autorisation B3 nécessaire.",
   AGENT_SETTINGS_UNAVAILABLE:"Réglages indisponibles. Réessayez ultérieurement.",
   AGENT_THREAD_UNAVAILABLE:"Historique indisponible pour ce workspace.",
+  THREAD_AGENT_CHANGED:"Ce fil appartient à un autre agent. Ancien historique non affiché.",
   MAUSBOT_PRECONNECTION_GATE_CLOSED:"Lecture MausBot non autorisée pour cet espace.",
   ENTITY_SCOPE_FORBIDDEN:"Cette entité n’est pas autorisée dans ce workspace.",
   OWNER_REQUIRED:"Seul le propriétaire du workspace peut utiliser cet assistant.",
@@ -49,6 +50,7 @@ export function AgentPanel({workspaceId,missionId}:{workspaceId:string;missionId
   const [messages,setMessages]=useState<AtlasAgentMessage[]>([]);
   const [awaiting,setAwaiting]=useState(false);
   const [paintLatency,setPaintLatency]=useState<number|null>(null);
+  const pollSchedulerRef=useRef<ReturnType<typeof createAgentPollScheduler>|null>(null);
   const closeRef=useRef<HTMLButtonElement>(null);
   const launcherRef=useRef<HTMLButtonElement>(null);
   const textareaRef=useRef<HTMLTextAreaElement>(null);
@@ -168,8 +170,9 @@ export function AgentPanel({workspaceId,missionId}:{workspaceId:string;missionId
       },
     });
     const begin=setTimeout(()=>setLoadingThread(true),0);
+    pollSchedulerRef.current=scheduler;
     scheduler.start();
-    return ()=>{clearTimeout(begin);scheduler.stop();};
+    return ()=>{clearTimeout(begin);scheduler.stop();if(pollSchedulerRef.current===scheduler)pollSchedulerRef.current=null;};
   },[open,ready,settings,dirty,workspaceId,missionId]);
 
   const save=async()=>{
@@ -205,6 +208,7 @@ export function AgentPanel({workspaceId,missionId}:{workspaceId:string;missionId
         throw new Error(data.error??"AGENT_GATEWAY_UNAVAILABLE");
       threadIdRef.current=data.threadId;setThreadId(data.threadId);
       turnStartedRef.current=Date.now();setAwaiting(true);setQuestion("");
+      pollSchedulerRef.current?.refresh();
     }catch(reason){setError(explain(reason instanceof Error?reason.message:"AGENT_GATEWAY_UNAVAILABLE"));}
     finally{setSending(false);}
   };
