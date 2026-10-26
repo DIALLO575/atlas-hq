@@ -1,24 +1,22 @@
 import { AppShell } from "@/components/app-shell";
-import { Icon } from "@/components/icon";
 import { AppsDirectory } from "@/components/apps-directory";
-import { githubConnectSettings } from "@/lib/github/connect";
+import { listConnectedApps } from "@/lib/connected-apps";
+import "./connected-apps.css";
 
-// The catalogue is static: reading session, workspace memberships and GitHub
-// installations here used to delay every visit. Real connection state is
-// fetched only inside the GitHub Control Center.
-export default function AppsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AppsPage() {
+  const { apps, unavailable, unauthenticated } = await listConnectedApps();
+
   return (
     <AppShell>
-      <main className="main-content atlas-apps-page atlas-apps-v2" id="main-content">
-        <header className="atlas-apps-intro atlas-apps-v2-intro">
-          <div>
-            <p className="atlas-overline">MES APPLICATIONS</p>
-            <h1>Vos applications, au même endroit <span aria-hidden="true">✦</span></h1>
-            <p>Explorez les outils qui pourront accompagner vos agents IA et vos missions.</p>
-          </div>
-          <a className="atlas-apps-explore-cta" href="#apps-catalog"><Icon name="apps" /> Explorer les apps <Icon name="arrow-right" /></a>
+      <main className="main-content atlas-apps-connected-page" id="main-content">
+        <header className="atlas-connected-intro">
+          <p className="atlas-overline">MES APPLICATIONS</p>
+          <h1>Mes apps connectées</h1>
+          <p>Un accès direct à vos outils reliés à Atlas, sans catalogue ni applications de démonstration.</p>
         </header>
-        <AppsDirectory githubConfigured={Boolean(githubConnectSettings())} />
+        <AppsDirectory apps={apps} unavailable={unavailable} unauthenticated={unauthenticated} />
       </main>
     </AppShell>
   );

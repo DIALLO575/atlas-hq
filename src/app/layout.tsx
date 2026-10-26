@@ -3,7 +3,6 @@ import { InstallPrompt } from "@/components/install-prompt";
 import { PersistentAtlasShell } from "@/components/persistent-atlas-shell";
 import "./globals.css";
 import "./atlas-redesign.css";
-import "./apps-redesign.css";
 import "./workspaces-redesign.css";
 import "./github-control-center.css";
 import "./github-command-deck.css";
