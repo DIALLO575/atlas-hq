@@ -50,6 +50,10 @@ function readableTime(value: string | null) {
   return Number.isNaN(date.getTime()) ? value.slice(0, 40) : date.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
 }
 
+function hasActiveThread(agent: Agent) {
+  return Boolean(agent.activeTaskId || agent.tasks.some(task => task.active));
+}
+
 function threadsFor(entity: Agent | Team | null): Task[] {
   if (!entity) return [];
   const tasks = entity.tasks ?? [];
@@ -89,23 +93,81 @@ export function AgentsWorkspace() {
   const [sending, setSending] = useState(false);
   const [sendIssue, setSendIssue] = useState("");
   const [openTeamId, setOpenTeamId] = useState<string | null>(null);
+  const [openAgentId, setOpenAgentId] = useState<string | null>(null);
+  const [showAllAgents, setShowAllAgents] = useState(false);
+  const [directoryTab, setDirectoryTab] = useState<"teams" | "agents">("teams");
+  const [mobileView, setMobileView] = useState<"members" | "chat">("members");
+  const [compact, setCompact] = useState(false);
   const [fullscreenChat, setFullscreenChat] = useState(false);
+  const detailRef = useRef<HTMLElement>(null);
+  const detailBackRef = useRef<HTMLButtonElement>(null);
+  const fullscreenRef = useRef<HTMLElement>(null);
+  const fullscreenToggleRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const threadCache = useRef(new Map<string,{messages: Message[]; updatedAt:number}>());
   const activeMessageKey = useRef("");
   const scrollRef = useRef<HTMLOListElement>(null);
 
   useEffect(() => { threadCache.current.clear(); }, [workspaceId]);
 
+
   useEffect(() => {
-    if (!fullscreenChat) return;
-    const previous = document.body.style.overflow;
+    const media = window.matchMedia("(max-width: 700px)");
+    const sync = () => setCompact(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  function closeDetail() {
+    setFullscreenChat(false); setOpenTeamId(null); setOpenAgentId(null);
+    setSelection(null); setThreadId(""); setMessages([]); setDraft(""); setSendIssue("");
+    window.requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+  }
+
+  function showChatView() {
+    setMobileView("chat");
+    if (compact) window.requestAnimationFrame(() =>
+      detailRef.current?.querySelector<HTMLElement>(".atlas-people-chat-heading")?.focus({ preventScroll: true }));
+  }
+
+  useEffect(() => {
+    if (!fullscreenChat && !(compact && (openTeamId || openAgentId))) return;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const esc = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setFullscreenChat(false);
+    const overlay = fullscreenChat && !compact ? fullscreenRef.current : detailRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      if (fullscreenChat && !compact) fullscreenToggleRef.current?.focus({ preventScroll: true });
+      else detailBackRef.current?.focus({ preventScroll: true });
+    });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (fullscreenChat) setFullscreenChat(false);
+        else closeDetail();
+      }
+      if (event.key !== "Tab" || !overlay) return;
+      const nodes = Array.from(overlay.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+      )).filter(node => node.getClientRects().length > 0);
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (!first || !last) return;
+      if (!overlay.contains(document.activeElement)) {
+        event.preventDefault(); (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
     };
-    window.addEventListener("keydown",esc);
-    return () => { document.body.style.overflow = previous; window.removeEventListener("keydown",esc); };
-  }, [fullscreenChat]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [fullscreenChat, compact, openTeamId, openAgentId]);
+
 
   useEffect(() => {
     let mounted = true;
@@ -125,11 +187,6 @@ export function AgentsWorkspace() {
       setInventoryBusy(true);
       setInventory(null);
       setInventoryIssue("");
-      setSelection(null);
-      setOpenTeamId(null);
-      setThreadId("");
-      setMessages([]);
-      setMessagesIssue("");
       try {
         const response = await fetch("/api/engines/mausbot?workspaceId=" +
           encodeURIComponent(workspaceId) + "&view=inventory",
@@ -152,6 +209,8 @@ export function AgentsWorkspace() {
   }, [workspaceId, inventoryRevision]);
 
   const openedTeam = inventory?.groups.find(team => team.id === openTeamId) ?? null;
+  const openedAgent = inventory?.agents.find(agent => agent.id === openAgentId) ?? null;
+  const detailOpen = Boolean(openedTeam || openedAgent);
   const selectedTeam = selection?.kind === "team" ? openedTeam : null;
   const selectedAgent = selection?.kind === "agent"
     ? inventory?.agents.find(agent => agent.id === selection.id) ?? null : null;
@@ -167,6 +226,11 @@ export function AgentsWorkspace() {
     (team.name + " " + (chiefFor(team, inventory.agents)?.agent.name ?? "") + " " +
       team.memberIds.map(id => inventory.agents.find(agent => agent.id === id)?.name ?? "").join(" "))
       .toLocaleLowerCase("fr").includes(normalQuery)) ?? [];
+  const visibleAgents = inventory?.agents.filter(agent =>
+    (agent.name + " " + (agent.title ?? "") + " " + (agent.section ?? "") + " " +
+      inventory.groups.filter(team => team.memberIds.includes(agent.id)).map(team => team.name).join(" "))
+      .toLocaleLowerCase("fr").includes(normalQuery)) ?? [];
+  const activeAgentsCount = inventory?.agents.filter(hasActiveThread).length ?? 0;
   const activeWorkspace = spaces.status === "ready" ? spaces.workspaces.find(space => space.id === workspaceId) : null;
   const canReadMessages = activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
   const canSend = inventory?.canWrite === true && activeWorkspace?.role === "owner" && !!selected && !!threadId;
@@ -208,7 +272,7 @@ export function AgentsWorkspace() {
     setMessages(cachedThreadMessages(threadCache.current,key));
     setMessagesIssue("");
     setMessagesBusy(false);
-    if (next?.kind === "agent" && window.matchMedia("(max-width:700px)").matches) {
+    if (window.matchMedia("(max-width:700px)").matches) {
       window.requestAnimationFrame(() => document.getElementById("atlas-people-conversation")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
   }
@@ -280,9 +344,9 @@ export function AgentsWorkspace() {
     <div className="atlas-people-space atlas-people-team-space">
       <header className="atlas-people-hero atlas-people-hero-compact">
         <div className="atlas-people-hero-copy">
-          <p className="atlas-people-overline"><Icon name="layers" /> ATLAS / ÉQUIPES MAUSBOT</p>
-          <h1>Vos équipes. <span>Vos agents.</span></h1>
-          <p>Une équipe à la fois. Les membres, les chiefs et les conversations proviennent du moteur MAUSBOT.</p>
+          <p className="atlas-people-overline"><Icon name="layers" /> ATLAS / AGENTS</p>
+          <h1>Vos teams. <span>Vos agents.</span></h1>
+          <p>Les bonnes personnes. Les bons échanges. Au même endroit.</p>
         </div>
         <div className="atlas-people-hero-visual" aria-hidden="true">
           <span className="atlas-people-visual-back"><Icon name="layers" /></span>
@@ -298,7 +362,12 @@ export function AgentsWorkspace() {
         </div>
         <div className="atlas-people-toolbar-actions">
           {spaces.status === "ready" && <label>Workspace
-            <select value={workspaceId} onChange={event => { setQuery(""); setFullscreenChat(false); setOpenTeamId(null); setWorkspaceId(event.target.value); }}>
+            <select value={workspaceId} onChange={event => {
+              setQuery(""); setShowAllAgents(false); setDirectoryTab("teams"); setMobileView("members");
+              setFullscreenChat(false); setOpenTeamId(null);
+              setOpenAgentId(null); setSelection(null); setThreadId(""); setMessages([]);
+              setMessagesIssue(""); setDraft(""); setSendIssue(""); setWorkspaceId(event.target.value);
+            }}>
               {spaces.workspaces.map(space => <option key={space.id} value={space.id}>{space.name}</option>)}
             </select>
           </label>}
@@ -321,66 +390,143 @@ export function AgentsWorkspace() {
         </div>
       </section>}
 
-      {inventory && !openedTeam && <section className="atlas-team-directory" aria-label="Équipes MAUSBOT">
+      {inventory && !detailOpen && <div className="atlas-agents-directory" data-tab={directoryTab}>
+      <div className="atlas-people-kpi-grid" aria-label="Vue d’ensemble MAUSBOT">
+        <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-teams"><Icon name="layers" /></span><strong>{inventory.groups.length}</strong><small>Teams</small></div>
+        <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-agents"><Icon name="bot" /></span><strong>{inventory.agents.length}</strong><small>Agents</small></div>
+        <div className="atlas-people-kpi"><span className="atlas-people-kpi-icon is-active"><Icon name="inbox" /></span><strong>{activeAgentsCount}</strong><small>Avec fil actif</small></div>
+      </div>
+      <label className="atlas-people-search atlas-people-global-search">
+        <Icon name="search" /><span className="sr-only">Chercher une team ou un agent</span>
+        <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Chercher une team ou un agent…" />
+      </label>
+      <div className="atlas-people-mobile-switch" role="group" aria-label="Répertoire">
+        <button type="button" aria-pressed={directoryTab === "teams"}
+          className={directoryTab === "teams" ? "is-active" : ""}
+          onClick={() => setDirectoryTab("teams")}><Icon name="layers" /> Teams <span>{inventory.groups.length}</span></button>
+        <button type="button" aria-pressed={directoryTab === "agents"}
+          className={directoryTab === "agents" ? "is-active" : ""}
+          onClick={() => setDirectoryTab("agents")}><Icon name="bot" /> Agents <span>{inventory.agents.length}</span></button>
+      </div>
+      <section className="atlas-team-directory" aria-label="Équipes MAUSBOT">
         <div className="atlas-team-directory-heading">
-          <div><p className="atlas-people-overline">VOS ÉQUIPES</p><h2>Les équipes du moteur</h2></div>
+          <div><p className="atlas-people-overline">TEAMS</p><h2>Explorer les équipes</h2></div>
           <span>{inventory.groups.length} équipe{inventory.groups.length > 1 ? "s" : ""}</span>
         </div>
         <MausbotTeamOverview workspaceId={workspaceId} revision={inventoryRevision} />
-        {!!inventory.groups.length && <label className="atlas-people-search atlas-team-search">
-          <Icon name="search" />
-          <span className="sr-only">Chercher une équipe ou un membre</span>
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Rechercher une équipe ou un membre…" />
-        </label>}
         <div className="atlas-team-grid">
           {visibleTeams.map(team => {
             const teamChief = chiefFor(team, inventory.agents);
             const members = team.memberIds.map(id => inventory.agents.find(agent => agent.id === id)).filter((agent): agent is Agent => Boolean(agent));
-            return <button type="button" key={team.id} className="atlas-team-card"
-              onClick={() => { setOpenTeamId(team.id); selectItem({ kind: "team", id: team.id }, threadsFor(team)); }}
+            const engaged = members.filter(hasActiveThread).length;
+            return <button type="button" key={team.id} className="atlas-team-card atlas-team-card-v2"
+              onClick={event => {
+                openerRef.current = event.currentTarget; setMobileView("members");
+                setOpenAgentId(null); setOpenTeamId(team.id);
+                selectItem({ kind: "team", id: team.id }, threadsFor(team));
+              }}
               aria-label={"Ouvrir l’équipe " + team.name}>
-              <span className="atlas-team-card-top"><AgentPortrait agent={teamChief?.agent} workspaceId={workspaceId} className="atlas-team-card-icon" fallback="layers" /><span className="atlas-team-card-eyebrow">ÉQUIPE MAUSBOT</span></span>
-              <strong className="atlas-team-card-name">{team.name}</strong>
-              <span className="atlas-team-chief">
-                <span>{teamChief?.label ?? "Chief of Staff"}</span>
-                <strong>{teamChief?.agent.name ?? "Non renseigné"}</strong>
+              <span className="atlas-team-card-top">
+                <AgentPortrait agent={teamChief?.agent} workspaceId={workspaceId} className="atlas-team-card-icon" fallback="layers" />
+                <span className="atlas-team-card-eyebrow">TEAM</span>
+                <span className="atlas-card-arrow"><Icon name="arrow-up-right" /></span>
               </span>
-              <span className="atlas-team-card-members">
-                {members.length ? members.slice(0, 3).map(agent => agent.name).join(" · ") : "Aucun membre nommé accessible"}
-                {members.length > 3 ? " · +" + (members.length - 3) : ""}
+              <strong className="atlas-team-card-name">{team.name}</strong>
+              <span className="atlas-team-card-chief"><Icon name="shield-check" />{teamChief?.agent.name ?? "Chief non renseigné"}</span>
+              <span className="atlas-team-card-portraits">
+                <span className="atlas-team-avatar-stack">
+                  {members.slice(0, 4).map(agent => <AgentPortrait key={agent.id} agent={agent}
+                    workspaceId={workspaceId} className="atlas-team-stack-avatar" />)}
+                  {!members.length && <span className="atlas-team-stack-empty"><Icon name="bot" /></span>}
+                </span>
+                <span>{team.memberIds.length} membre{team.memberIds.length > 1 ? "s" : ""}</span>
               </span>
               <span className="atlas-team-card-footer">
-                <span>{team.memberIds.length} membre{team.memberIds.length > 1 ? "s" : ""}</span>
-                <span>Entrer dans l’équipe <Icon name="arrow-up-right" /></span>
+                <span className="atlas-status-indicator"><span className="atlas-status-dot" />{engaged} avec fil actif</span>
+                <strong>Ouvrir <Icon name="arrow-right" /></strong>
               </span>
             </button>;
           })}
         </div>
         {!inventory.groups.length && <div className="atlas-team-empty"><Icon name="layers" /><div><strong>Aucune équipe MAUSBOT retournée</strong><p>Cette instance ne présente aucun canal accessible. Aucune équipe fictive n’est ajoutée.</p></div></div>}
         {inventory.groups.length > 0 && visibleTeams.length === 0 && <p className="atlas-team-no-results">Aucune équipe ne correspond à cette recherche.</p>}
-      </section>}
+      </section>
+      <section className="atlas-agent-directory" aria-label="Répertoire des agents MAUSBOT">
+        <div className="atlas-team-directory-heading">
+          <div><p className="atlas-people-overline">AGENTS</p><h2>Vos agents</h2></div>
+          <span>{visibleAgents.length} résultat{visibleAgents.length > 1 ? "s" : ""}</span>
+        </div>
+        <div className="atlas-agent-grid">
+          {visibleAgents.slice(0, showAllAgents ? visibleAgents.length : 12).map(agent => {
+            const memberships = inventory.groups.filter(team => team.memberIds.includes(agent.id));
+            return <button type="button" key={agent.id} className="atlas-agent-card-v2"
+              aria-label={"Ouvrir l’agent " + agent.name}
+              onClick={event => {
+                openerRef.current = event.currentTarget; setMobileView("chat");
+                setOpenTeamId(null); setOpenAgentId(agent.id);
+                selectItem({ kind: "agent", id: agent.id }, threadsFor(agent));
+              }}>
+              <span className="atlas-agent-card-head">
+                <AgentPortrait agent={agent} workspaceId={workspaceId} className="atlas-agent-card-avatar" />
+                <span className="atlas-card-arrow"><Icon name="arrow-up-right" /></span>
+              </span>
+              <strong>{agent.name}</strong>
+              <span className="atlas-agent-card-role">{agent.title || "Agent MAUSBOT"}</span>
+              <span className="atlas-agent-card-tag">{memberships[0]?.name || "Indépendant"}</span>
+              <span className="atlas-agent-card-bottom">
+                <span className="atlas-status-indicator"><span className={"atlas-status-dot" + (hasActiveThread(agent) ? " is-active" : "")} />
+                  {hasActiveThread(agent) ? "Fil actif" : "Aucun fil actif"}</span>
+                <span className="atlas-agent-card-chat">Chat <Icon name="inbox" /></span>
+              </span>
+            </button>;
+          })}
+        </div>
+        {visibleAgents.length === 0 && <p className="atlas-team-no-results">Aucun agent ne correspond à cette recherche.</p>}
+        {visibleAgents.length > 12 && <button type="button" className="atlas-show-agents"
+          onClick={() => setShowAllAgents(value => !value)}>
+          {showAllAgents ? "Voir moins" : "Afficher les " + visibleAgents.length + " agents"}
+          <Icon name={showAllAgents ? "arrow-up" : "arrow-down"} />
+        </button>}
+      </section>
+    </div>}
 
-      {inventory && openedTeam && <section className="atlas-team-detail" aria-label={"Équipe " + openedTeam.name}>
+      {inventory && detailOpen && <section className="atlas-team-detail" id="atlas-people-detail"
+        ref={detailRef} data-detail-kind={openedTeam ? "team" : "agent"} data-mobile-view={mobileView}
+        role={compact ? "dialog" : undefined} aria-modal={compact ? true : undefined}
+        aria-label={openedTeam ? "Équipe " + openedTeam.name : "Agent " + openedAgent?.name}>
         <header className="atlas-team-detail-header">
-          <button type="button" className="atlas-team-back" onClick={() => {
-            setFullscreenChat(false); setOpenTeamId(null); setSelection(null); setThreadId(""); setMessages([]); setDraft(""); setSendIssue("");
-          }}><Icon name="arrow-left" /> Toutes les équipes</button>
+          <button type="button" ref={detailBackRef} className="atlas-team-back" onClick={closeDetail}>
+            <Icon name="arrow-left" /> Teams & Agents
+          </button>
           <div className="atlas-team-detail-title">
-            <span className="atlas-team-detail-mark"><Icon name="layers" /></span>
+            {openedAgent
+              ? <AgentPortrait agent={openedAgent} workspaceId={workspaceId} className="atlas-team-detail-mark" />
+              : <span className="atlas-team-detail-mark"><Icon name="layers" /></span>}
             <div>
-              <p className="atlas-people-overline">ÉQUIPE MAUSBOT</p>
-              <h2>{openedTeam.name}</h2>
-              <p><strong>{chief?.label ?? "Chief of Staff"} :</strong> {chief?.agent.name ?? "Non renseigné"} · {openedTeam.memberIds.length} membre{openedTeam.memberIds.length > 1 ? "s" : ""}</p>
+              <p className="atlas-people-overline">{openedTeam ? "TEAM MAUSBOT" : "AGENT MAUSBOT"}</p>
+              <h2>{openedTeam?.name ?? openedAgent?.name}</h2>
+              <p>{openedTeam
+                ? <><strong>{chief?.label ?? "Chief"} :</strong> {chief?.agent.name ?? "Non renseigné"} · {openedTeam.memberIds.length} membres</>
+                : <>{openedAgent?.title || "Agent MAUSBOT"} · {openedAgent && hasActiveThread(openedAgent) ? "Fil actif" : "Aucun fil actif"}</>}</p>
             </div>
           </div>
         </header>
-
-        <section className="atlas-team-members" aria-label="Agents de l’équipe">
+        {openedTeam && <div className="atlas-detail-mobile-tabs" role="group" aria-label="Vue de la Team">
+          <button type="button" aria-pressed={mobileView === "members"}
+            className={mobileView === "members" ? "is-active" : ""} onClick={() => setMobileView("members")}>
+            <Icon name="bot" /> Membres <span>{memberAgents.length}</span>
+          </button>
+          <button type="button" aria-pressed={mobileView === "chat"}
+            className={mobileView === "chat" ? "is-active" : ""} onClick={showChatView}>
+            <Icon name="inbox" /> Chat
+          </button>
+        </div>}
+        {openedTeam && <section className="atlas-team-members" aria-label="Agents de l’équipe">
           <div className="atlas-team-members-heading"><h3>Agents de l’équipe</h3><span>{memberAgents.length} agent{memberAgents.length > 1 ? "s" : ""} visible{memberAgents.length > 1 ? "s" : ""}</span></div>
           <div className="atlas-team-member-grid">
             <button type="button" className={"atlas-team-member-card" + (selection?.kind === "team" ? " is-active" : "")}
               aria-pressed={selection?.kind === "team"}
-              onClick={() => selectItem({ kind: "team", id: openedTeam.id }, threadsFor(openedTeam))}>
+              onClick={() => { selectItem({ kind: "team", id: openedTeam.id }, threadsFor(openedTeam)); showChatView(); }}>
               <span className="atlas-team-member-icon"><Icon name="layers" /></span>
               <span><strong>Conversation d’équipe</strong><small>Canal MAUSBOT</small></span>
               <Icon name="arrow-right" />
@@ -395,29 +541,33 @@ export function AgentsWorkspace() {
               return <button type="button" key={id}
                 className={"atlas-team-member-card" + (selection?.kind === "agent" && selection.id === id ? " is-active" : "")}
                 aria-pressed={selection?.kind === "agent" && selection.id === id}
-                onClick={() => selectItem({ kind: "agent", id }, threadsFor(agent))}>
+                onClick={() => { selectItem({ kind: "agent", id }, threadsFor(agent)); showChatView(); }}>
                 <AgentPortrait agent={agent} workspaceId={workspaceId} className="atlas-team-member-icon" />
                 <span><strong>{agent.name}</strong><small>{agentChief ? (chief?.label ?? "Chief of Staff") : agent.title || "Agent MAUSBOT"}</small></span>
                 <Icon name="arrow-right" />
               </button>;
             })}
           </div>
-        </section>
+        </section>}
 
-        <section className={"atlas-people-console atlas-people-console-team" + (fullscreenChat ? " is-chat-fullscreen" : "")} aria-label="Conversation MAUSBOT de l’équipe">
+        <section ref={fullscreenRef}
+          className={"atlas-people-console atlas-people-console-team" + (fullscreenChat ? " is-chat-fullscreen" : "")}
+          role={fullscreenChat && !compact ? "dialog" : undefined}
+          aria-modal={fullscreenChat && !compact ? true : undefined}
+          aria-label="Conversation MAUSBOT">
         <div className="atlas-people-chat" id="atlas-people-conversation">
-          <div className="atlas-people-chat-heading">
+          <div className="atlas-people-chat-heading" tabIndex={-1}>
             <AgentPortrait agent={selectedAgent ?? (selection?.kind === "team" ? chief?.agent : null)} workspaceId={workspaceId}
               className={"atlas-people-avatar " + (selection?.kind === "team" ? "is-team" : "is-agent")} fallback={selection?.kind === "team" ? "layers" : "bot"} />
             <div className="atlas-people-chat-identity">
               <strong>{selectedName || "Conversations"}</strong>
-              <small>{selection?.kind === "team" ? "Canal d’équipe MAUSBOT" : selectedAgent ? selectedAgent.title || "Agent MAUSBOT" : "Choisissez une équipe ou un agent"}</small>
+              <small>{selection?.kind === "team" ? "Chat de la team" : selectedAgent ? selectedAgent.title || "Chat agent" : "Choisissez une équipe ou un agent"}</small>
             </div>
             <div className="atlas-people-chat-controls">
               {selected && <button type="button" className="atlas-people-icon-button" title="Actualiser les messages"
                 aria-label="Actualiser les messages" disabled={!threadId || messagesBusy || !canReadMessages}
                 onClick={() => setMessagesRevision(value => value + 1)}><Icon name="rotate-ccw" /></button>}
-              <button type="button" className="atlas-people-icon-button atlas-people-fullscreen-toggle"
+              <button type="button" ref={fullscreenToggleRef} className="atlas-people-icon-button atlas-people-fullscreen-toggle"
                 aria-pressed={fullscreenChat} aria-label={fullscreenChat ? "Quitter le plein écran" : "Afficher la conversation en plein écran"}
                 title={fullscreenChat ? "Réduire" : "Plein écran"}
                 onClick={() => setFullscreenChat(value => !value)}>
@@ -425,7 +575,7 @@ export function AgentsWorkspace() {
               </button>
             </div>
           </div>
-          {selected && currentThreads.length > 0 && <label className="atlas-people-thread-picker">Fil de conversation
+          {selected && currentThreads.length > 0 && <label className="atlas-people-thread-picker">Discussion
             <select value={threadId} onChange={event => {
               const id = event.target.value;
               setThreadId(id);
@@ -491,12 +641,12 @@ export function AgentsWorkspace() {
                 onChange={event => setDraft(event.target.value)}
                 disabled={!canSend || sending}
                 placeholder={canSend ? "Écrire à cet agent ou à cette équipe…" :
-                  selected ? "Envoi indisponible tant que le contrôle administrateur n’est pas activé" :
-                  "Sélectionnez un agent ou une équipe pour ouvrir sa conversation"} />
+                  selected ? "Lecture seule · envoi non autorisé" :
+                  "Choisissez une team ou un agent"} />
             </div>
             {sendIssue && <p role="alert">{sendIssue} · Vérifiez le fil avant toute nouvelle tentative.</p>}
             <div className="atlas-people-composer-footer">
-              <span><Icon name="shield-check" /> {canSend ? "Envoi explicite par le propriétaire · suivi durable" : "Envoi verrouillé tant que l’autorisation manque"}</span>
+              <span><Icon name="shield-check" /> {canSend ? "Envoi sécurisé" : "Lecture seule"}</span>
               <button type="button" onClick={() => void sendMessage()} disabled={!canSend || !draft.trim() || sending}>
                 <Icon name="arrow-up" /> {sending ? "Envoi…" : "Envoyer"}
               </button>

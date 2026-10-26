@@ -9,7 +9,7 @@ test('L2 exposes responsive library and reader routes with EPUB/PDF engines', ()
   assert.match(read('../src/app/lecture/page.tsx'), /BookLibrary/);
   assert.match(read('../src/app/lecture/[id]/page.tsx'), /readerId={id}/);
   assert.match(library, /foliate-js\/view\.js/);
-  assert.match(library, /element\.open\(readerUrl\)/);
+  assert.match(library, /element\.open\(readerFile\)/);
   assert.match(read('../public/vendor/foliate-js/pdf.js'), /pdfjsLib/);
   assert.match(library, /"night"/);
   assert.match(library, /Georgia, serif/);
@@ -48,11 +48,13 @@ test('cover and annotation migrations remain additive and have matching manual r
   assert.match(read('../.github/workflows/ci.yml'), /20261026133500_atlas_book_annotation_anchor\.sql/);
 });
 
-test('preview builds are skipped only for the stacked books L1 branch', () => {
+test('preview builds are skipped for the books source branches without disabling main', () => {
   assert.match(read('../netlify.toml'), /netlify-ignore-lecture-livres\.js/);
   assert.match(read('../vercel.json'), /"feat\/lecture-livres-l1": false/);
+  assert.match(read('../vercel.json'), /"fix\/lecture-open-book-r1": false/);
   const script = new URL('../scripts/netlify-ignore-lecture-livres.js', import.meta.url).pathname;
   assert.equal(spawnSync(process.execPath, [script], { env: { ...process.env, BRANCH: 'feat/lecture-livres-l1' } }).status, 0);
+  assert.equal(spawnSync(process.execPath, [script], { env: { ...process.env, BRANCH: 'fix/lecture-open-book-r1' } }).status, 0);
   assert.equal(spawnSync(process.execPath, [script], { env: { ...process.env, BRANCH: 'main' } }).status, 1);
 });
 

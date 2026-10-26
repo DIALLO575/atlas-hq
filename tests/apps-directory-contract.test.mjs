@@ -10,71 +10,69 @@ const logos = [
   "calendly", "hubspot", "zapier", "clickup",
 ];
 
-test("all provider icons are authentic local SVG assets with no script or remote image dependencies", async () => {
+test("provider brand assets remain local and safe", async () => {
   for (const slug of logos) {
     const svg = await read("../public/brands/" + slug + ".svg");
     assert.match(svg, /<svg\b/);
     assert.match(svg, /<\/svg>/);
     assert.doesNotMatch(svg, /<script\b|<foreignObject\b|<image\b|\bon\w+=|(?:xlink:)?href\s*=\s*["'](?!#)/i);
   }
-  assert.match(await read("../public/brands/README.md"), /Simple Icons/);
-  assert.match(await read("../public/brands/LICENSE-simple-icons.md"), /CC0/);
 });
 
-test("Mes Apps is a proper working discovery interface, not fictitious integration data", async () => {
-  const [page, directory, catalogue, brand, home, styles] = await Promise.all([
+test("Mes Apps renders connected applications only, without mock catalogue or favorites", async () => {
+  const [page, directory, source, layout] = await Promise.all([
     read("../src/app/apps/page.tsx"),
     read("../src/components/apps-directory.tsx"),
-    read("../src/lib/app-catalog.ts"),
-    read("../src/components/brand-logo.tsx"),
-    read("../src/app/page.tsx"),
-    read("../src/app/apps-redesign.css"),
+    read("../src/lib/connected-apps.ts"),
+    read("../src/app/layout.tsx"),
   ]);
-  assert.match(page, /<AppsDirectory/);
-  assert.match(page, /<AppsDirectory githubConfigured/);
-  assert.doesNotMatch(page, /<GitHubWorkspacePicker|force-dynamic|supabase\.auth\.getUser/);
-  assert.doesNotMatch(directory, /githubSlot|hasVerifiedGitHub/);
-  assert.match(directory, /app.slug === "github"/);
-  assert.match(directory, /href="\/apps\/linear"/);
-  assert.match(directory, /app.slug === "linear"/);
-  assert.match(page, /Vos applications, au même endroit/);
-  assert.match(page, /href="#apps-catalog"/);
-  assert.match(directory, /useState/);
-  assert.match(directory, /useMemo/);
-  assert.match(directory, /aria-pressed/);
-  assert.match(directory, /id="atlas-apps-search"/);
-  assert.match(directory, /aria-live="polite"/);
-  assert.match(directory, /toggleFavorite/);
-  assert.match(directory, /localStorage\.setItem\(FAVORITES_KEY/);
-  assert.match(directory, /Voir toutes les applications/);
-  assert.match(directory, /setSelected/);
-  assert.match(directory, /Retrouvez les connexions réelles dans leur espace de pilotage/);
-  assert.match(directory, /Connexion à venir/);
-  assert.doesNotMatch(directory, /Actions rapides|Besoin de vous|atlas-apps-sidebar|atlas-apps-attention/);
-  assert.match(directory, /atlas-apps-inline-detail/);
-  assert.doesNotMatch(directory, /8 apps connectées|Approbations \(3\)|Connectée<\/span>/);
-  assert.match(catalogue, /recommendedApps = atlasApps\.filter/);
-  assert.match(catalogue, /HubSpot/);
-  assert.match(catalogue, /Google Calendar/);
-  assert.match(brand, /\/brands\//);
-  assert.match(brand, /unoptimized/);
-  assert.match(home, /<BrandLogo/);
-  assert.match(styles, /atlas-apps-content-grid/);
-  assert.match(styles, /atlas-apps-tiles/);
-  assert.match(styles, /atlas-apps-reco-grid/);
-  assert.match(styles, /grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
-  assert.match(styles, /@media\(max-width:540px\)/);
+  assert.match(page, /listConnectedApps\(\)/);
+  assert.match(page, /force-dynamic/);
+  assert.match(page, /<AppsDirectory apps=\{apps\}/);
+  assert.match(directory, /apps\.map\(\(app\)/);
+  assert.match(directory, /app\.href/);
+  assert.match(directory, /Aucune application connectée/);
+  assert.match(directory, /Connexions indisponibles/);
+  assert.doesNotMatch(directory, /atlasApps|recommendedApps|localStorage|Favoris|Connexion à venir|À découvrir|Recommandées/);
+  assert.doesNotMatch(page, /githubConfigured|apps-catalog|Explorer les apps/);
+  assert.doesNotMatch(layout, /import "\.\/apps-redesign\.css"/);
+  assert.deepEqual(
+    [...source.matchAll(/\{ slug: "(.*?)", name:/g)].map((match) => match[1]),
+    ["github", "notion", "linear"],
+  );
+  assert.doesNotMatch(source, /\bslug: "n8n"|\bslug: "figma"|\bslug: "slack"/);
 });
 
-test("all enabled navigation targets have real destinations and not fake OAuth flows", async () => {
-  const directory = await read("../src/components/apps-directory.tsx");
-  const page = await read("../src/app/apps/page.tsx");
-  assert.match(page, /href="#apps-catalog"/);
-  assert.doesNotMatch(directory, /href="\/agents"|href="\/missions"|href="\/inbox"/);
-  assert.doesNotMatch(directory, /href="https?:\/\/.*oauth|fetch\(["']\/api\/connect/);
+test("provider status checks are scoped to authenticated workspace membership and stored verification", async () => {
+  const source = await read("../src/lib/connected-apps.ts");
+  assert.match(source, /client\.auth\.getUser\(\)/);
+  assert.match(source, /from\("workspace_members"\)/);
+  assert.match(source, /\.eq\("user_id", user\.id\)/);
+  assert.match(source, /status", "repositories-ready"/);
+  assert.match(source, /ownership_verified_at && item\.repositories_verified_at/);
+  assert.match(source, /atlas_connections/);
+  assert.match(source, /atlas_notion_connections/);
+  assert.match(source, /verified\.has\(row\.workspace_id \+ ":" \+ row\.id\)/);
+  assert.match(source, /atlas_linear_connections/);
+  assert.match(source, /\.is\("revoked_at", null\)/);
+  assert.match(source, /Promise\.allSettled/);
+  assert.doesNotMatch(source, /\.select\("\*"\)|access_token|refresh_token|ciphertext/i);
 });
 
-test("Linear connection status is scoped to the verified actor and does not read credentials", async () => {
+test("Mes Apps stays compact and responsive on mobile and desktop", async () => {
+  const [page, css] = await Promise.all([
+    read("../src/app/apps/page.tsx"),
+    read("../src/app/apps/connected-apps.css"),
+  ]);
+  assert.match(page, /import "\.\/connected-apps\.css"/);
+  assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(css, /@media \(max-width: 900px\)/);
+  assert.match(css, /@media \(max-width: 600px\)/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(css, /focus-visible/);
+});
+
+test("Linear connection status endpoint remains actor-scoped without credential reads", async () => {
   const route = await read("../src/app/api/apps/linear/connection/route.ts");
   assert.match(route, /requireLinearWorkspaceMember\(workspaceId\)/);
   assert.match(route, /\.eq\("workspace_id", actor\.workspaceId\)\.eq\("user_id", actor\.userId\)/);

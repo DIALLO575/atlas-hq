@@ -34,8 +34,8 @@ test("Mes Apps includes a true n8n page and local image, without claiming connec
     read("../src/app/apps/n8n/page.tsx"), read("../public/brands/n8n.svg"),
   ]);
   assert.match(catalog, /slug: "n8n"/);
-  assert.match(directory, /href="\/apps\/n8n"/);
-  assert.match(directory, /app.slug === "n8n" \? "Préconnexion"/);
+  // Mes Apps now lists only really connected apps: n8n stays reachable via /apps/n8n but is never claimed connected.
+  assert.doesNotMatch(directory, /n8n/);
   assert.match(page, /createSupabaseServerClient/);
   assert.match(page, /supabase\.auth\.getUser\(\)/);
   assert.match(page, /from\("workspace_members"\)/);

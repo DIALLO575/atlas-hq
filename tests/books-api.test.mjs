@@ -11,4 +11,5 @@ test('ETags are stable for same owner/workspace payload and distinguish scope',(
 test('Vercel automatic deployments stay disabled only for the feature branch', async()=>{
  const {readFile}=await import('node:fs/promises'); const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
  assert.equal(config.git.deploymentEnabled['feat/lecture-livres-l1'],false);
+ assert.equal(config.git.deploymentEnabled['fix/lecture-open-book-r1'],false);
 });

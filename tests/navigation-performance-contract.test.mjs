@@ -11,11 +11,12 @@ test("app directory avoids unnecessary authenticated round trips", async () => {
     read("../src/app/apps/github/page.tsx"),
     read("../src/lib/github/connect.ts"),
   ]);
-  assert.match(page, /export default function AppsPage/);
-  assert.doesNotMatch(page, /await|force-dynamic|workspace_members|atlas_github_installations|createSupabaseServerClient/);
+  // Mes Apps shows only verified connections: one server-side read through listConnectedApps, no client round trips.
+  assert.match(page, /export default async function AppsPage/);
+  assert.match(page, /await listConnectedApps\(\)/);
+  assert.doesNotMatch(page, /workspace_members|atlas_github_installations|createSupabaseServerClient|fetch\(/);
   assert.match(dir, /import Link from "next\/link"/);
-  assert.match(dir, /<Link className="atlas-app-details" href="\/apps\/github" prefetch=\{true\}/);
-  assert.match(dir, /Piloter <Icon/);
+  assert.match(dir, /<Link className="atlas-connected-open" href=\{app\.href\}>/);
   assert.match(githubPage, /searchParams: Promise<\{ workspaceId\?: string; github\?: string; studioAuth\?: string \}>/);
   assert.match(githubPage, /params\.github === "connected"/);
   assert.match(connect, /new URL\("\/apps\/github", settings\.publicOrigin\)/);
