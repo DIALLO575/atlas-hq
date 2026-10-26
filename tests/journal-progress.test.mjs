@@ -49,6 +49,10 @@ test('journal progress migration can be rerun and receipt cleanup has a bounded 
   assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.journal_progress_batches/);
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.journal_record_progress_batch/);
   assert.match(migration, /DROP POLICY IF EXISTS journal_reading_sessions_owner_select/);
+  assert.match(migration, /DROP POLICY IF EXISTS feed_item_state_owner_select/);
+  assert.match(migration, /DROP POLICY IF EXISTS feed_item_state_owner_insert/);
+  assert.match(migration, /DROP POLICY IF EXISTS feed_item_state_owner_update/);
+  assert.match(migration, /VALUES\(v_uid,p_workspace,v_event->>'editionId',v_event->>'itemId','new'\) ON CONFLICT DO NOTHING/);
   assert.match(migration, /v_receipt_retention CONSTANT interval := interval '90 days'/);
   assert.match(migration, /DELETE FROM public\.journal_progress_batches WHERE created_at < now\(\) - v_receipt_retention/);
   assert.match(rollback, /DESTRUCTIVE AND IRREVERSIBLE/);

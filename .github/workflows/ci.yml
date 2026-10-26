@@ -42,6 +42,7 @@ jobs:
           psql -X -v ON_ERROR_STOP=1
           -f tests/sql/journal-progress-fixture.sql
           -f supabase/migrations/20261026070000_atlas_journal_reading_progress.sql
+          -f supabase/migrations/20261026070000_atlas_journal_reading_progress.sql
           -f tests/sql/journal-progress-checks.sql
 
   engine-foundation-postgres:
