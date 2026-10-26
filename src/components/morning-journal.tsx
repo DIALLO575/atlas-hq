@@ -81,7 +81,9 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
   const closeBtn = useRef<HTMLButtonElement>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const onProgressRef = useRef(onProgress);
+  const itemRef = useRef(item);
   useEffect(() => { onProgressRef.current = onProgress; }, [onProgress]);
+  useEffect(() => { itemRef.current = item; }, [item]);
   const prev = neighbor(list, item.key, -1), next = neighbor(list, item.key, 1);
   const minutes = readingMinutes(item.title, item.summary, item.whyItMatters);
   const sources = sourcesOf(item);
@@ -111,7 +113,7 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
       const seconds = Math.min(120, Math.floor(pendingSeconds));
       if (seconds < 1) return;
       pendingSeconds -= seconds;
-      const body = onProgressRef.current(item, seconds, position());
+      const body = onProgressRef.current(itemRef.current, seconds, position());
       if (beacon && body && navigator.sendBeacon) {
         navigator.sendBeacon("/api/engines/mausbot/journal/progress", new Blob([JSON.stringify(body)], { type: "application/json" }));
       }
@@ -148,7 +150,7 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
       el?.removeEventListener("pointerdown", activity);
       send(false);
     };
-  }, [item]);
+  }, [item.key]);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
