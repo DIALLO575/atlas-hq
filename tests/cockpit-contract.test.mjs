@@ -33,7 +33,7 @@ test("cockpit navigation exposes six primary destinations and transversal access
 
 test("missions and inbox show real workflow; secondary pages have honest empty states", () => {
   for (const page of [related, settings]) {
-    assert.match(page, /<DemoNotice\/>/);
+    assert.doesNotMatch(page, /<DemoNotice\/>/);
     assert.match(page, /<EmptyPanel/);
   }
   assert.match(chief, /<ChiefCommandDeck/);
