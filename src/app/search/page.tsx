@@ -19,7 +19,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   return <AppShell><main className="main-content" id="main-content">
     <PageHeading eyebrow="RETROUVER" title="Recherche" description="Recherchez les missions réelles de votre workspace. Aucun résultat de démonstration." />
     {data.status === "error" ? <section role="alert"><EmptyPanel title="Recherche indisponible">{data.message}</EmptyPanel></section>
-      : !data.selected ? <EmptyPanel title="Aucun workspace accessible">Créez un workspace ou demandez l'accès à un espace pour rechercher ses missions.</EmptyPanel>
+      : !data.selected ? <EmptyPanel title="Aucun workspace accessible">Créez un workspace ou demandez l’accès à un espace pour rechercher ses missions.</EmptyPanel>
       : <>
         <form className="search-form" role="search" method="get" action="/search">
           <Icon name="search" />
