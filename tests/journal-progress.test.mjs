@@ -58,7 +58,7 @@ test('journal progress migration can be rerun and receipt cleanup has a bounded 
   assert.match(rollback, /DESTRUCTIVE AND IRREVERSIBLE/);
   assert.match(rollback, /Counters, daily totals and retry history are/);
 });
-test('ranking preserves editorial order without mutating array', () => {
+test('ranking preserves input order when no edition or reading metadata is supplied', () => {
   const items = [{ id: 2 }, { id: 1 }]; assert.deepEqual(rankItems(items), items); assert.notEqual(rankItems(items), items);
 });
 test('RPC forwarding is identity-free and handles schema missing/replay conflict', async () => {

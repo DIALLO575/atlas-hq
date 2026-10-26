@@ -112,7 +112,7 @@ function fakeSupabase({ editions, rowsByEdition, signedCalls }) {
   };
 }
 
-test("Supabase reader: merges each producer's latest edition, keeps MORGANS first and signs both covers", async () => {
+test("Supabase reader: merges each producer's latest edition, puts newest producer first and signs both covers", async () => {
   const signedCalls = [];
   const editions = [
     { workspace_id: "ws-1", edition_id: "morgans-old", generated_at: "2026-10-25T12:00:00Z", producer: "morgans", schema_version: "1" },
@@ -128,17 +128,19 @@ test("Supabase reader: merges each producer's latest edition, keeps MORGANS firs
   const sb = fakeSupabase({ editions, rowsByEdition, signedCalls });
   const e = await readJournalFromSupabase(sb, "ws-1");
   assert.equal(e.items.length, 2);
-  assert.equal(e.producer, "morgans+grok-bot");
   assert.equal(e.editionId, "grok-new");
   assert.deepEqual(e.items.map(i => [i.title, i.editionId, i.key]), [
-    ["MORGANS item", "morgans-current", journalItemKey("morgans-current", "same-id")],
     ["Grok item", "grok-new", journalItemKey("grok-new", "same-id")],
+    ["MORGANS item", "morgans-current", journalItemKey("morgans-current", "same-id")],
   ]);
+  assert.deepEqual(e.editions.map(({ editionId, producer }) => [editionId, producer]), [["grok-new", "grok-bot"], ["morgans-current", "morgans"]]);
+  assert.equal(e.generatedAt, "2026-10-25T14:00:00Z");
+  assert.equal(e.producer, "grok-bot+morgans");
   assert.equal(signedCalls[0].bucket, "journal-covers");
-  assert.deepEqual(signedCalls[0].paths, ["ws-1/morgans/cover.webp", "ws-1/grok/cover.webp"]);
+  assert.deepEqual(signedCalls[0].paths, ["ws-1/grok/cover.webp", "ws-1/morgans/cover.webp"]);
   assert.equal(signedCalls[0].ttl, 3600);
-  assert.match(e.items[0].coverUrl, /^https:\/\/proj\.supabase\.co\/storage\/v1\/object\/sign\/ws-1\/morgans\/cover\.webp/);
-  assert.match(e.items[1].coverUrl, /^https:\/\/proj\.supabase\.co\/storage\/v1\/object\/sign\/ws-1\/grok\/cover\.webp/);
+  assert.match(e.items[0].coverUrl, /^https:\/\/proj\.supabase\.co\/storage\/v1\/object\/sign\/ws-1\/grok\/cover\.webp/);
+  assert.match(e.items[1].coverUrl, /^https:\/\/proj\.supabase\.co\/storage\/v1\/object\/sign\/ws-1\/morgans\/cover\.webp/);
   await assert.rejects(readJournalFromSupabase(fakeSupabase({ editions: [], rowsByEdition: {}, signedCalls }), "ws-1"), /NOT_FOUND/);
   await assert.rejects(readJournalFromSupabase(fakeSupabase({ editions: [{ workspace_id: "ws-1", edition_id: "e", producer: "morgans", schema_version: "2" }], rowsByEdition: {}, signedCalls }), "ws-1"), /UNSUPPORTED/);
   assert.equal(journalItemsFromRows("e", null).length, 0);
@@ -173,6 +175,7 @@ test("routes: owner-only, GET-only to MausBot, state writes Supabase not MausBot
   assert.doesNotMatch(read, /export async function (POST|PUT|DELETE|PATCH)/);
   assert.match(owner, /role !== "owner"/);
   assert.match(read, /\.in\("edition_id", editionIds\)/);
+  assert.match(read, /editions: edition\.editions/);
   assert.match(read, /stateMap\[i\.key\]/);
   assert.match(state, /from\("feed_item_state"\)\.upsert/);
   assert.doesNotMatch(read + state, /mausbotRequest|resolveMausbotConfig|ATLAS_MAUSBOT_JOURNAL_URL|og:image/);

@@ -1,7 +1,7 @@
 export type JournalCover = { storagePath: string; generated: boolean; alt: string; credit: string | null; sourceName: string | null };
 export type JournalCategory = "ia" | "ia-sur-x" | "commerce" | "guinee" | "afrique" | "monde" | "economie";
 export type JournalItem = {
-  id: string; editionId: string; category: JournalCategory; topic: string | null; title: string;
+  id: string; editionId: string; position: number; category: JournalCategory; topic: string | null; title: string;
   summary: string; whyItMatters: string | null; certainty: "elevee" | "moyenne" | "faible" | null;
   status: "confirme" | "rapporte" | "a_verifier" | null; sourceUrl: string | null; sourceName: string | null;
   extraSources: { url: string; name: string | null }[]; cover: JournalCover | null; publishedAt: string | null; authorBot: string | null; featured: boolean;

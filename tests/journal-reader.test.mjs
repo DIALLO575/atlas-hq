@@ -47,6 +47,8 @@ test("reading helpers", () => {
   assert.equal(readingMinutes("mot ".repeat(10)), 1);
   assert.equal(readingMinutes("mot ".repeat(660)), 3);
   assert.equal(pickFeatured([{ id: "a" }, { id: "b", featured: true }]).id, "b");
+  assert.equal(pickFeatured([{ id: "done", state: "done", featured: true }, { id: "new", state: "new" }]).id, "new");
+  assert.equal(pickFeatured([{ id: "done", state: "done" }]), null);
   assert.equal(pickFeatured([{ id: "a" }, { id: "b" }]).id, "a");
   assert.equal(pickFeatured([]), null);
   assert.equal(stepFont(4, 1), 4); assert.equal(stepFont(0, -1), 0); assert.equal(stepFont(1, 1), 2);

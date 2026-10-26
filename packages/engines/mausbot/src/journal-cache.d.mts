@@ -26,8 +26,10 @@ export type JournalCacheAdapter = {
 export function journalCacheScope(userId: string, workspaceId: string): string;
 export function journalCacheKey(userId: string, workspaceId: string, editionId: string): string;
 export function cacheIsStale(entry: { savedAt: number } | null | undefined, now: number): boolean;
+export function journalPayloadTimestamp(payload: unknown): number;
+export function readJournalPreferences(preferences?: Record<string, unknown>): Record<string, string | number> & { hideDone: 0 | 1 };
 export function mergeJournalPayload<T extends { items: { key: string }[] }>(previous: T | null | undefined, incoming: T, queue?: JournalQueueOperation[]): T;
-export function trimJournalEditions<T extends { cacheVersion: number; savedAt: number }>(editions: T[], now: number): T[];
+export function trimJournalEditions<T extends { cacheVersion: number; savedAt: number; payload?: unknown }>(editions: T[], now: number): T[];
 export function safeCachedPayload<T>(payload: T, now: number): T & { offline: true };
 export function createJournalCache(adapter: JournalCacheAdapter): {
   open(scope: string): Promise<JournalCacheToken>;

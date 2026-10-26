@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CACHE_VERSION, createJournalCache, journalCacheScope, journalCacheKey, mergeJournalPayload, trimJournalEditions, cacheIsStale, safeCachedPayload, journalPayloadEqual } from '../packages/engines/mausbot/src/journal-cache.mjs';
+import { CACHE_VERSION, createJournalCache, journalCacheScope, journalCacheKey, mergeJournalPayload, trimJournalEditions, cacheIsStale, safeCachedPayload, journalPayloadEqual, readJournalPreferences } from '../packages/engines/mausbot/src/journal-cache.mjs';
 import { journalEtag, journalEtagMatches } from '../packages/engines/mausbot/src/journal-etag.mjs';
 function memoryAdapter() { let root=null; return { update: async fn => { const [next,result]=fn(structuredClone(root)); root=structuredClone(next); return result; } }; }
 const ws='11111111-1111-4111-8111-111111111111';
@@ -23,6 +23,29 @@ test('hydrate, queue, purge and stale in-flight writes cannot resurrect data',as
  const merged=mergeJournalPayload(payload,payload,(await cache.snapshot(token)).queue); assert.equal(merged.items[0].state,'read');
  await cache.acknowledge(token,state.id);assert.equal((await cache.snapshot(token)).queue.length,0);
  await cache.purge(); assert.equal(await cache.save(token,payload,'old',20),false);assert.equal(await cache.snapshot(token),null);
+});
+test('cache orders editions by generated timestamp, rejects a stale replacement and reloads hideDone',async()=>{
+ const adapter=memoryAdapter(); const cache=createJournalCache(adapter); const token=await cache.open(journalCacheScope('u',ws));
+ const newer={...payload,editionId:'edition-new',generatedAt:'2026-10-26T06:55:00Z'};
+ const older={...payload,editionId:'edition-old',generatedAt:'2026-10-26T00:10:00Z'};
+ await cache.save(token,newer,'new',10);
+ await cache.save(token,older,'old-but-saved-last',20);
+ let snapshot=await cache.snapshot(token);
+ assert.equal(snapshot.editions.length,1);
+ assert.equal(snapshot.editions[0].payload.editionId,'edition-new');
+ const loaded=readJournalPreferences(snapshot.preferences);
+ assert.equal(loaded.hideDone,1);
+ await cache.preferences(token,{hideDone:0});
+ snapshot=await createJournalCache(adapter).snapshot(await createJournalCache(adapter).open(token.scope));
+ assert.equal(readJournalPreferences(snapshot.preferences).hideDone,0);
+ assert.equal(readJournalPreferences({theme:'sepia'}).hideDone,1);
+});
+test('trimming cache entries uses edition time before savedAt',()=>{
+ const entries=[
+  {cacheVersion:CACHE_VERSION,savedAt:300,payload:{generatedAt:'2026-10-26T00:10:00Z'}},
+  {cacheVersion:CACHE_VERSION,savedAt:100,payload:{generatedAt:'2026-10-26T06:55:00Z'}},
+ ];
+ assert.equal(trimJournalEditions(entries,400)[0].savedAt,100);
 });
 test('switch owner/workspace and cache version invalidates editions and pending writes',async()=>{
  const cache=createJournalCache(memoryAdapter());const first=await cache.open(journalCacheScope('u',ws));await cache.save(first,payload,'tag',1);await cache.enqueue(first,state);
@@ -49,6 +72,22 @@ test('identical 200 payloads do not need to publish a React update; changed cont
 test('journal-flicker branch skips Vercel deployments while its draft PR is reviewed',()=>{
  const config=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
  assert.equal(config.git.deploymentEnabled['fix/journal-flicker'],false);
+});
+test('journal reading-order branch skips Vercel deployments while its draft PR is reviewed',()=>{
+ const config=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
+ assert.equal(config.git.deploymentEnabled['fix/journal-unread-edition-order-20261026'],false);
+ const ignore=readFileSync(new URL('../scripts/netlify-ignore-lecture-livres.js',import.meta.url),'utf8');
+ assert.match(ignore,/fix\/journal-unread-edition-order-20261026/);
+});
+test('Journal loads hideDone preference and renders completed items collapsed',()=>{
+ const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+ const hook=read('src/components/journal/use-journal-data.ts');
+ const component=read('src/components/morning-journal.tsx');
+ assert.match(hook,/readJournalPreferences\(snapshot\?\.preferences\)/);
+ assert.match(component,/const hideDone = preferences\.hideDone !== 0/);
+ assert.match(component,/<details className="mj-done-list" open=\{!hideDone\} onToggle/);
+ assert.match(component,/<summary>Déjà lus \(/);
+ assert.match(component,/savePreference\("hideDone", hideDone \? 0 : 1\)/);
 });
 test('ETag stable across signed URL rotation, changes for content/state and owner',()=>{
  const tag=journalEtag(payload,'u',ws);assert.equal(journalEtag({...payload,coverExpiresAt:'later',items:[{...payload.items[0],coverUrl:'new-signed'}]},'u',ws),tag);

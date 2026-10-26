@@ -10,19 +10,21 @@ import { useJournalUnread } from "@/components/app-shell";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import { RichText } from "@/components/journal-rich-text";
 import { FONT_STEPS, READER_THEMES, bulkDonePlan, neighbor, pickFeatured, readingMinutes, stepFont, swipeDirection } from "../../packages/engines/mausbot/src/journal-reader.mjs";
+import { rankItems } from "../../packages/engines/mausbot/src/journal-ranking.mjs";
 import { JOURNAL_READ_THRESHOLD_SECONDS } from "../../packages/engines/mausbot/src/journal-progress.mjs";
 
 type Category = "ia" | "ia-sur-x" | "commerce" | "guinee" | "afrique" | "monde" | "economie";
 type ReadState = "new" | "read" | "done";
 type Item = {
-  id: string; key: string; editionId: string; category: Category; title: string; summary: string; whyItMatters: string | null;
+  id: string; key: string; editionId: string; position: number; category: Category; title: string; summary: string; whyItMatters: string | null;
   certainty: "elevee" | "moyenne" | "faible" | null; status: "confirme" | "rapporte" | "a_verifier" | null;
   sourceUrl: string | null; sourceName: string | null; extraSources: { url: string; name: string | null }[];
   publishedAt: string | null; authorBot: string | null; state: ReadState; featured?: boolean;
   secondsRead?: number; lastPosition?: number | null; firstReadAt?: string | null;
   cover: { storagePath: string; generated: boolean; alt: string; credit: string | null; sourceName: string | null } | null; coverUrl: string | null;
 };
-type Payload = { source: "supabase-read-only"; producer: string; demo: boolean; editionId: string; generatedAt: string | null; offline?: boolean;
+type Edition = { editionId: string; producer: string; generatedAt: string | null; receivedAt: string | null };
+type Payload = { source: "supabase-read-only"; producer: string; demo: boolean; editionId: string; generatedAt: string | null; receivedAt?: string | null; editions?: Edition[]; offline?: boolean;
   categories: { id: Category; label: string; count: number }[]; items: Item[]; stateAvailable: boolean };
 type Theme = (typeof READER_THEMES)[number];
 type Undo = { label: string; plan: { key: string; id: string; editionId: string; previous: "new" | "read" }[] } | null;
@@ -244,7 +246,6 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const [section, setSection] = useState<JournalSection>("featured");
   const [filter, setFilter] = useState<Category | "all">("all");
   const [readingId, setReadingId] = useState<string | null>(null);
-  const [hideDone, setHideDone] = useState(false);
   const [online, setOnline] = useState(true);
   const [confirm, setConfirm] = useState(false);
   const [undo, setUndo] = useState<Undo>(null);
@@ -253,6 +254,7 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   const [summary, setSummary] = useState<ReadingSummary | null>(null);
   const [summaryStatus, setSummaryStatus] = useState<"loading" | "ready" | "error">("loading");
   const { view, setView, enqueue, preferences, savePreference } = useJournalData<Payload>(ws, nonce);
+  const hideDone = preferences.hideDone !== 0;
   const shellUnread = useJournalUnread();
   const pullStart = useRef<number | null>(null);
 
@@ -309,10 +311,17 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
   }, [patch, postState]);
 
   const all = useMemo(() => view.data?.items ?? [], [view.data]);
-  const items = useMemo(() => all.filter(i => (section !== "unread" || i.state === "new") && (filter === "all" || i.category === filter) && (!hideDone || i.state !== "done")), [all, filter, hideDone, section]);
-  const featured = filter === "all" ? pickFeatured(items) : null;
-  const rest = items.filter(i => i !== featured);
-  const ordered = featured ? [featured, ...rest] : rest;
+  const selected = useMemo(() => all.filter(i => (section !== "unread" || i.state === "new") && (filter === "all" || i.category === filter)), [all, filter, section]);
+  const ranked = useMemo(() => rankItems(selected, view.data?.editions ?? []), [selected, view.data?.editions]);
+  const doneItems = ranked.filter(i => i.state === "done");
+  const activeItems = ranked.filter(i => i.state !== "done");
+  const items = hideDone ? activeItems : ranked;
+  const unreadItems = rankItems(activeItems.filter(i => i.state === "new"), view.data?.editions ?? []);
+  const startedItems = rankItems(activeItems.filter(i => i.state === "read" && (i.lastPosition ?? 0) > 0), view.data?.editions ?? []);
+  const readItems = rankItems(activeItems.filter(i => i.state === "read" && !(i.lastPosition && i.lastPosition > 0)), view.data?.editions ?? []);
+  const featuredEditionId = unreadItems[0]?.editionId;
+  const featured = filter === "all" && featuredEditionId ? pickFeatured(unreadItems.filter(i => i.editionId === featuredEditionId)) : null;
+  const ordered = items;
   const reading = readingId ? all.find(i => i.key === readingId) ?? null : null;
   const total = all.length;
   const done = all.filter(i => i.state === "read" || i.state === "done").length;
@@ -347,6 +356,36 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     { id: "exit", label: "Quitter", icon: "arrow-left" },
   ];
   const chooseSection = (id: JournalSection) => { setSection(id); if (id === "featured" || id === "unread") setFilter("all"); };
+  const editions = view.data?.editions ?? [];
+  const latestEdition = editions[0];
+  const latestProducer = latestEdition?.producer === "grok-bot" ? "Grok" : latestEdition?.producer === "morgans" ? "MORGANS" : "Édition";
+  const renderEditionGroups = (list: Item[]) => {
+    const groups: { editionId: string; items: Item[] }[] = [];
+    for (const item of list) {
+      const last = groups[groups.length - 1];
+      if (last?.editionId === item.editionId) last.items.push(item);
+      else groups.push({ editionId: item.editionId, items: [item] });
+    }
+    return groups.map(group => {
+      const edition = editions.find(entry => entry.editionId === group.editionId);
+      const producer = edition?.producer === "grok-bot" ? "Grok" : edition?.producer === "morgans" ? "MORGANS" : "Édition";
+      const instant = edition?.generatedAt ?? edition?.receivedAt ?? null;
+      return <section className="mj-edition-group" key={group.editionId + ":" + group.items[0].state} aria-label={producer + (instant ? " · " + dateLabel(instant) : "")}>
+        <header className="mj-edition-heading"><h2>{producer}</h2>{instant && <time dateTime={instant}>{dateLabel(instant)}</time>}</header>
+        <div className="mj-grid">{group.items.map(item => <article key={item.key} className={"mj-card" + (item === featured ? " is-lead" : "") + " is-state-" + item.state}>
+          <button className="mj-card-open" onClick={() => open(item)} tabIndex={-1} aria-hidden><Cover item={item} large={item === featured} label={label(item.category)} /></button>
+          <div className="mj-card-body">
+            <p className={"mj-cat is-" + item.category}>{item === featured && <span className="mj-une">À la une</span>}{label(item.category)}{item.state === "new" && <i className="mj-dot" role="img" aria-label="nouveau" />}</p>
+            <h2><button onClick={() => open(item)}>{item.title}</button></h2>
+            <p className="mj-summary">{item.summary.replace(/[*_>#]|\[([^\]]+)\]\([^)]+\)/g, "$1")}</p>
+            <p className="mj-card-meta">{item.sourceName ?? "Source non fournie"} · {readingMinutes(item.title, item.summary, item.whyItMatters)} min</p>
+            <p className="mj-card-state">{item.state === "new" ? "Nouveau" : item.state === "done" ? "Terminé" : item.lastPosition && item.lastPosition > 0 ? `Reprendre · ${Math.round(item.lastPosition * 100)} %` : "Lu"}</p>
+            <div className="mj-actions">{item.state !== "done" ? <button onClick={() => void setState(item, "done")} aria-label={"Marquer terminé : " + item.title}>Terminé</button> : <button onClick={() => void setState(item, "read")} aria-label={"Rouvrir : " + item.title}>Rouvrir</button>}{item.state === "new" && <button onClick={() => void setState(item, "read")} aria-label={"Marquer lu : " + item.title}>Lu</button>}</div>
+          </div>
+        </article>)}</div>
+      </section>;
+    });
+  };
 
   return <div className="mj-app">
     <aside className="mj-rail" aria-label="Navigation du Journal">
@@ -372,7 +411,8 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
     <header className="mj-masthead">
       <p className="mj-kicker">WORLD RADAR</p>
       <h1>Journal du matin</h1>
-      {view.data && <p className="mj-edition">{dateLabel(view.data.generatedAt) ?? "Édition " + view.data.editionId}{view.data.demo && " · données de démonstration"}</p>}
+      {view.data && <p className="mj-edition">{dateLabel(view.data.generatedAt ?? view.data.receivedAt ?? null) ?? "Édition " + view.data.editionId}{view.data.demo && " · données de démonstration"}</p>}
+      {view.data && !view.data.demo && latestEdition && <p className="mj-new-edition" role="status">Nouvelle édition <span>· {latestProducer}{(latestEdition.generatedAt ?? latestEdition.receivedAt) ? " · " + dateLabel(latestEdition.generatedAt ?? latestEdition.receivedAt ?? null) : ""}</span></p>}
       {view.data && <div className="mj-progress" role="progressbar" aria-label="Articles lus ou terminés" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
         <span style={{ width: total ? (100 * done / total) + "%" : "0%" }} /><b>{done}/{total} lus ou terminés</b>
       </div>}
@@ -394,26 +434,19 @@ export function MorningJournal({ workspaceId }: { workspaceId?: string }) {
           {Object.entries(rows).length ? Object.entries(rows).map(([name, value]) => <div className="mj-report-row" key={name}><span>{name === "ia-sur-x" ? "IA sur X" : label(name as Category) === name ? name : label(name as Category)}</span><b>{value.read}/{value.total}</b></div>) : <p className="mj-state">Les statistiques apparaîtront après synchronisation.</p>}
         </section>)}</div>
       </section>}
-      {section !== "stats" && <section className="mj-grid" aria-label={section === "unread" ? "Articles non lus" : "Articles"}>
-        {ordered.map(item => <article key={item.key} className={"mj-card" + (item === featured ? " is-lead" : "") + " is-state-" + item.state}>
-          <button className="mj-card-open" onClick={() => open(item)} tabIndex={-1} aria-hidden><Cover item={item} large={item === featured} label={label(item.category)} /></button>
-          <div className="mj-card-body">
-            <p className={"mj-cat is-" + item.category}>{item === featured && <span className="mj-une">À la une</span>}{label(item.category)}{item.state === "new" && <i className="mj-dot" role="img" aria-label="nouveau" />}</p>
-            <h2><button onClick={() => open(item)}>{item.title}</button></h2>
-            <p className="mj-summary">{item.summary.replace(/[*_>#]|\[([^\]]+)\]\([^)]+\)/g, "$1")}</p>
-            <p className="mj-card-meta">{item.sourceName ?? "Source non fournie"} · {readingMinutes(item.title, item.summary, item.whyItMatters)} min</p>
-            <p className="mj-card-state">{item.state === "new" ? "Nouveau" : item.state === "done" ? "Terminé" : item.lastPosition && item.lastPosition > 0 ? `Reprendre · ${Math.round(item.lastPosition * 100)} %` : "Lu"}</p>
-            <div className="mj-actions">
-              {item.state !== "done" ? <button onClick={() => void setState(item, "done")} aria-label={"Marquer terminé : " + item.title}>Terminé</button>
-                : <button onClick={() => void setState(item, "read")} aria-label={"Rouvrir : " + item.title}>Rouvrir</button>}
-              {item.state === "new" && <button onClick={() => void setState(item, "read")} aria-label={"Marquer lu : " + item.title}>Lu</button>}
-            </div>
-          </div>
-        </article>)}
-        {!items.length && <p className="mj-state">Rien dans ce thème pour cette édition.</p>}
+      {section !== "stats" && <section aria-label={section === "unread" ? "Articles non lus" : "Articles"}>
+        {unreadCount === 0 && <p className="mj-state mj-all-read" role="status">Tout est lu, prochaine édition attendue.</p>}
+        {!!unreadItems.length && <section aria-label="Non lus">{section !== "unread" && <h2 className="mj-reading-group-title">À lire</h2>}{renderEditionGroups(unreadItems)}</section>}
+        {section !== "unread" && !!startedItems.length && <section aria-label="Lecture entamée"><h2 className="mj-reading-group-title">Lecture entamée</h2>{renderEditionGroups(startedItems)}</section>}
+        {section !== "unread" && !!readItems.length && <section aria-label="Lus"><h2 className="mj-reading-group-title">Lus</h2>{renderEditionGroups(readItems)}</section>}
+        {!activeItems.length && unreadCount > 0 && <p className="mj-state">Rien dans ce thème pour cette édition.</p>}
+        {!!doneItems.length && <details className="mj-done-list" open={!hideDone} onToggle={event => {
+          const next = event.currentTarget.open ? 0 : 1;
+          if (next !== preferences.hideDone) savePreference("hideDone", next);
+        }}><summary>Déjà lus ({doneItems.length})</summary>{renderEditionGroups(doneItems)}</details>}
       </section>}
       <div className="mj-actionbar" role="toolbar" aria-label="Actions du journal">
-        <button aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>{hideDone ? "Afficher terminés" : "Masquer terminés"}</button>
+        <button aria-pressed={hideDone} onClick={() => savePreference("hideDone", hideDone ? 0 : 1)}>{hideDone ? "Afficher terminés" : "Masquer terminés"}</button>
         <button disabled={!plan.length} onClick={() => setConfirm(true)}>Tout marquer terminé</button>
         <button className="mj-icon-btn" onClick={() => setNonce(n => n + 1)} aria-label="Actualiser l’édition"><Icon name="rotate-ccw" /></button>
       </div>
