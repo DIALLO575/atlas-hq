@@ -36,10 +36,11 @@ export function useJournalData<T extends Payload>(workspaceId: string, nonce: nu
         const storage = await journalCacheStorage(); close = storage.close;
         const token = await storage.cache.open(journalCacheScope(userId,workspaceId));
         localStorage.setItem('atlas.journal.scope',token.scope);
+        sessionStorage.setItem('atlas.journal.offline-capability',JSON.stringify(token));
         if (!alive) { storage.close(); return; }
         const snapshot = await storage.cache.snapshot(token);
         const cached = snapshot?.editions[0];
-        if (alive) setPreferences(snapshot?.preferences ?? {});
+        if (alive) setPreferences(Object.fromEntries(Object.entries(snapshot?.preferences ?? {}).filter((entry): entry is [string, string | number] => typeof entry[1] === 'string' || typeof entry[1] === 'number')));
         const context = { cache: storage.cache, token, data: cached?.payload as T | undefined, etag: cached?.etag as string | undefined, refreshing: false };
         active.current = context; setVisibleWorkspace(workspaceId); setView({ status: 'loading' });
         if (cached && alive) setView({ status: 'ready', data: safeCachedPayload(cached.payload,Date.now()) as T });

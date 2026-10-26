@@ -1,0 +1,34 @@
+name: Journal cache browser
+on:
+  pull_request:
+    paths: ['public/journal-*', 'packages/engines/mausbot/src/journal-cache*', 'tests/browser/journal-*', 'scripts/*journal*', '.github/workflows/journal-cache-browser.yml']
+permissions:
+  contents: read
+jobs:
+  indexeddb-multitab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Verify offline module matches canonical primitives
+        run: node scripts/generate-journal-offline-cache.mjs --check
+      - name: Real Chromium IndexedDB, second-tab purge and cached render measurement
+        run: |
+          google-chrome --version
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/journal-cache-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in 1 2 3 4 5; do curl -fsS http://127.0.0.1:8765/tests/browser/journal-cache-real.html > /dev/null && break || sleep 1; done
+          google-chrome --headless --no-sandbox --disable-gpu --disable-popup-blocking --disable-background-timer-throttling --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/journal-test-profile" about:blank > /tmp/journal-chrome.log 2>&1 &
+          chrome_pid=$!
+          trap 'kill "$chrome_pid" "$server_pid"' EXIT
+          for attempt in 1 2 3 4 5; do curl -fsS http://127.0.0.1:9222/json/version > /dev/null && break || sleep 1; done
+          node scripts/test-journal-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journal-cache-real-browser-result
+          path: journal-cache-browser-result.json

@@ -47,3 +47,12 @@ test('SW stores public shell only; hook 304 returns before body/React replacemen
  const hook=read('src/components/journal/use-journal-data.ts');assert(hook.indexOf('response.status === 304')<hook.indexOf('const body = await response.json()'));
  assert.match(read('src/components/session-controls.tsx'),/await purgeJournalCache\(\); await signOut\(\)/);
 });
+
+test('offline cold reader requires matching per-tab capability and queues validated operations',()=>{
+ const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');const offline=read('public/journal-offline.js');
+ assert.match(offline,/sessionStorage.getItem\('atlas.journal.offline-capability'\)/);
+ assert.match(offline,/storage.cache.snapshot\(token\)/);assert.match(offline,/kind:'state'/);assert.match(offline,/kind:'progress'/);
+ assert.match(offline,/document.visibilityState==='visible'&&document.hasFocus\(\)/);assert.match(offline,/lastActivity<60000/);
+ const storage=read('public/journal-cache-storage.mjs');assert.match(storage,/window.dispatchEvent\(new Event\('journal:purged'\)\)/);
+ assert.match(read('src/lib/journal/cache-storage.ts'),/public\/journal-cache-storage.mjs/);
+});

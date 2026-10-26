@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><script type="module">
+import {journalCacheStorage,purgeJournalCache} from '/public/journal-cache-storage.mjs';
+const store=await journalCacheStorage();
+addEventListener('message',async event=>{if(event.origin!==location.origin)return;const {id,operation,token}=event.data;try {const result=operation==='purge'?await purgeJournalCache():operation==='save'?await store.cache.save(token,{editionId:'peer',items:[]},undefined,Date.now()):await store.cache.snapshot(token);event.source.postMessage({id,result},location.origin);}catch(error){event.source.postMessage({id,error:error.message},location.origin);}});
+opener.postMessage({ready:true},location.origin);
+</script>
