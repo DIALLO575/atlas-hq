@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 export const BOOK_FORMATS = Object.freeze({ epub: 'application/epub+zip', pdf: 'application/pdf' });
 export const BOOK_FINISHED_THRESHOLD = 0.98;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function isBookUuid(value) { return typeof value === 'string' && UUID.test(value); }
 export function validateCreateBook(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;

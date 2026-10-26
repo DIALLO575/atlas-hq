@@ -5,17 +5,31 @@ DO $$ DECLARE x jsonb; n integer; BEGIN
  IF NOT has_function_privilege('authenticated','public.book_record_progress_batch(uuid,uuid,jsonb)','EXECUTE') OR has_function_privilege('anon','public.book_record_progress_batch(uuid,uuid,jsonb)','EXECUTE') THEN RAISE EXCEPTION 'progress RPC grants incorrect'; END IF;
  IF (SELECT public FROM storage.buckets WHERE id='books') IS DISTINCT FROM false THEN RAISE EXCEPTION 'books storage must be private'; END IF;
 END $$;
-INSERT INTO public.books(id,workspace_id,owner_id,title,format) VALUES('cccccccc-cccc-4ccc-8ccc-cccccccccccc','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','Fixture','epub');
+INSERT INTO public.books(id,workspace_id,owner_id,title,format) VALUES
+ ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','Fixture owner one','epub'),
+ ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','22222222-2222-4222-8222-222222222222','Fixture owner two','pdf');
 SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'; SET ROLE authenticated;
-SELECT public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":30,"position":0.98,"clientUpdatedAt":"2026-10-26T11:00:00Z","pagesRead":20}]'::jsonb);
-SELECT public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":30,"position":0.98,"clientUpdatedAt":"2026-10-26T11:00:00Z","pagesRead":20}]'::jsonb);
-SELECT public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','ffffffff-ffff-4fff-8fff-ffffffffffff','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":10,"position":0.2,"clientUpdatedAt":"2026-10-26T10:00:00Z","pagesRead":5}]'::jsonb);
-DO $$ DECLARE s public.book_reading_state%rowtype; d integer; b text; BEGIN
+DO $$ DECLARE x jsonb; s public.book_reading_state%rowtype; d integer; b text; BEGIN
+ x:=public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":30,"position":0.5,"clientUpdatedAt":"2026-10-26T12:00:00Z","pagesRead":10}]'::jsonb);
+ IF x->>'duplicate'<>'false' THEN RAISE EXCEPTION 'first batch not recorded as new: %',x; END IF;
+ x:=public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":30,"position":0.5,"clientUpdatedAt":"2026-10-26T12:00:00Z","pagesRead":10}]'::jsonb);
+ IF x->>'duplicate'<>'true' THEN RAISE EXCEPTION 'replayed send_id must return duplicate true: %',x; END IF;
+ x:=public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','ffffffff-ffff-4fff-8fff-ffffffffffff','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":10,"position":0.99,"clientUpdatedAt":"2026-10-26T11:00:00Z","pagesRead":99}]'::jsonb);
  SELECT * INTO s FROM public.book_reading_state WHERE book_id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
- IF s.position<>0.98 OR s.finished_at IS NULL THEN RAISE EXCEPTION 'last-write-wins or 98%% finish failed: %',row_to_json(s); END IF;
- SELECT seconds INTO d FROM public.book_reading_sessions WHERE book_id='cccccccc-cccc-4ccc-8ccc-cccccccccccc'; IF d<>40 THEN RAISE EXCEPTION 'session delta was not accounted: %',d; END IF;
+ IF s.position<>0.5 OR s.finished_at IS NOT NULL THEN RAISE EXCEPTION 'stale progress replaced the current state: %',row_to_json(s); END IF;
+ SELECT status INTO b FROM public.books WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc'; IF b<>'active' THEN RAISE EXCEPTION 'stale progress finished the book'; END IF;
+ PERFORM public.book_record_progress_batch('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','abababab-abab-4aba-8aba-abababababab','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":30,"position":0.98,"clientUpdatedAt":"2026-10-26T12:30:00Z","pagesRead":20}]'::jsonb);
+ SELECT * INTO s FROM public.book_reading_state WHERE book_id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ IF s.position<>0.98 OR s.finished_at IS NULL THEN RAISE EXCEPTION 'current progress at 98%% did not finish: %',row_to_json(s); END IF;
+ SELECT seconds INTO STRICT d FROM public.book_reading_sessions WHERE book_id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ IF d<>70 THEN RAISE EXCEPTION 'replay or progress session delta incorrect: %',d; END IF;
  SELECT status INTO b FROM public.books WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc'; IF b<>'finished' THEN RAISE EXCEPTION 'book completion status missing'; END IF;
- IF (SELECT count(*) FROM public.books WHERE workspace_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')<>0 THEN RAISE EXCEPTION 'workspace isolation failed'; END IF;
+ IF (SELECT count(*) FROM public.books WHERE id='dddddddd-dddd-4ddd-8ddd-dddddddddddd')<>0 THEN RAISE EXCEPTION 'owner one can read owner two book'; END IF;
  BEGIN PERFORM public.book_record_progress_batch('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','12121212-1212-4121-8121-121212121212','[{"bookId":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","deltaSeconds":1,"position":0.1,"clientUpdatedAt":"2026-10-26T11:00:00Z","pagesRead":1}]'::jsonb); RAISE EXCEPTION 'cross-workspace owner write accepted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+SET request.jwt.claim.sub='22222222-2222-4222-8222-222222222222';
+DO $$ BEGIN
+ IF (SELECT count(*) FROM public.books WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc')<>0 THEN RAISE EXCEPTION 'owner two can read owner one book'; END IF;
+ IF (SELECT count(*) FROM public.books WHERE id='dddddddd-dddd-4ddd-8ddd-dddddddddddd')<>1 THEN RAISE EXCEPTION 'owner two cannot read their own book'; END IF;
 END $$;
 RESET ROLE;
