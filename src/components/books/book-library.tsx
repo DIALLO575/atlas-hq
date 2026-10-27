@@ -406,7 +406,6 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
           onDragOver={event => {event.preventDefault();if(!busy)setDragActive(true);}}
           onDragLeave={event => {event.preventDefault();setDragActive(false);}}
           onDrop={event => {event.preventDefault();if(!busy)chooseBookFile(event.dataTransfer.files?.[0] ?? null);}}>
-          
           <span className="atlas-books-upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4m-4 4 4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></span>
           <strong>{newFile ? newFile.name : "Glissez votre livre ici"}</strong>
           <span className="atlas-books-upload-description">{newFile ? "Fichier sélectionné · " + (newFile.size / 1024 / 1024).toFixed(2) + " Mo" : "Ou sélectionnez un fichier sur votre appareil"}</span>
