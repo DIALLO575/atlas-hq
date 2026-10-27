@@ -1,0 +1,218 @@
+/* Atlas Lecture · editorial refresh. Loaded after the original reader styles. */
+.atlas-books-page{
+  --book-ink:#292c27;--book-muted:#747970;--book-accent:#476455;--book-accent-dark:#2d473b;--book-line:#e4e4da;--book-paper:#fffefb;
+  box-sizing:border-box;width:100%;max-width:1360px;margin:0 auto;padding:58px clamp(20px,4.8vw,68px) 100px;
+  color:var(--book-ink);background:radial-gradient(ellipse at 86% 0%,#e9ebe0 0%,transparent 38%),#f7f7f1;
+  font-family:var(--font-body,Arial,sans-serif)
+}
+.atlas-books-page button,.atlas-book-reader button,.atlas-books-page input,.atlas-book-reader input,.atlas-book-reader select{font-family:inherit}
+.atlas-books-page button:focus-visible,.atlas-book-reader button:focus-visible,.atlas-books-page a:focus-visible,.atlas-book-reader a:focus-visible,
+.atlas-books-page input:focus-visible,.atlas-book-reader textarea:focus-visible{outline:3px solid #b18d59;outline-offset:3px}
+.atlas-books-heading{align-items:stretch;gap:26px;margin:0 0 30px}
+.atlas-books-heading>div:first-child{padding:20px 0 10px}
+.atlas-books-eyebrow{margin:0 0 18px;color:#64816f;font-size:11px;letter-spacing:.18em}
+.atlas-books-heading h1{color:#28362d;font-size:clamp(42px,5.6vw,76px);line-height:1.03;font-weight:500;letter-spacing:-.055em}
+.atlas-books-heading h1 em{font-style:italic;font-weight:400;color:#66836f}
+.atlas-books-heading p:not(.atlas-books-eyebrow){max-width:560px;margin-top:17px;color:#6c756c;font-size:15px;line-height:1.55}
+.atlas-books-daily{align-self:flex-end;min-width:240px;max-width:300px;padding:24px;border:1px solid #dfe6dc;border-radius:22px;
+ background:linear-gradient(145deg,#ffffffd9,#edf3eb);box-shadow:0 14px 34px #405d4c0a;display:flex;flex-direction:column;gap:10px}
+.atlas-books-daily>strong{font:500 34px/1.05 Georgia,serif;color:#273b30;letter-spacing:-.025em}
+.atlas-books-daily>span{color:#778679;font-size:11px}
+.atlas-books-daily>div{grid-column:auto}
+.atlas-books-daily>div:not(:first-child){height:6px;background:#dbe5d9;border-radius:20px;margin:4px 0 0}
+.atlas-books-daily i{background:linear-gradient(90deg,#719985,#3c6150)}
+.atlas-books-import-panel{overflow:hidden;margin:20px 0 30px;padding:28px;border:1px solid #e3e8de;border-radius:26px;
+ background:#fffefb;box-shadow:0 18px 56px #26352b0b}
+.atlas-books-import-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:22px}
+.atlas-books-section-kicker{display:block;margin-bottom:8px;color:#708b76;font-size:10px;font-weight:800;letter-spacing:.18em}
+.atlas-books-import-head h2{margin:0;font:500 clamp(24px,3vw,32px)/1.14 Georgia,serif;letter-spacing:-.025em;color:#27362c}
+.atlas-books-import-head p{margin:9px 0 0;color:#7a7e75;font-size:13px;line-height:1.5}
+.atlas-books-import-formats{flex:0 0 auto;margin-top:5px;border:1px solid #dbe7dc;background:#f2f6f0;border-radius:99px;padding:8px 13px;
+ font-size:10px;font-weight:800;letter-spacing:.1em;color:#4c6b56}
+.atlas-books-import-formats span{padding:0 5px}
+.atlas-books-add{display:grid;grid-template-columns:minmax(220px,.9fr) minmax(0,1.1fr);align-items:stretch;gap:23px;padding:0;
+ border:0;border-radius:0;background:transparent;box-shadow:none}
+.atlas-books-dropzone{position:relative;min-height:300px;display:flex!important;align-items:center;justify-content:center;flex-direction:column;gap:11px;
+ padding:26px 18px!important;margin:0!important;border:2px dashed #b8cebd;border-radius:20px;
+ background:radial-gradient(circle at 50% 15%,#fff 0%,#f2f8f1 90%);text-align:center;cursor:pointer;transition:background .2s,border-color .2s,transform .2s}
+.atlas-books-dropzone:hover,.atlas-books-dropzone.is-dragging,.atlas-books-dropzone:focus-within{border-color:#4e8165;background:#eaf4e9;transform:translateY(-1px)}
+.atlas-books-dropzone.has-file{border-style:solid;border-color:#9abea7}
+.atlas-books-upload-input{position:absolute;inset:0;z-index:1;display:block;opacity:0;width:100%;height:100%;cursor:pointer}
+.atlas-books-upload-input:disabled{cursor:wait}
+.atlas-books-upload-icon{display:grid;place-items:center;width:64px;height:64px;margin-bottom:2px;border:1px solid #c9dfcf;border-radius:18px;background:#fff;
+ box-shadow:0 8px 20px #47645512;color:#497456}
+.atlas-books-dropzone strong{max-width:100%;overflow-wrap:anywhere;color:#2b4837;font-size:15px;font-weight:750;line-height:1.4}
+.atlas-books-upload-description{font-size:12px;color:#778b7b;line-height:1.45}
+.atlas-books-upload-action{display:inline-flex;align-items:center;justify-content:center;gap:13px;min-height:38px;margin-top:4px;padding:0 15px;
+ border-radius:10px;background:#365641;color:#fff;font-size:12px;font-weight:750;box-shadow:0 7px 18px #36564120}
+.atlas-books-dropzone>small{font-size:10px;color:#8b978c;line-height:1.5}
+.atlas-books-add-fields{min-width:0;display:flex;flex-direction:column;gap:15px}
+.atlas-books-add .atlas-books-add-field label,.atlas-books-add .atlas-books-add-cover>label:first-child{display:block;margin:0 0 7px;color:#405346;font-size:11px;font-weight:750;letter-spacing:.025em}
+.atlas-books-add-field label span,.atlas-books-add-cover>label:first-child span{color:#90998e;font-weight:450}
+.atlas-books-add .atlas-books-add-field input{display:block;box-sizing:border-box;width:100%;height:45px;padding:0 14px;
+ border:1px solid #dce5db;border-radius:11px;background:#fcfdfa;color:#293b30;font-size:13px;transition:border-color .2s,box-shadow .2s}
+.atlas-books-add .atlas-books-add-field input:focus{border-color:#568767;box-shadow:0 0 0 3px #dae9df}
+.atlas-books-add .atlas-books-add-field input::placeholder{color:#9aa59b}
+.atlas-books-add-cover{position:relative;min-width:0}
+.atlas-books-add .atlas-books-cover-action{display:flex;align-items:center;gap:10px;min-height:44px;box-sizing:border-box;padding:7px 12px;
+ margin:0;border:1px solid #dce5db;border-radius:11px;background:#fbfdfa;color:#687a6c;font-size:12px;cursor:pointer}
+.atlas-books-cover-action>span:first-child{font-size:19px;color:#678875}
+.atlas-books-cover-action>span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atlas-books-cover-action b{color:#3e7256;font-size:11px}
+.atlas-books-cover-input{position:absolute;bottom:0;left:0;width:100%;height:44px;opacity:0;cursor:pointer}
+.atlas-books-add-footer{display:flex;flex:1;align-items:flex-end;justify-content:space-between;gap:16px;padding-top:8px}
+.atlas-books-add-footer p{flex:1;margin:0 0 6px;color:#89958a;font-size:11px;line-height:1.6}
+.atlas-books-add button[type=submit]{flex:0 0 auto;display:inline-flex;justify-content:center;align-items:center;gap:12px;min-height:47px;height:auto;
+ padding:0 19px;border-radius:12px;border:1px solid #345e45;background:#345e45;color:#fff;box-shadow:0 12px 22px #345e452a;font-size:12px;font-weight:750;
+ transition:transform .2s,background .2s,box-shadow .2s}
+.atlas-books-add button[type=submit]:not(:disabled):hover{background:#294c37;box-shadow:0 15px 26px #345e4533;transform:translateY(-2px)}
+.atlas-books-add button[type=submit]:disabled{opacity:.55;box-shadow:none;cursor:not-allowed}
+.atlas-books-upload-spinner{width:15px;height:15px;border:2px solid #ffffff70;border-top-color:#fff;border-radius:50%;animation:atlas-books-spin .75s linear infinite}
+@keyframes atlas-books-spin{to{transform:rotate(360deg)}}
+.atlas-books-message{margin:0 0 16px;padding:12px 16px;border:1px solid #e2d5b6;border-radius:13px;background:#fff7e5;color:#755b38;line-height:1.5}
+.atlas-books-stats{gap:12px;margin:26px 0 0;padding:0;border:none;background:transparent}
+.atlas-books-stats>div,.atlas-books-stats>form{min-width:0;min-height:118px;box-sizing:border-box;padding:19px 20px;border:1px solid #e2e8df;border-radius:17px;
+ background:#fdfefb;box-shadow:0 8px 24px #3b58430a}
+.atlas-books-stats>div{display:flex;flex-direction:column;gap:5px}
+.atlas-books-stats>div strong{margin-top:auto;color:#2c4535;font:500 29px/1.1 Georgia,serif}
+.atlas-books-stats>div span:not(:first-child){font-size:11px;color:#839286}
+.atlas-books-stats>form{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+.atlas-books-stats form label{color:#59705e;font-weight:750;font-size:11px}
+.atlas-books-stats input{max-width:58px;height:30px;border-radius:8px}
+.atlas-books-stats form button{border:1px solid #d8e4d9;border-radius:8px;background:#eaf2eb;color:#41664b;padding:8px 10px;font-size:10px;font-weight:750;cursor:pointer}
+.atlas-books-heatmap{margin:15px 0 26px}
+.atlas-books-filters{display:flex;gap:6px;padding:5px;width:fit-content;max-width:100%;border:1px solid #e0e7de;border-radius:14px;background:#eaf0e9;margin:30px 0}
+.atlas-books-filters button{min-height:37px;padding:9px 17px;font-size:12px;border:0;border-radius:10px;color:#718074}
+.atlas-books-filters button:hover{background:#f5f8f3;color:#385d43}
+.atlas-books-filters button[aria-pressed=true]{border:0;background:#fff;color:#30563a;box-shadow:0 2px 8px #243f3016}
+.atlas-books-section{margin:26px 0 36px}
+.atlas-books-section-title{margin-bottom:20px}
+.atlas-books-section-title>div>span{color:#7c977f}
+.atlas-books-section-title h2{font:500 29px/1.15 Georgia,serif;letter-spacing:-.02em;color:#2d4436}
+.atlas-books-grid{gap:18px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.atlas-book-card{border:1px solid #e2e9e0;border-radius:20px;background:#fff;box-shadow:0 7px 24px #2d483908}
+.atlas-book-card:hover{transform:translateY(-4px);box-shadow:0 19px 35px #2d483914;border-color:#cbdccc}
+.atlas-book-card-main{grid-template-columns:106px minmax(0,1fr);min-height:210px;padding:17px;gap:17px}
+.atlas-book-cover{border-radius:11px;box-shadow:4px 8px 18px #253d3524}
+.atlas-book-info{padding:4px 0}
+.atlas-book-format{color:#718f7d}
+.atlas-book-format i{background:#eaf2eb;color:#4f7658}
+.atlas-book-info h3{font-size:22px;color:#2c3f32;line-height:1.15}
+.atlas-book-card-progress{padding-top:20px}
+.atlas-book-card-progress i{background:#648c6f}
+.atlas-book-info>strong{color:#456e50}
+.atlas-book-card-tools{gap:4px;padding:10px 12px;border-top:1px solid #e9efe8;flex-wrap:wrap}
+.atlas-book-card-tools button{min-height:31px;padding:7px 9px;color:#647c6a;font-weight:650;border-radius:8px}
+.atlas-book-card-tools button:hover{background:#eaf2e9;color:#2f5938}
+.atlas-books-empty{gap:10px;padding:56px 22px;border:1px dashed #bfcfbe;border-radius:20px;background:#f9fcf7}
+.atlas-books-empty>span{font-size:37px;color:#6d9979}
+.atlas-books-empty h2{color:#304a38;font-size:27px}
+.atlas-books-empty p{max-width:430px;margin-bottom:9px;line-height:1.6}
+.atlas-books-empty button{padding:12px 17px;border:0;border-radius:10px;background:#355a41;color:white;cursor:pointer;font-weight:700}
+.atlas-books-empty button span{margin-left:8px}
+.atlas-book-reader{background:#f3f5ef;color:#2e3d33}
+.atlas-book-reader-top{height:68px;flex-basis:68px;padding:0 27px;border-bottom:1px solid #dfe6dc;background:#fffefb}
+.atlas-book-reader-top>a{color:#42634d;font-size:12px;font-weight:700}
+.atlas-book-reader-back span{font-size:20px;margin-right:7px}
+.atlas-book-reader-title{display:flex;flex-direction:column;gap:4px;min-width:0;align-items:center}
+.atlas-book-reader-title>span{font-size:9px;letter-spacing:.17em;color:#86a08a;font-weight:800}
+.atlas-book-reader-title strong{font:500 18px/1.1 Georgia,serif;color:#314b39;max-width:100%}
+.atlas-book-reader-top button{border:1px solid #dde7dc;background:#f5f8f3;color:#41634d;border-radius:10px;font-size:12px;font-weight:750;min-height:37px}
+.atlas-book-reader-layout{grid-template-columns:minmax(0,1fr) 350px;gap:18px;padding:18px}
+.atlas-book-reader-pages{border-color:#dce3d9;border-radius:18px;background:#e8ede5;box-shadow:inset 0 2px 8px #344d3920}
+.atlas-book-reader-host{padding:22px}
+.atlas-book-reader-controls{inset:50% 12px auto}
+.atlas-book-reader-controls button{width:44px;height:48px;border:1px solid #d6e1d7;border-radius:12px;background:#fffdf8e8;color:#3c6645;box-shadow:0 5px 18px #364c3a21}
+.atlas-book-reader-controls button:hover:not(:disabled){background:#fff;color:#294f31}
+.atlas-book-reader-controls button:disabled{opacity:.32;cursor:not-allowed}
+.atlas-book-progress-row{gap:15px;margin-bottom:16px}
+.atlas-book-progress-row output{color:#517358;font-size:12px;font-weight:750}
+.atlas-book-progress{accent-color:#497356}
+.atlas-book-notes{padding:23px;border:1px solid #e0e7dc;border-radius:18px;background:#fffefb;box-shadow:0 8px 22px #3146390a}
+.atlas-book-notes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.atlas-book-notes-head>div>span{display:block;margin-bottom:6px;color:#7f9a81;font-size:9px;font-weight:800;letter-spacing:.16em}
+.atlas-book-notes-head h2{font:500 24px/1.18 Georgia,serif;color:#2d4835;margin:0}
+.atlas-book-notes-count{display:grid;place-items:center;min-width:30px;height:30px;border-radius:10px;background:#ebf4eb;color:#41694c;font-weight:750}
+.atlas-book-notes-export{display:inline-block;margin:5px 0 21px;color:#557b5c;font-size:11px;font-weight:750;text-decoration:none}
+.atlas-book-notes-export:hover{text-decoration:underline}
+.atlas-book-notes-label{display:block;margin:0 0 8px;color:#56715d;font-size:11px;font-weight:750}
+.atlas-book-notes textarea{min-height:105px;border:1px solid #dbe6dc;border-radius:12px;padding:13px;background:#fcfefa;color:#334b3b;font-size:12px;line-height:1.6}
+.atlas-book-note-actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 19px}
+.atlas-book-note-actions button{height:auto;min-height:36px;background:#385d44;border-radius:9px;padding:8px 10px;font-size:11px}
+.atlas-book-note-actions button:hover:not(:disabled){background:#2c4c37}
+.atlas-book-note-actions button:disabled{opacity:.4;cursor:not-allowed}
+.atlas-book-notes-empty{color:#9da99d;font-size:12px;line-height:1.6;padding:16px 5px;text-align:center}
+.atlas-book-notes li{border-left-color:#82a889;background:#f1f6ef;border-radius:9px;padding:12px}
+.atlas-book-notes li p{color:#4a5b4d}
+.atlas-book-notes li button{border:0;background:transparent;color:#3e7250;font-size:11px;font-weight:700;padding:5px;border-radius:6px;cursor:pointer}
+.atlas-book-settings{top:77px;right:26px;border-color:#d4e0d4;border-radius:15px;background:#fffefb;box-shadow:0 15px 40px #273d3024}
+.atlas-book-reader-status{border-color:#d5e2d5;border-radius:17px;background:#fffefb;box-shadow:0 18px 45px #263a302b;color:#334d3b;padding:22px}
+.atlas-book-reader-status button,.atlas-book-reader-status a{border-color:#355c40;background:#355c40}
+.atlas-book-reader-status .atlas-book-repair-label{border-color:#cfdfce;background:#f3f9f1;color:#31553c}
+@media(max-width:900px){
+ .atlas-books-page{padding:34px 22px 84px}
+ .atlas-books-add{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .atlas-books-add button[type=submit]{width:auto}
+ .atlas-books-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .atlas-book-reader-layout{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) 205px;padding:10px;gap:10px}
+ .atlas-book-notes{padding:14px}
+ .atlas-book-reader-top{padding:0 15px}
+ .atlas-book-settings{top:73px}
+}
+@media(max-width:600px){
+ .atlas-books-page{padding:25px 16px 76px}
+ .atlas-books-heading{gap:18px}
+ .atlas-books-heading>div:first-child{padding:0}
+ .atlas-books-heading h1{font-size:45px}
+ .atlas-books-daily{align-self:stretch;min-width:0;max-width:none;padding:18px}
+ .atlas-books-import-panel{padding:18px;border-radius:19px;margin:23px 0}
+ .atlas-books-import-head{flex-direction:column;gap:10px;margin-bottom:18px}
+ .atlas-books-import-head h2{font-size:26px}
+ .atlas-books-add{grid-template-columns:1fr;gap:19px}
+ .atlas-books-dropzone{min-height:245px;padding:23px 14px!important}
+ .atlas-books-add-footer{flex-direction:column;align-items:stretch;gap:8px}
+ .atlas-books-add-footer p{margin:0}
+ .atlas-books-add button[type=submit]{width:100%;justify-content:space-between}
+ .atlas-books-stats{gap:9px}
+ .atlas-books-stats>div,.atlas-books-stats>form{min-height:108px;padding:15px}
+ .atlas-books-stats form{gap:10px}
+ .atlas-books-stats form button{padding:7px}
+ .atlas-books-filters{width:100%;box-sizing:border-box;margin:22px 0;overflow-x:auto}
+ .atlas-books-filters button{min-width:max-content;padding:9px 12px}
+ .atlas-book-card-main{grid-template-columns:90px minmax(0,1fr)}
+ .atlas-book-reader{background:#151c18;color:#eff5ee}
+ .atlas-book-reader-top{height:56px;flex-basis:56px;background:#1e2922;border-color:#385043;color:#e7f0e6;grid-template-columns:auto minmax(0,1fr) auto;padding:0 9px}
+ .atlas-book-reader-top>a{color:#e8f0e5;font-size:11px}
+ .atlas-book-reader-title>span{font-size:8px;color:#99b7a0}
+ .atlas-book-reader-title strong{font-size:14px;color:#f3f8f1}
+ .atlas-book-reader-top button{min-height:35px;padding:7px;background:#2b3d30;border-color:#43624a;color:#f0f6ee;font-size:11px}
+ .atlas-book-reader-layout{grid-template-rows:minmax(0,1fr) 194px;gap:8px;padding:8px}
+ .atlas-book-reader-pages{background:#161e19;border-color:#344738;border-radius:10px}
+ .atlas-book-reader-host{padding:8px}
+ .atlas-book-reader-controls{inset:50% 3px auto}
+ .atlas-book-reader-controls button{width:32px;height:43px;padding:5px;font-size:21px;border-radius:8px}
+ .atlas-book-notes{background:#1e2a22;border-color:#3a5141;color:#f1f8ed;border-radius:12px;padding:13px}
+ .atlas-book-notes-head h2{color:#f0f6e9;font-size:19px}
+ .atlas-book-notes-head>div>span{color:#a7c5ad}
+ .atlas-book-notes-count{background:#385642;color:#f5faef}
+ .atlas-book-notes-export,.atlas-book-notes-label{color:#b3d4b9}
+ .atlas-book-notes textarea{min-height:55px;background:#26392c;border-color:#44644d;color:#f0f8ed}
+ .atlas-book-notes li{background:#304634}
+ .atlas-book-notes li p{color:#e9f4e6}
+ .atlas-book-notes li button{color:#bcdfbd}
+ .atlas-book-notes-empty{color:#adc3ac}
+ .atlas-book-settings{top:62px;right:8px;left:8px;background:#243227;border-color:#45634b}
+ .atlas-book-settings label{color:#dcebdd}
+ .atlas-book-settings select{background:#304236;color:#e7f2e4;border-color:#51715a}
+ .atlas-book-reader-status{background:#f7fbf5;color:#284130}
+}
+@media(prefers-reduced-motion:reduce){
+ .atlas-books-upload-spinner{animation:none}
+ .atlas-books-dropzone,.atlas-books-add button[type=submit]{transition:none}
+}
+
+/* Keep the actual file controls operable but visually integrated in their labels. */
+.atlas-books-add .atlas-books-upload-input{position:absolute;inset:0;box-sizing:border-box;width:100%;height:100%;padding:0;border:0;opacity:0}
+.atlas-books-add .atlas-books-cover-input{position:absolute;bottom:0;left:0;box-sizing:border-box;width:100%;height:44px;padding:0;border:0;opacity:0}
+.atlas-books-add .atlas-books-dropzone:focus-within,.atlas-books-add .atlas-books-cover-action:focus-within{outline:3px solid #73947c;outline-offset:3px}
+.atlas-books-add .atlas-books-cover-action{position:relative}
