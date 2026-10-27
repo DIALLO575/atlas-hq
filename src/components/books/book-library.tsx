@@ -59,26 +59,37 @@ async function resizedImage(file: File, title: string, author: string, palette: 
   const result = await Promise.all([render(720), render(240)]); image.close(); return result as readonly [File, File];
 }
 
-/** Try direct signed upload first, then owner-scoped proxy for small files. */
+/** Small files use the authenticated server route first; never report success before Storage confirms the file. */
 async function sendBookFile(workspaceId:string,bookId:string,file:File,signed?:{path:string;token:string}){
+ const endpoint=`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`;
+ const stored=async()=>{
+  try{const check=await fetch(endpoint,{cache:"no-store"});return check.ok;}
+  catch{return false;}
+ };
+ let proxyStatus:number|null=null;
+ if(file.size<=3_800_000){
+  const body=new FormData();body.set("file",file);
+  let response:Response|null=null;
+  try{response=await fetch(endpoint,{method:"POST",body});}
+  catch{/* Try the signed upload if the authenticated proxy is unreachable. */}
+  if(response){
+   proxyStatus=response.status;
+   if(response.status===422)throw new Error("Le fichier ne correspond pas à l’original (format et taille).");
+   if((response.ok||response.status===409)&&await stored())return;
+  }
+ }
  if(signed){
   const storage=createSupabaseBrowserClient()?.storage.from("books");
   if(storage)try{
    const mime=file.name.toLowerCase().endsWith(".pdf")||file.type==="application/pdf"?"application/pdf":"application/epub+zip";
    const saved=await storage.uploadToSignedUrl(signed.path,signed.token,file,{contentType:mime,cacheControl:"3600"});
-   if(!saved.error){
-    const verified=await fetch(`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`,{cache:"no-store"});
-    if(verified.ok)return;
-   }
-  }catch{/* continue with authenticated fallback */}
+   if(!saved.error&&await stored())return;
+  }catch{/* The upload is not confirmed; keep the import in an error state. */}
  }
  if(file.size>3_800_000)throw new Error("Envoi direct interrompu. Réessayez avec une connexion stable.");
- const body=new FormData();body.set("file",file);
- const response=await fetch(`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`,{method:"POST",body});
- if(response.ok||response.status===409)return;
- if(response.status===422)throw new Error("Le fichier ne correspond pas à l’original (format et taille).");
- if(response.status===413)throw new Error("Fichier trop volumineux pour la récupération.");
- throw new Error("Transfert du fichier impossible. Réessayez.");
+ throw new Error(proxyStatus===409
+  ?"Conflit de transfert : le fichier reste absent du stockage. Réessayez."
+  :"Transfert non confirmé dans le stockage. Réessayez.");
 }
 
 async function putCover(workspaceId: string, bookId: string, files: readonly [File, File]) {
