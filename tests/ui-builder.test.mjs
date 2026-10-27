@@ -6,7 +6,7 @@ import { BASE_COMPOSITION, CATALOG, createBuilder, parseComposition } from '../s
 import { mausbotReleasePermission } from '../packages/engine-core/src/release-gates.mjs';
 const proposed = { ...BASE_COMPOSITION, blocks: [
   { id: 'heading', component: 'PageHeading', props: { eyebrow: 'ATLAS', title: 'Missions à préparer', description: 'Préparez vos prochaines missions.' } },
-  { id: 'demo', component: 'DemoNotice', props: {} },
+  { id: 'demo', component: 'EmptyPanel', props: {} },
 ] };
 test('CLI boundary: catalog, compose, remove, rollback; no source edits', () => {
   const before = readFileSync(new URL('../src/app/ui-studio/page.tsx', import.meta.url), 'utf8');
@@ -19,7 +19,7 @@ test('CLI boundary: catalog, compose, remove, rollback; no source edits', () => 
   const output = run.stdout.trim().split('\n').map(JSON.parse);
   assert(output.every((row) => row.ok));
   assert.equal(output[0].result.catalog.components[0].name, 'PageHeading');
-  assert.equal(output[1].result.diff.added[0].component, 'DemoNotice');
+  assert.equal(output[1].result.diff.added[0].component, 'EmptyPanel');
   assert.equal(output[1].result.diff.changed[0].props.title, 'Missions à préparer');
   assert.equal(output[2].result.diff.removed[0].id, 'demo');
   assert.deepEqual(output[3].result.composition, proposed);
@@ -104,4 +104,9 @@ test('catalog and base are immutable, discovery returns detached data', () => {
   const discovery = builder.call({ operation: 'catalog' });
   discovery.catalog.components[0].props.title = 'unbounded';
   assert.equal(builder.call({ operation: 'catalog' }).catalog.components[0].props.title, 'text 1..160');
+});
+
+test('removed block alias and arbitrary EmptyPanel props remain rejected', () => {
+  assert.throws(() => parseComposition({ ...proposed, blocks: [proposed.blocks[0], { id: 'legacy', component: 'DemoNotice', props: {} }] }));
+  assert.throws(() => parseComposition({ ...proposed, blocks: [proposed.blocks[0], { id: 'panel', component: 'EmptyPanel', props: { title: 'untrusted' } }] }));
 });

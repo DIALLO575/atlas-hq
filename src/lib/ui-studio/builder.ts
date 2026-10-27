@@ -1,6 +1,6 @@
 export type Block =
   | { id: string; component: 'PageHeading'; props: { eyebrow: string; title: string; description: string } }
-  | { id: string; component: 'DemoNotice'; props: Record<string, never> };
+  | { id: string; component: 'EmptyPanel'; props: Record<string, never> };
 export type BuilderCommand =
   | { operation: 'catalog' }
   | { operation: 'compose'; expectedVersion: number; composition: Composition }
@@ -17,10 +17,10 @@ export const CATALOG = deepFreeze({
   schemaVersion: 1, page: 'missions', maxBlocks: 2,
   components: [
     { name: 'PageHeading', source: 'src/components/page-elements.tsx', description: 'Titre et introduction Atlas', props: { eyebrow: 'text 1..160', title: 'text 1..160', description: 'text 1..160' }, required: true, position: 0 },
-    { name: 'DemoNotice', source: 'src/components/page-elements.tsx', description: 'Avertissement sur données fictives, rendu par EmptyPanel Atlas avec titre et texte fixes', props: {}, required: false, position: 1 },
+    { name: 'EmptyPanel', source: 'src/components/page-elements.tsx', description: 'Panneau Atlas sans contenu métier connecté, avec titre et texte fixes', props: {}, required: false, position: 1 },
   ],
   operations: ['catalog', 'compose', 'restore'],
-  constraints: ['demo data only', 'exactly one heading first', 'at most one demo notice', 'no HTML, code, URLs, data bindings or actions', 'no activation or shared storage'],
+  constraints: ['demo data only', 'exactly one heading first', 'at most one fixed empty panel', 'no HTML, code, URLs, data bindings or actions', 'no activation or shared storage'],
 });
 export const BASE_COMPOSITION: Composition = deepFreeze<Composition>({ schemaVersion: 1, page: 'missions', blocks: [
   { id: 'heading', component: 'PageHeading', props: { eyebrow: 'ATLAS', title: 'Missions', description: 'Aperçu de composition sur données fictives.' } },
@@ -40,7 +40,7 @@ export function parseComposition(value: unknown): Composition {
     const block = record(raw); exact(block, ['id', 'component', 'props']);
     if (typeof block.id !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(block.id) || ids.has(block.id)) throw new Error('Invalid block id');
     ids.add(block.id);
-    const component = index === 0 ? 'PageHeading' : 'DemoNotice';
+    const component = index === 0 ? 'PageHeading' : 'EmptyPanel';
     if (block.component !== component) throw new Error('Unsupported component or position');
     const props = record(block.props); exact(props, index === 0 ? ['eyebrow', 'title', 'description'] : []);
     const clean: Record<string, string> = {};

@@ -6,7 +6,7 @@ import { BASE_COMPOSITION, parseComposition, compositionDiff, type Composition }
 function CompositionPreview({ composition }: { composition: Composition }) {
   return <>{parseComposition(composition).blocks.map((block) => block.component === 'PageHeading'
     ? <PageHeading key={block.id} eyebrow={block.props.eyebrow} title={block.props.title} description={block.props.description}/>
-    : <EmptyPanel key={block.id} title="Mode démonstration">Les éléments affichés sont des exemples sans données opérationnelles réelles.</EmptyPanel>)}</>;
+    : <EmptyPanel key={block.id} title="Aucun contenu connecté">Ce panneau ne lit aucune donnée métier.</EmptyPanel>)}</>;
 }
 export function UiBuilderPreview({ initial }: { initial: Composition }) {
   const [versions, setVersions] = useState<Composition[]>(() => [parseComposition(BASE_COMPOSITION), parseComposition(initial)]);
