@@ -17,7 +17,7 @@ export const CATALOG = deepFreeze({
   schemaVersion: 1, page: 'missions', maxBlocks: 2,
   components: [
     { name: 'PageHeading', source: 'src/components/page-elements.tsx', description: 'Titre et introduction Atlas', props: { eyebrow: 'text 1..160', title: 'text 1..160', description: 'text 1..160' }, required: true, position: 0 },
-    { name: 'DemoNotice', source: 'src/components/page-elements.tsx', description: 'Avertissement Atlas sur les données fictives', props: {}, required: false, position: 1 },
+    { name: 'DemoNotice', source: 'src/components/page-elements.tsx', description: 'Avertissement sur données fictives, rendu par EmptyPanel Atlas avec titre et texte fixes', props: {}, required: false, position: 1 },
   ],
   operations: ['catalog', 'compose', 'restore'],
   constraints: ['demo data only', 'exactly one heading first', 'at most one demo notice', 'no HTML, code, URLs, data bindings or actions', 'no activation or shared storage'],
