@@ -20,8 +20,8 @@ test("upload can be chosen or dropped, supports formats and preserves upload ver
   assert.match(component, /file\.size>104857600/);
   assert.match(component, /setUploadStep\("transferring"\)/);
   assert.match(component, /Envoi et vérification du fichier/);
-  assert.match(component, /await sendBookFile\(workspaceId,created\.book\.id,newFile,created\.upload\)/);
-  assert.match(component, /if\(\(response\.ok\|\|response\.status===409\)\&\&await stored\(\)\)return;/);
+  assert.match(component, /await sendBookFile\(workspaceId,created\.book\.id,newFile,created\.upload,setUploadPercent\)/);
+  assert.ok(component.includes('if((response.ok||response.status===409)&&await stored()){onProgress?.(100);return;}'));
 });
 test("reader controls stay accessible with new design", () => {
   assert.match(component, /aria-controls="atlas-reader-settings"/);
@@ -29,4 +29,12 @@ test("reader controls stay accessible with new design", () => {
   assert.match(component, /aria-label="Page suivante"/);
   assert.match(component, /Réimporter le fichier original/);
   assert.match(component, /atlas-book-notes-head/);
+});
+
+test("PWA picker is a visible native input and an explicit tap button",()=>{
+ assert.match(component,/onClick=\{\(\) => fileInput\.current\?\.click\(\)\}/);
+ assert.match(component,/className="atlas-books-native-file"/);
+ assert.doesNotMatch(component,/className="atlas-books-upload-input"/);
+ assert.match(css,/\.atlas-books-add \.atlas-books-native-file/);
+ assert.match(component,/navigator\.onLine/);
 });
