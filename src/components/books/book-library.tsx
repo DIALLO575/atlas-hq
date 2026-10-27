@@ -8,6 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { useRouter } from "next/navigation";
 import { listWorkspaces } from "@/app/workspaces/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabasePublicConfig } from "@/lib/supabase/config";
+import { uploadSignedResumable } from "@/lib/books/signed-resumable-upload.mjs";
 import { loadBookReaderFile } from "@/lib/books/reader-source.mjs";
 
 type ReadingState = { position?: number; pages_read?: number | null; finished_at?: string | null; client_updated_at?: string|null; device_id?:string|null }[];
@@ -59,37 +61,67 @@ async function resizedImage(file: File, title: string, author: string, palette: 
   const result = await Promise.all([render(720), render(240)]); image.close(); return result as readonly [File, File];
 }
 
-/** Small files use the authenticated server route first; never report success before Storage confirms the file. */
-async function sendBookFile(workspaceId:string,bookId:string,file:File,signed?:{path:string;token:string}){
+/** Only the Storage JSON URL proves the object is present, not a redirected login page. */
+async function bookFileStored(endpoint:string,format:"pdf"|"epub"){
+ try{
+  const check=await fetch(endpoint,{cache:"no-store",redirect:"follow"});
+  if(check.redirected&&new URL(check.url).pathname.startsWith("/login"))throw new Error("AUTH_REQUIRED");
+  if(check.status===401||check.status===403)throw new Error("AUTH_REQUIRED");
+  if(!check.ok||!(check.headers.get("content-type")??"").includes("application/json"))return false;
+  const data=await check.json() as {url?:unknown;format?:unknown};
+  if(data.format!==format||typeof data.url!=="string")return false;
+  const url=new URL(data.url);
+  return ["http:","https:"].includes(url.protocol)&&url.pathname.includes("/storage/v1/object/sign/books/");
+ }catch(error){if(error instanceof Error&&error.message==="AUTH_REQUIRED")throw error;return false;}
+}
+
+/** Use authenticated same-origin proxy for small files and resumable signed chunks for mobile networks. */
+async function sendBookFile(workspaceId:string,bookId:string,file:File,signed?:{path:string;token:string},onProgress?:(percent:number)=>void){
  const endpoint=`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`;
+ const format=file.name.toLowerCase().endsWith(".pdf")||file.type==="application/pdf"?"pdf":"epub";
  const stored=async()=>{
-  try{const check=await fetch(endpoint,{cache:"no-store"});return check.ok;}
-  catch{return false;}
+  for(let attempt=0;attempt<3;attempt++){
+   if(await bookFileStored(endpoint,format))return true;
+   if(attempt<2)await new Promise(resolve=>setTimeout(resolve,300*(attempt+1)));
+  }
+  return false;
  };
+ if(typeof navigator!=="undefined"&&!navigator.onLine)throw new Error("Connexion absente. Reconnectez le téléphone puis réessayez.");
  let proxyStatus:number|null=null;
  if(file.size<=3_800_000){
   const body=new FormData();body.set("file",file);
   let response:Response|null=null;
-  try{response=await fetch(endpoint,{method:"POST",body});}
-  catch{/* Try the signed upload if the authenticated proxy is unreachable. */}
+  try{response=await fetch(endpoint,{method:"POST",body,cache:"no-store"});}
+  catch{/* Mobile network may interrupt the server upload; use signed Storage next. */}
   if(response){
+   if(response.redirected&&new URL(response.url).pathname.startsWith("/login"))throw new Error("AUTH_REQUIRED");
+   if(response.status===401||response.status===403)throw new Error("AUTH_REQUIRED");
    proxyStatus=response.status;
-   if(response.status===422)throw new Error("Le fichier ne correspond pas à l’original (format et taille).");
-   if((response.ok||response.status===409)&&await stored())return;
+   if(response.status===422)throw new Error("Fichier invalide ou différent de l’original. Vérifiez le PDF/EPUB.");
+   if((response.ok||response.status===409)&&await stored()){onProgress?.(100);return;}
   }
  }
  if(signed){
   const storage=createSupabaseBrowserClient()?.storage.from("books");
+  const config=getSupabasePublicConfig();
+  const mime=format==="pdf"?"application/pdf":"application/epub+zip";
+  if(file.size>3_800_000&&config)try{
+   await uploadSignedResumable({projectUrl:config.url,publishableKey:config.publishableKey,path:signed.path,token:signed.token,file,onProgress});
+   if(await stored())return;
+  }catch{/* Fall back to the standard signed upload. */}
   if(storage)try{
-   const mime=file.name.toLowerCase().endsWith(".pdf")||file.type==="application/pdf"?"application/pdf":"application/epub+zip";
    const saved=await storage.uploadToSignedUrl(signed.path,signed.token,file,{contentType:mime,cacheControl:"3600"});
-   if(!saved.error&&await stored())return;
-  }catch{/* The upload is not confirmed; keep the import in an error state. */}
+   if(!saved.error&&await stored()){onProgress?.(100);return;}
+  }catch{/* On mobile, attempt TUS next. */}
+  if(file.size<=3_800_000&&config)try{
+   await uploadSignedResumable({projectUrl:config.url,publishableKey:config.publishableKey,path:signed.path,token:signed.token,file,onProgress});
+   if(await stored())return;
+  }catch{}
  }
- if(file.size>3_800_000)throw new Error("Envoi direct interrompu. Réessayez avec une connexion stable.");
- throw new Error(proxyStatus===409
-  ?"Conflit de transfert : le fichier reste absent du stockage. Réessayez."
-  :"Transfert non confirmé dans le stockage. Réessayez.");
+ if(typeof navigator!=="undefined"&&!navigator.onLine)throw new Error("Connexion interrompue. Rouvrez Atlas en ligne et réessayez.");
+ if(proxyStatus===409)throw new Error("Le fichier n’est pas confirmé dans le stockage. Réessayez.");
+ if(proxyStatus===413)throw new Error("Envoi refusé par le serveur. Réessayez sur une connexion stable.");
+ throw new Error("Échec de l’import. Vérifiez votre connexion et réessayez en gardant Atlas ouvert.");
 }
 
 async function putCover(workspaceId: string, bookId: string, files: readonly [File, File]) {
@@ -105,7 +137,7 @@ async function putCover(workspaceId: string, bookId: string, files: readonly [Fi
 export function BookLibrary({ readerId }: { readerId?: string }) {
   const router = useRouter(); const [workspaceId, setWorkspaceId] = useState(""); const [books, setBooks] = useState<Book[]>([]); const [covers, setCovers] = useState<Record<string, CoverUrls>>({}); const [summary, setSummary] = useState<Summary | null>(null);
   const [offlineToken, setOfflineToken] = useState<{scope:string;epoch:string;userId:string;workspaceId:string}|null>(null); const [offlineIds,setOfflineIds]=useState<string[]>([]);
-  const [filter, setFilter] = useState("Tous"); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [newFile, setNewFile] = useState<File | null>(null); const [dragActive,setDragActive]=useState(false); const [uploadStep,setUploadStep]=useState<"idle"|"creating"|"transferring"|"cover">("idle"); const [newCover, setNewCover] = useState<File | null>(null); const [title, setTitle] = useState(""); const [author, setAuthor] = useState(""); const [readerBook, setReaderBook] = useState<Book | null>(null); const [readerFile, setReaderFile] = useState<File | null>(null); const [readerLoading, setReaderLoading] = useState(false); const [repairBusy, setRepairBusy] = useState(false); const [reader, setReader] = useState<ReaderApi | null>(null); const [readerError, setReaderError] = useState(""); const [notes, setNotes] = useState<{ id:string;kind:string;body:string;position:number;color:string;anchor_cfi?:string|null;deleted_at?:string|null }[]>([]); const [editingNote,setEditingNote]=useState<string|null>(null); const [goalDraft,setGoalDraft]=useState("30"); const [noteText, setNoteText] = useState(""); const [selectedText, setSelectedText] = useState(""); const [settingsOpen, setSettingsOpen] = useState(false); const [font, setFont] = useState("Georgia, serif"); const [fontSize, setFontSize] = useState(18); const [theme, setTheme] = useState("sepia"); const [palette, setPalette] = useState(0); const [readerProgress, setReaderProgress] = useState(0);
+  const [filter, setFilter] = useState("Tous"); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [newFile, setNewFile] = useState<File | null>(null); const [dragActive,setDragActive]=useState(false); const [uploadStep,setUploadStep]=useState<"idle"|"creating"|"transferring"|"cover">("idle"); const [uploadPercent,setUploadPercent]=useState(0); const [newCover, setNewCover] = useState<File | null>(null); const [title, setTitle] = useState(""); const [author, setAuthor] = useState(""); const [readerBook, setReaderBook] = useState<Book | null>(null); const [readerFile, setReaderFile] = useState<File | null>(null); const [readerLoading, setReaderLoading] = useState(false); const [repairBusy, setRepairBusy] = useState(false); const [reader, setReader] = useState<ReaderApi | null>(null); const [readerError, setReaderError] = useState(""); const [notes, setNotes] = useState<{ id:string;kind:string;body:string;position:number;color:string;anchor_cfi?:string|null;deleted_at?:string|null }[]>([]); const [editingNote,setEditingNote]=useState<string|null>(null); const [goalDraft,setGoalDraft]=useState("30"); const [noteText, setNoteText] = useState(""); const [selectedText, setSelectedText] = useState(""); const [settingsOpen, setSettingsOpen] = useState(false); const [font, setFont] = useState("Georgia, serif"); const [fontSize, setFontSize] = useState(18); const [theme, setTheme] = useState("sepia"); const [palette, setPalette] = useState(0); const [readerProgress, setReaderProgress] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null); const coverInput = useRef<HTMLInputElement>(null); const readerHost = useRef<HTMLDivElement>(null); const fileRef = useRef<File | null>(null); const positionRef = useRef(0); const lastTick = useRef(0); const currentBookId = useRef(""); const selectedRange = useRef<{ index: number; range: Range } | null>(null); const currentSection = useRef(0); const notesRef = useRef(notes); const [refreshKey, setRefreshKey] = useState(0); const listEtag=useRef(""); const resumeOverride=useRef<number|null>(null);
   useEffect(() => { notesRef.current = notes; }, [notes]);
   const readerPrefs = useRef({ font, fontSize, theme }); const readerDocs = useRef<Document[]>([]);
@@ -237,11 +269,13 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
     if(file && !title.trim())setTitle(file.name.replace(/\.(epub|pdf)$/i,""));
   };
   const addBook = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); if(!workspaceId||!newFile||busy)return;
+    event.preventDefault();if(busy||!newFile)return;
+    if(!workspaceId){setMessage("Chargement de l’espace de travail. Réessayez.");return;}
+    if(typeof navigator!=="undefined"&&!navigator.onLine){setMessage("Vous êtes hors ligne. Connectez-vous à Internet pour importer le livre.");return;}
     if(newCover&&(!['image/jpeg','image/png','image/webp'].includes(newCover.type)||newCover.size<1||newCover.size>15*1024*1024)){
       setMessage("Choisissez une image JPEG, PNG ou WebP de moins de 15 Mo.");return;
     }
-    setBusy(true);setUploadStep("creating");setMessage("");fileRef.current=newFile;
+    setBusy(true);setUploadStep("creating");setUploadPercent(0);setMessage("");fileRef.current=newFile;
     let createdId:string|null=null,fileReady=false;
     try{
       const format=newFile.type==="application/pdf"||newFile.name.toLowerCase().endsWith(".pdf")?"pdf":"epub";
@@ -252,7 +286,7 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
       }));
       createdId=created.book.id;
       setUploadStep("transferring");
-      await sendBookFile(workspaceId,created.book.id,newFile,created.upload);
+      await sendBookFile(workspaceId,created.book.id,newFile,created.upload,setUploadPercent);
       fileReady=true;
       setUploadStep("cover");
       let coverIssue=false;
@@ -368,17 +402,18 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
     <section className="atlas-books-import-panel" aria-labelledby="atlas-import-title">
       <div className="atlas-books-import-head"><div><span className="atlas-books-section-kicker">VOTRE PROCHAINE LECTURE</span><h2 id="atlas-import-title">Ajoutez un nouveau livre</h2><p>Importez un PDF ou EPUB. Une fois le transfert vérifié, votre livre sera prêt à ouvrir.</p></div><span className="atlas-books-import-formats">PDF <span aria-hidden="true">·</span> EPUB</span></div>
       <form className="atlas-books-add" onSubmit={addBook}>
-        <label className={"atlas-books-dropzone" + (dragActive ? " is-dragging" : "") + (newFile ? " has-file" : "")} htmlFor="book-file"
+        <div className={"atlas-books-dropzone" + (dragActive ? " is-dragging" : "") + (newFile ? " has-file" : "")}
           onDragOver={event => {event.preventDefault();if(!busy)setDragActive(true);}}
           onDragLeave={event => {event.preventDefault();setDragActive(false);}}
           onDrop={event => {event.preventDefault();if(!busy)chooseBookFile(event.dataTransfer.files?.[0] ?? null);}}>
-          <input className="atlas-books-upload-input" id="book-file" ref={fileInput} type="file" disabled={busy} accept=".epub,.pdf,application/epub+zip,application/pdf" onChange={event => chooseBookFile(event.target.files?.[0] ?? null)} />
+          
           <span className="atlas-books-upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4m-4 4 4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></span>
           <strong>{newFile ? newFile.name : "Glissez votre livre ici"}</strong>
           <span className="atlas-books-upload-description">{newFile ? "Fichier sélectionné · " + (newFile.size / 1024 / 1024).toFixed(2) + " Mo" : "Ou sélectionnez un fichier sur votre appareil"}</span>
-          <span className="atlas-books-upload-action">{newFile ? "Changer le fichier" : "Choisir un fichier"} <span aria-hidden="true">↗</span></span>
+          <button className="atlas-books-upload-action" type="button" disabled={busy} onClick={() => fileInput.current?.click()}>{newFile ? "Changer de fichier" : "Ouvrir mes fichiers"} <span aria-hidden="true">↗</span></button>
+          <input className="atlas-books-native-file" id="book-file" ref={fileInput} type="file" disabled={busy} aria-label="Sélectionner un PDF ou EPUB sur le téléphone" accept=".epub,.pdf,application/epub+zip,application/pdf" onChange={event => chooseBookFile(event.target.files?.[0] ?? null)} />
           <small>PDF ou EPUB · 100 Mo maximum</small>
-        </label>
+        </div>
         <div className="atlas-books-add-fields">
           <div className="atlas-books-add-field"><label htmlFor="atlas-book-title">Titre du livre</label><input id="atlas-book-title" aria-label="Titre" placeholder="Ex. Le pouvoir des habitudes" value={title} onChange={event => setTitle(event.target.value)} maxLength={300}/></div>
           <div className="atlas-books-add-field"><label htmlFor="atlas-book-author">Auteur <span>(facultatif)</span></label><input id="atlas-book-author" aria-label="Auteur" placeholder="Nom de l’auteur" value={author} onChange={event => setAuthor(event.target.value)} maxLength={300}/></div>
@@ -386,7 +421,7 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
             <label className="atlas-books-cover-action" htmlFor="book-cover"><span aria-hidden="true">▧</span><span>{newCover ? newCover.name : "Choisir une image de couverture"}</span><b>Parcourir</b></label>
             <input className="atlas-books-cover-input" id="book-cover" ref={coverInput} type="file" disabled={busy} accept="image/jpeg,image/png,image/webp" onChange={event => setNewCover(event.target.files?.[0] ?? null)} />
           </div>
-          <div className="atlas-books-add-footer"><p role="status" aria-live="polite">{busy ? uploadStep === "creating" ? "Préparation du livre…" : uploadStep === "transferring" ? "Envoi et vérification du fichier…" : "Finalisation de la couverture…" : newFile ? "Le fichier sera vérifié avant d’être ajouté." : "Vos fichiers restent privés dans Atlas."}</p>
+          <div className="atlas-books-add-footer"><p role="status" aria-live="polite">{busy ? uploadStep === "creating" ? "Préparation du livre…" : uploadStep === "transferring" ? "Envoi et vérification du fichier… " + (uploadPercent ? uploadPercent + " %" : "") : "Finalisation de la couverture…" : newFile ? "Le fichier sera vérifié avant d’être ajouté." : "Vos fichiers restent privés dans Atlas."}</p>
             <button type="submit" disabled={busy || !newFile}>{busy ? <><span className="atlas-books-upload-spinner" aria-hidden="true"/> Import en cours…</> : <>Ajouter à ma bibliothèque <span aria-hidden="true">↗</span></>}</button>
           </div>
         </div>
