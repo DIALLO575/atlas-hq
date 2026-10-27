@@ -14,3 +14,13 @@ test("reader can re-import missing file instead of adding duplicate",()=>{
  assert.ok(ui.includes("Réimporter le fichier original"));
  assert.ok(ui.includes("sendBookFile(workspaceId,readerBook.id,file)"));
 });
+
+test("upload never treats a conflict or a signed URL as proof of storage",()=>{
+ const proxy=ui.indexOf('method:"POST",body');
+ const signed=ui.indexOf("storage.uploadToSignedUrl(signed.path");
+ assert.ok(proxy>=0&&signed>proxy,"small PDFs use the owner-scoped proxy before signed fallback");
+ assert.ok(ui.includes('if((response.ok||response.status===409)&&await stored())return;'));
+ assert.ok(ui.includes('if(!saved.error&&await stored())return;'));
+ assert.ok(ui.includes('fetch(endpoint,{cache:"no-store"})'));
+ assert.ok(!ui.includes('if(response.ok||response.status===409)return;'));
+});

@@ -59,26 +59,37 @@ async function resizedImage(file: File, title: string, author: string, palette: 
   const result = await Promise.all([render(720), render(240)]); image.close(); return result as readonly [File, File];
 }
 
-/** Try direct signed upload first, then owner-scoped proxy for small files. */
+/** Small files use the authenticated server route first; never report success before Storage confirms the file. */
 async function sendBookFile(workspaceId:string,bookId:string,file:File,signed?:{path:string;token:string}){
+ const endpoint=`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`;
+ const stored=async()=>{
+  try{const check=await fetch(endpoint,{cache:"no-store"});return check.ok;}
+  catch{return false;}
+ };
+ let proxyStatus:number|null=null;
+ if(file.size<=3_800_000){
+  const body=new FormData();body.set("file",file);
+  let response:Response|null=null;
+  try{response=await fetch(endpoint,{method:"POST",body});}
+  catch{/* Try the signed upload if the authenticated proxy is unreachable. */}
+  if(response){
+   proxyStatus=response.status;
+   if(response.status===422)throw new Error("Le fichier ne correspond pas à l’original (format et taille).");
+   if((response.ok||response.status===409)&&await stored())return;
+  }
+ }
  if(signed){
   const storage=createSupabaseBrowserClient()?.storage.from("books");
   if(storage)try{
    const mime=file.name.toLowerCase().endsWith(".pdf")||file.type==="application/pdf"?"application/pdf":"application/epub+zip";
    const saved=await storage.uploadToSignedUrl(signed.path,signed.token,file,{contentType:mime,cacheControl:"3600"});
-   if(!saved.error){
-    const verified=await fetch(`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`,{cache:"no-store"});
-    if(verified.ok)return;
-   }
-  }catch{/* continue with authenticated fallback */}
+   if(!saved.error&&await stored())return;
+  }catch{/* The upload is not confirmed; keep the import in an error state. */}
  }
  if(file.size>3_800_000)throw new Error("Envoi direct interrompu. Réessayez avec une connexion stable.");
- const body=new FormData();body.set("file",file);
- const response=await fetch(`${API}/${bookId}/file?workspaceId=${encodeURIComponent(workspaceId)}`,{method:"POST",body});
- if(response.ok||response.status===409)return;
- if(response.status===422)throw new Error("Le fichier ne correspond pas à l’original (format et taille).");
- if(response.status===413)throw new Error("Fichier trop volumineux pour la récupération.");
- throw new Error("Transfert du fichier impossible. Réessayez.");
+ throw new Error(proxyStatus===409
+  ?"Conflit de transfert : le fichier reste absent du stockage. Réessayez."
+  :"Transfert non confirmé dans le stockage. Réessayez.");
 }
 
 async function putCover(workspaceId: string, bookId: string, files: readonly [File, File]) {
@@ -94,7 +105,7 @@ async function putCover(workspaceId: string, bookId: string, files: readonly [Fi
 export function BookLibrary({ readerId }: { readerId?: string }) {
   const router = useRouter(); const [workspaceId, setWorkspaceId] = useState(""); const [books, setBooks] = useState<Book[]>([]); const [covers, setCovers] = useState<Record<string, CoverUrls>>({}); const [summary, setSummary] = useState<Summary | null>(null);
   const [offlineToken, setOfflineToken] = useState<{scope:string;epoch:string;userId:string;workspaceId:string}|null>(null); const [offlineIds,setOfflineIds]=useState<string[]>([]);
-  const [filter, setFilter] = useState("Tous"); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [newFile, setNewFile] = useState<File | null>(null); const [newCover, setNewCover] = useState<File | null>(null); const [title, setTitle] = useState(""); const [author, setAuthor] = useState(""); const [readerBook, setReaderBook] = useState<Book | null>(null); const [readerFile, setReaderFile] = useState<File | null>(null); const [readerLoading, setReaderLoading] = useState(false); const [repairBusy, setRepairBusy] = useState(false); const [reader, setReader] = useState<ReaderApi | null>(null); const [readerError, setReaderError] = useState(""); const [notes, setNotes] = useState<{ id:string;kind:string;body:string;position:number;color:string;anchor_cfi?:string|null;deleted_at?:string|null }[]>([]); const [editingNote,setEditingNote]=useState<string|null>(null); const [goalDraft,setGoalDraft]=useState("30"); const [noteText, setNoteText] = useState(""); const [selectedText, setSelectedText] = useState(""); const [settingsOpen, setSettingsOpen] = useState(false); const [font, setFont] = useState("Georgia, serif"); const [fontSize, setFontSize] = useState(18); const [theme, setTheme] = useState("sepia"); const [palette, setPalette] = useState(0); const [readerProgress, setReaderProgress] = useState(0);
+  const [filter, setFilter] = useState("Tous"); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [newFile, setNewFile] = useState<File | null>(null); const [dragActive,setDragActive]=useState(false); const [uploadStep,setUploadStep]=useState<"idle"|"creating"|"transferring"|"cover">("idle"); const [newCover, setNewCover] = useState<File | null>(null); const [title, setTitle] = useState(""); const [author, setAuthor] = useState(""); const [readerBook, setReaderBook] = useState<Book | null>(null); const [readerFile, setReaderFile] = useState<File | null>(null); const [readerLoading, setReaderLoading] = useState(false); const [repairBusy, setRepairBusy] = useState(false); const [reader, setReader] = useState<ReaderApi | null>(null); const [readerError, setReaderError] = useState(""); const [notes, setNotes] = useState<{ id:string;kind:string;body:string;position:number;color:string;anchor_cfi?:string|null;deleted_at?:string|null }[]>([]); const [editingNote,setEditingNote]=useState<string|null>(null); const [goalDraft,setGoalDraft]=useState("30"); const [noteText, setNoteText] = useState(""); const [selectedText, setSelectedText] = useState(""); const [settingsOpen, setSettingsOpen] = useState(false); const [font, setFont] = useState("Georgia, serif"); const [fontSize, setFontSize] = useState(18); const [theme, setTheme] = useState("sepia"); const [palette, setPalette] = useState(0); const [readerProgress, setReaderProgress] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null); const coverInput = useRef<HTMLInputElement>(null); const readerHost = useRef<HTMLDivElement>(null); const fileRef = useRef<File | null>(null); const positionRef = useRef(0); const lastTick = useRef(0); const currentBookId = useRef(""); const selectedRange = useRef<{ index: number; range: Range } | null>(null); const currentSection = useRef(0); const notesRef = useRef(notes); const [refreshKey, setRefreshKey] = useState(0); const listEtag=useRef(""); const resumeOverride=useRef<number|null>(null);
   useEffect(() => { notesRef.current = notes; }, [notes]);
   const readerPrefs = useRef({ font, fontSize, theme }); const readerDocs = useRef<Document[]>([]);
@@ -216,12 +227,21 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
   }, [author, title, workspaceId]);
 
 
+  const chooseBookFile = (file: File | null) => {
+    setDragActive(false);
+    if(file && (!/\.(pdf|epub)$/i.test(file.name) || file.size===0 || file.size>104857600)){
+      setNewFile(null);if(fileInput.current)fileInput.current.value="";
+      setMessage("Choisissez un PDF ou EPUB valide de 100 Mo maximum.");return;
+    }
+    setNewFile(file);setMessage("");
+    if(file && !title.trim())setTitle(file.name.replace(/\.(epub|pdf)$/i,""));
+  };
   const addBook = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); if(!workspaceId||!newFile||busy)return;
     if(newCover&&(!['image/jpeg','image/png','image/webp'].includes(newCover.type)||newCover.size<1||newCover.size>15*1024*1024)){
       setMessage("Choisissez une image JPEG, PNG ou WebP de moins de 15 Mo.");return;
     }
-    setBusy(true);setMessage("");fileRef.current=newFile;
+    setBusy(true);setUploadStep("creating");setMessage("");fileRef.current=newFile;
     let createdId:string|null=null,fileReady=false;
     try{
       const format=newFile.type==="application/pdf"||newFile.name.toLowerCase().endsWith(".pdf")?"pdf":"epub";
@@ -231,8 +251,10 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
        body:JSON.stringify({workspaceId,title:title.trim()||newFile.name.replace(/\.(epub|pdf)$/i,""),author,format,mimeType,byteSize:newFile.size})
       }));
       createdId=created.book.id;
+      setUploadStep("transferring");
       await sendBookFile(workspaceId,created.book.id,newFile,created.upload);
       fileReady=true;
+      setUploadStep("cover");
       let coverIssue=false;
       try{
         if(newCover)await putCover(workspaceId,created.book.id,await resizedImage(newCover,title,author,palette,palette));
@@ -248,7 +270,7 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
         await fetch(`${API}/${createdId}?workspaceId=${encodeURIComponent(workspaceId)}`,{method:"DELETE"});
       }catch{}
       setMessage(error instanceof Error?error.message:"BOOK_CREATE_UNAVAILABLE");
-    }finally{setBusy(false);fileRef.current=null;}
+    }finally{setBusy(false);setUploadStep("idle");fileRef.current=null;}
   };
 
   const repairBookFile=async(file:File)=>{
@@ -311,24 +333,24 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
   const deleteNote = async (note:{id:string}) => { if(!readerBook)return;const sendId=crypto.randomUUID(),body={workspaceId,bookId:readerBook.id,id:note.id,sendId};try{if(offlineToken){const offlineStorageModule=await importPublicModule('/books-offline-storage.mjs') as OfflineModule;const store=await offlineStorageModule.booksOfflineStorage();try{await store.cache.enqueue(offlineToken,{kind:'annotation_delete',sendId,queuedAt:Date.now(),body});}finally{store.close();}}const response=await fetch(`${API}/notes`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!response.ok)throw new Error('BOOK_NOTE_DELETE_UNAVAILABLE');if(offlineToken){const offlineStorageModule=await importPublicModule('/books-offline-storage.mjs') as OfflineModule;const store=await offlineStorageModule.booksOfflineStorage();try{await store.cache.acknowledge(offlineToken,sendId);}finally{store.close();}}const result=await safeJson<{notes:typeof notes}>(await fetch(`${API}/notes?workspaceId=${encodeURIComponent(workspaceId)}&bookId=${readerBook.id}`,{cache:'no-store'}));sameSet(setNotes,result.notes);}catch{setMessage(offlineToken ? 'Suppression mise en attente de synchronisation.' : 'Impossible de supprimer la note. Réessayez une fois connecté.');} };
   const saveGoal = async (event:React.FormEvent<HTMLFormElement>) => {event.preventDefault();const value=Number(goalDraft);if(!Number.isInteger(value)||value<5||value>360){setMessage('Choisissez un objectif entre 5 et 360 minutes.');return;}const response=await fetch(`${API}/summary`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspaceId,goalMinutes:value})});if(!response.ok){setMessage('Impossible d’enregistrer l’objectif.');return;}await refresh();};
   if (readerId) return <main className={`atlas-book-reader is-${theme}`}>
-    <header className="atlas-book-reader-top"><Link href={`/lecture?workspaceId=${encodeURIComponent(workspaceId)}`} onClick={() => { setReaderFile(null); setReader(null); setReaderBook(null); }}>← Bibliothèque</Link><strong>{readerBook?.title ?? "Lecture"}</strong><div><button type="button" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>Réglages</button></div></header>
-    {settingsOpen && <section className="atlas-book-settings" aria-label="Réglages de lecture"><label>Taille <input type="range" min="14" max="28" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} /></label><label>Police <select value={font} onChange={e => setFont(e.target.value)}><option value="Georgia, serif">Serif</option><option value="Arial, sans-serif">Sans</option><option value="monospace">Mono</option></select></label><label>Thème <select value={theme} onChange={e => setTheme(e.target.value)}><option value="light">Clair</option><option value="sepia">Sépia</option><option value="night">Nuit</option></select></label></section>}
-    <div className="atlas-book-reader-layout"><div className="atlas-book-reader-pages"><div className="atlas-book-reader-controls"><button type="button" onClick={() => void reader?.prev()} aria-label="Page précédente">‹</button><button type="button" onClick={() => void reader?.next()} aria-label="Page suivante">›</button></div><div ref={readerHost} className="atlas-book-reader-host"/>{readerLoading && <p role="status" className="atlas-book-reader-status">{readerBook ? `Ouverture de « ${readerBook.title} »…` : "Chargement du livre…"}</p>}{readerError && <div className="atlas-book-reader-status" role="alert"><p>{readerError === "AUTH_REQUIRED" ? "Votre session a expiré. Reconnectez-vous pour ouvrir ce livre." : readerError === "BOOK_FILE_DOWNLOAD_FAILED" ? "Le téléchargement du livre a échoué. Vérifiez votre connexion puis réessayez." : readerError === "BOOK_FILE_MISSING" ? "Fichier absent du stockage. Réimportez le PDF ou EPUB original pour réparer ce livre." : readerError === "BOOK_FORMAT_INVALID" || readerError === "BOOK_FORMAT_MISMATCH" ? "Le fichier ne correspond pas au format enregistré pour ce livre." : readerError}</p>{readerError === "AUTH_REQUIRED" ? <a href={`/login?next=${encodeURIComponent(`/lecture/${readerId}?workspaceId=${workspaceId}`)}`}>Se reconnecter</a> : readerBook && <button type="button" onClick={() => void loadReader(readerBook)}>Réessayer</button>}{readerError === "BOOK_FILE_MISSING" && readerBook && <label className="atlas-book-repair-label">
+    <header className="atlas-book-reader-top"><Link className="atlas-book-reader-back" href={`/lecture?workspaceId=${encodeURIComponent(workspaceId)}`} onClick={() => { setReaderFile(null); setReader(null); setReaderBook(null); }}><span aria-hidden="true">←</span> Bibliothèque</Link><div className="atlas-book-reader-title"><span>ATLAS · LECTURE</span><strong title={readerBook?.title ?? "Lecture"}>{readerBook?.title ?? "Lecture"}</strong></div><div><button type="button" aria-controls="atlas-reader-settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>Aa · Réglages</button></div></header>
+    {settingsOpen && <section id="atlas-reader-settings" className="atlas-book-settings" aria-label="Réglages de lecture"><label>Taille <input type="range" min="14" max="28" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} /></label><label>Police <select value={font} onChange={e => setFont(e.target.value)}><option value="Georgia, serif">Serif</option><option value="Arial, sans-serif">Sans</option><option value="monospace">Mono</option></select></label><label>Thème <select value={theme} onChange={e => setTheme(e.target.value)}><option value="light">Clair</option><option value="sepia">Sépia</option><option value="night">Nuit</option></select></label></section>}
+    <div className="atlas-book-reader-layout"><div className="atlas-book-reader-pages"><div className="atlas-book-reader-controls"><button type="button" disabled={!reader} onClick={() => void reader?.prev()} aria-label="Page précédente" title="Page précédente">‹</button><button type="button" disabled={!reader} onClick={() => void reader?.next()} aria-label="Page suivante" title="Page suivante">›</button></div><div ref={readerHost} className="atlas-book-reader-host"/>{readerLoading && <p role="status" className="atlas-book-reader-status">{readerBook ? `Ouverture de « ${readerBook.title} »…` : "Chargement du livre…"}</p>}{readerError && <div className="atlas-book-reader-status" role="alert"><p>{readerError === "AUTH_REQUIRED" ? "Votre session a expiré. Reconnectez-vous pour ouvrir ce livre." : readerError === "BOOK_FILE_DOWNLOAD_FAILED" ? "Le téléchargement du livre a échoué. Vérifiez votre connexion puis réessayez." : readerError === "BOOK_FILE_MISSING" ? "Fichier absent du stockage. Réimportez le PDF ou EPUB original pour réparer ce livre." : readerError === "BOOK_FORMAT_INVALID" || readerError === "BOOK_FORMAT_MISMATCH" ? "Le fichier ne correspond pas au format enregistré pour ce livre." : readerError}</p>{readerError === "AUTH_REQUIRED" ? <a href={`/login?next=${encodeURIComponent(`/lecture/${readerId}?workspaceId=${workspaceId}`)}`}>Se reconnecter</a> : readerBook && <button type="button" onClick={() => void loadReader(readerBook)}>Réessayer</button>}{readerError === "BOOK_FILE_MISSING" && readerBook && <label className="atlas-book-repair-label">
   {repairBusy?"Transfert…":"Réimporter le fichier original"}
   <input type="file" disabled={repairBusy} accept={readerBook.format==="pdf"?".pdf,application/pdf":".epub,application/epub+zip"}
     onChange={event=>{const file=event.currentTarget.files?.[0];if(file)void repairBookFile(file);event.currentTarget.value="";}} />
   </label>}</div>}<div className="atlas-book-progress-row"><input aria-label="Aller à une position dans le livre" type="range" min="0" max="100" value={Math.round(readerProgress * 100)} disabled={!reader} onChange={event => void reader?.goTo({ fraction: Number(event.currentTarget.value) / 100 })} className="atlas-book-progress" /><output aria-live="off">{Math.round(readerProgress * 100)} %</output></div></div>
       <aside className="atlas-book-notes">
-        <h2>Notes, surlignages &amp; signets</h2>
-        {readerBook && <a href={`${API}/notes/export?workspaceId=${encodeURIComponent(workspaceId)}&bookId=${readerBook.id}`}>Exporter en Markdown</a>}
+        <div className="atlas-book-notes-head"><div><span>VOTRE CARNET</span><h2>Notes &amp; signets</h2></div><span className="atlas-book-notes-count">{notes.filter(note => !note.deleted_at).length}</span></div>
+        {readerBook && <a href={`${API}/notes/export?workspaceId=${encodeURIComponent(workspaceId)}&bookId=${readerBook.id}`} className="atlas-book-notes-export">↓ Exporter en Markdown</a>}
         {selectedText && <p className="atlas-book-selected">« {selectedText.slice(0, 260)} »</p>}
-        <textarea value={noteText} onChange={event => setNoteText(event.target.value)} placeholder="Ajouter une note…" aria-label="Nouvelle note" />
+        <label className="atlas-book-notes-label" htmlFor="atlas-book-new-note">Votre note</label><textarea id="atlas-book-new-note" value={noteText} onChange={event => setNoteText(event.target.value)} placeholder="Notez une idée, une citation, une réflexion…" aria-label="Nouvelle note" />
         <div className="atlas-book-note-actions">
           <button type="button" onClick={() => void saveNote("note")}>{editingNote ? "Enregistrer la note" : "Ajouter une note"}</button>
           <button type="button" disabled={!selectedText} onClick={() => void saveNote("highlight", selectedText)}>Surligner</button>
           <button type="button" onClick={() => { const content=`Signet · ${Math.round(positionRef.current * 100)} %`; setNoteText(content); void saveNote("bookmark", content); }}>Ajouter un signet</button>
         </div>
-        <ul>{notes.filter(note => !note.deleted_at).map(note => <li key={note.id} className={note.kind === "highlight" ? "is-highlight" : ""}>
+        {notes.every(note => note.deleted_at) && <p className="atlas-book-notes-empty">Les annotations apparaîtront ici au fil de votre lecture.</p>}<ul>{notes.filter(note => !note.deleted_at).map(note => <li key={note.id} className={note.kind === "highlight" ? "is-highlight" : ""}>
           <small>{Math.round(note.position * 100)} % · {note.kind === "highlight" ? "Surlignage" : note.kind === "bookmark" ? "Signet" : "Note"}</small><p>{note.body}</p>
           <button type="button" onClick={() => void reader?.goTo(note.anchor_cfi || { fraction: note.position })}>Aller au passage</button>
            <button type="button" onClick={() => { setEditingNote(note.id); setNoteText(note.body); }}>Modifier</button>
@@ -339,14 +361,40 @@ export function BookLibrary({ readerId }: { readerId?: string }) {
   </main>;
 
   const today = summary ? Math.round(summary.todaySeconds / 60) : 0; const goal = summary?.goalMinutes??(summary ? Math.round(summary.goalSeconds / 60) : 30); const heatmapDays=Object.entries(summary?.dailySeconds??{});
-  return <main className="atlas-books-page"><header className="atlas-books-heading"><div><p className="atlas-books-eyebrow">ATLAS · TEMPS POUR LIRE</p><h1>Bibliothèque</h1><p>Reprenez le fil, à votre rythme.</p></div><div className="atlas-books-daily"><strong>{today}/{goal} min</strong><span>aujourd’hui</span><div><i style={{ width: `${Math.min(100, Math.round(today / Math.max(1, goal) * 100))}%` }}/></div></div></header>
+  return <main className="atlas-books-page"><header className="atlas-books-heading"><div><p className="atlas-books-eyebrow">✦ &nbsp; ATLAS · ESPACE DE LECTURE</p><h1>Votre <em>bibliothèque.</em></h1><p>Un endroit calme pour vos livres, vos notes et vos idées.</p></div><div className="atlas-books-daily"><strong>{today}/{goal} min</strong><span>aujourd’hui</span><div><i style={{ width: `${Math.min(100, Math.round(today / Math.max(1, goal) * 100))}%` }}/></div></div></header>
     <section className="atlas-books-stats" aria-label="Statistiques de lecture"><div><strong>{summary?.streakDays??0}</strong><span>jours de série</span></div><div><strong>{summary?.pagesPerHour??0}</strong><span>pages / heure</span></div><div><strong>{summary?.finishedBooks??0}</strong><span>livres terminés</span></div><form onSubmit={saveGoal}><label htmlFor="daily-reading-goal">Objectif quotidien</label><input id="daily-reading-goal" type="number" min="5" max="360" value={goalDraft} onChange={e=>setGoalDraft(e.target.value)}/><span>min / jour</span><button type="submit">Enregistrer</button></form></section>
     <section className="atlas-books-heatmap" aria-label="Temps de lecture sur un an">{heatmapDays.map(([day,seconds])=><span key={day} title={`${day} · ${Math.round(seconds/60)} min`} style={{opacity:seconds?Math.min(.95,.2+seconds/3600):.12}}/>)}</section>
     {message && <p role={message === "AUTH_REQUIRED" ? "alert" : "status"} className="atlas-books-message">{message === "AUTH_REQUIRED" ? <a href="/login?next=%2Flecture">Connectez-vous pour ouvrir votre bibliothèque.</a> : message}</p>}
-    <form className="atlas-books-add" onSubmit={addBook}><div><label htmlFor="book-file">Ajouter un livre</label><input id="book-file" ref={fileInput} type="file" accept=".epub,.pdf,application/epub+zip,application/pdf" onChange={e => { const file = e.target.files?.[0] ?? null; setNewFile(file); if (file && !title) setTitle(file.name.replace(/\.(epub|pdf)$/i, "")); }} required /></div><input aria-label="Titre" placeholder="Titre" value={title} onChange={e => setTitle(e.target.value)} maxLength={300}/><input aria-label="Auteur" placeholder="Auteur (facultatif)" value={author} onChange={e => setAuthor(e.target.value)} maxLength={300}/><div><label htmlFor="book-cover">Photo de couverture (facultatif)</label><input id="book-cover" ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setNewCover(e.target.files?.[0] ?? null)} /></div><button type="submit" disabled={busy || !newFile}>{busy ? "Ajout…" : "Ajouter le livre"}</button></form>
+    <section className="atlas-books-import-panel" aria-labelledby="atlas-import-title">
+      <div className="atlas-books-import-head"><div><span className="atlas-books-section-kicker">VOTRE PROCHAINE LECTURE</span><h2 id="atlas-import-title">Ajoutez un nouveau livre</h2><p>Importez un PDF ou EPUB. Une fois le transfert vérifié, votre livre sera prêt à ouvrir.</p></div><span className="atlas-books-import-formats">PDF <span aria-hidden="true">·</span> EPUB</span></div>
+      <form className="atlas-books-add" onSubmit={addBook}>
+        <label className={"atlas-books-dropzone" + (dragActive ? " is-dragging" : "") + (newFile ? " has-file" : "")} htmlFor="book-file"
+          onDragOver={event => {event.preventDefault();if(!busy)setDragActive(true);}}
+          onDragLeave={event => {event.preventDefault();setDragActive(false);}}
+          onDrop={event => {event.preventDefault();if(!busy)chooseBookFile(event.dataTransfer.files?.[0] ?? null);}}>
+          <input className="atlas-books-upload-input" id="book-file" ref={fileInput} type="file" disabled={busy} accept=".epub,.pdf,application/epub+zip,application/pdf" onChange={event => chooseBookFile(event.target.files?.[0] ?? null)} />
+          <span className="atlas-books-upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4m-4 4 4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></span>
+          <strong>{newFile ? newFile.name : "Glissez votre livre ici"}</strong>
+          <span className="atlas-books-upload-description">{newFile ? "Fichier sélectionné · " + (newFile.size / 1024 / 1024).toFixed(2) + " Mo" : "Ou sélectionnez un fichier sur votre appareil"}</span>
+          <span className="atlas-books-upload-action">{newFile ? "Changer le fichier" : "Choisir un fichier"} <span aria-hidden="true">↗</span></span>
+          <small>PDF ou EPUB · 100 Mo maximum</small>
+        </label>
+        <div className="atlas-books-add-fields">
+          <div className="atlas-books-add-field"><label htmlFor="atlas-book-title">Titre du livre</label><input id="atlas-book-title" aria-label="Titre" placeholder="Ex. Le pouvoir des habitudes" value={title} onChange={event => setTitle(event.target.value)} maxLength={300}/></div>
+          <div className="atlas-books-add-field"><label htmlFor="atlas-book-author">Auteur <span>(facultatif)</span></label><input id="atlas-book-author" aria-label="Auteur" placeholder="Nom de l’auteur" value={author} onChange={event => setAuthor(event.target.value)} maxLength={300}/></div>
+          <div className="atlas-books-add-cover"><label htmlFor="book-cover">Couverture <span>(facultatif)</span></label>
+            <label className="atlas-books-cover-action" htmlFor="book-cover"><span aria-hidden="true">▧</span><span>{newCover ? newCover.name : "Choisir une image de couverture"}</span><b>Parcourir</b></label>
+            <input className="atlas-books-cover-input" id="book-cover" ref={coverInput} type="file" disabled={busy} accept="image/jpeg,image/png,image/webp" onChange={event => setNewCover(event.target.files?.[0] ?? null)} />
+          </div>
+          <div className="atlas-books-add-footer"><p role="status" aria-live="polite">{busy ? uploadStep === "creating" ? "Préparation du livre…" : uploadStep === "transferring" ? "Envoi et vérification du fichier…" : "Finalisation de la couverture…" : newFile ? "Le fichier sera vérifié avant d’être ajouté." : "Vos fichiers restent privés dans Atlas."}</p>
+            <button type="submit" disabled={busy || !newFile}>{busy ? <><span className="atlas-books-upload-spinner" aria-hidden="true"/> Import en cours…</> : <>Ajouter à ma bibliothèque <span aria-hidden="true">↗</span></>}</button>
+          </div>
+        </div>
+      </form>
+    </section>
     <nav className="atlas-books-filters" aria-label="Filtrer les livres">{["Tous", "À lire", "En cours", "Terminé"].map(value => <button type="button" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{value}</button>)}</nav>
     {books.some(book => coverValue(book) > 0 && coverValue(book) < .98) && <section className="atlas-books-section"><div className="atlas-books-section-title"><div><span>VOTRE LECTURE</span><h2>En cours</h2></div></div><div className="atlas-books-grid">{books.filter(book => coverValue(book) > 0 && coverValue(book) < .98).map(book => <BookCard key={`${book.id}:${book.cover_thumb_path ?? "none"}`} book={book} cover={covers[book.id]} workspaceId={workspaceId} onRead={navigateToReader} onPhoto={savePhoto} onRegenerate={regenerate} onRemove={removeCover} busy={busy} offlineReady={offlineIds.includes(book.id)} onOffline={makeOffline} onRemoveOffline={removeOffline} />)}</div></section>}
-    <section className="atlas-books-section"><div className="atlas-books-section-title"><div><span>À DÉCOUVRIR OU REPRENDRE</span><h2>{filter}</h2></div><small>{visibleBooks.length} livre{visibleBooks.length === 1 ? "" : "s"}</small></div>{visibleBooks.length ? <div className="atlas-books-grid">{visibleBooks.map(book => <BookCard key={`${book.id}:${book.cover_thumb_path ?? "none"}`} book={book} cover={covers[book.id]} workspaceId={workspaceId} onRead={navigateToReader} onPhoto={savePhoto} onRegenerate={regenerate} onRemove={removeCover} busy={busy} offlineReady={offlineIds.includes(book.id)} onOffline={makeOffline} onRemoveOffline={removeOffline} />)}</div> : <div className="atlas-books-empty"><span>✳</span><h2>Votre prochaine page commence ici</h2><p>Ajoutez un EPUB ou un PDF pour le retrouver dans votre bibliothèque.</p></div>}</section>
+    <section className="atlas-books-section"><div className="atlas-books-section-title"><div><span>À DÉCOUVRIR OU REPRENDRE</span><h2>{filter === "Tous" ? "Tous les livres" : filter}</h2></div><small>{visibleBooks.length} livre{visibleBooks.length === 1 ? "" : "s"}</small></div>{visibleBooks.length ? <div className="atlas-books-grid">{visibleBooks.map(book => <BookCard key={`${book.id}:${book.cover_thumb_path ?? "none"}`} book={book} cover={covers[book.id]} workspaceId={workspaceId} onRead={navigateToReader} onPhoto={savePhoto} onRegenerate={regenerate} onRemove={removeCover} busy={busy} offlineReady={offlineIds.includes(book.id)} onOffline={makeOffline} onRemoveOffline={removeOffline} />)}</div> : <div className="atlas-books-empty"><span aria-hidden="true">✧</span><h2>Votre prochaine histoire commence ici.</h2><p>Ajoutez un EPUB ou un PDF et commencez votre lecture.</p><button type="button" onClick={() => {window.scrollTo({top:0,behavior:"smooth"}); fileInput.current?.click();}}>Importer mon premier livre <span aria-hidden="true">↗</span></button></div>}</section>
   </main>;
 }
 
