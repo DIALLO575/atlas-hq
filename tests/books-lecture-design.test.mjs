@@ -21,7 +21,7 @@ test("upload can be chosen or dropped, supports formats and preserves upload ver
   assert.match(component, /setUploadStep\("transferring"\)/);
   assert.match(component, /Envoi et vérification du fichier/);
   assert.match(component, /await sendBookFile\(workspaceId,created\.book\.id,newFile,created\.upload,setUploadPercent\)/);
-  assert.match(component, /if\(\(response\.ok\|\|response\.status===409\)\&\&await stored\(\)\)return;/);
+  assert.ok(component.includes('if((response.ok||response.status===409)&&await stored()){onProgress?.(100);return;}'));
 });
 test("reader controls stay accessible with new design", () => {
   assert.match(component, /aria-controls="atlas-reader-settings"/);
