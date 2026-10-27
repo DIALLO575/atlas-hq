@@ -1,12 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { PageHeading, DemoNotice } from '@/components/page-elements';
+import { PageHeading, EmptyPanel } from '@/components/page-elements';
 import { BASE_COMPOSITION, parseComposition, compositionDiff, type Composition } from '@/lib/ui-studio/builder';
 
 function CompositionPreview({ composition }: { composition: Composition }) {
   return <>{parseComposition(composition).blocks.map((block) => block.component === 'PageHeading'
     ? <PageHeading key={block.id} eyebrow={block.props.eyebrow} title={block.props.title} description={block.props.description}/>
-    : <DemoNotice key={block.id}/>)}</>;
+    : <EmptyPanel key={block.id} title="Aucun contenu connecté">Ce panneau ne lit aucune donnée métier.</EmptyPanel>)}</>;
 }
 export function UiBuilderPreview({ initial }: { initial: Composition }) {
   const [versions, setVersions] = useState<Composition[]>(() => [parseComposition(BASE_COMPOSITION), parseComposition(initial)]);
