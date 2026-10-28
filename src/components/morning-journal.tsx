@@ -94,13 +94,13 @@ function Reader({ item, list, label, onClose, onNav, onState, preferences, saveP
   useEffect(() => {
     const el = scroller.current;
     if (el) {
-      const position = Math.max(0, Math.min(1, item.lastPosition ?? 0));
+      const position = Math.max(0, Math.min(1, itemRef.current.lastPosition ?? 0));
       el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight) * position;
       const max = el.scrollHeight - el.clientHeight;
       setProgress(max > 0 ? 100 * el.scrollTop / max : 0);
     }
     closeBtn.current?.focus();
-  }, [item.key, item.lastPosition]);
+  }, [item.key]);
   useEffect(() => {
     let lastActivity = Date.now();
     let lastTick = lastActivity;
