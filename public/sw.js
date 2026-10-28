@@ -1,11 +1,11 @@
 importScripts("/journal-sw-core.js");
 importScripts('/books-offline-assets.js');
-const CACHE_NAME = 'atlas-hq-v5';
+const CACHE_NAME = 'atlas-hq-v6';
 const APP_SHELL = ["/manifest.webmanifest", "/journal.webmanifest", "/icon.svg", "/apple-touch-icon.png", "/journal-sw-core.js", "/journal-offline.html", "/journal-offline.js", "/journal-offline.css", "/journal-offline-cache.mjs", "/journal-cache-storage.mjs", "/books-offline-cache.mjs", "/books-offline-storage.mjs", "/books-offline-assets.js", "/lecture-offline.html", "/lecture-offline.css", "/lecture-offline.js", ...self.AtlasBookOfflineAssets];
 const J = self.JournalSwCore;
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('atlas-hq-') && key !== CACHE_NAME).map(key => caches.delete(key)))));
   self.clients.claim();
 });
 self.addEventListener("fetch", event => {
@@ -18,6 +18,17 @@ self.addEventListener("fetch", event => {
     return;
   }
   if (!APP_SHELL.includes(url.pathname) && !url.pathname.startsWith('/_next/static/')) return;
+  // Reader modules must update immediately online; use cached copies offline.
+  if (url.pathname.startsWith('/vendor/foliate-js/') && /\.(?:js|mjs)$/.test(url.pathname)) {
+    event.respondWith(caches.open(CACHE_NAME).then(async cache => {
+      try {
+        const response = await fetch(request, { cache: 'no-cache' });
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      } catch { return (await cache.match(request)) || Response.error(); }
+    }));
+    return;
+  }
   event.respondWith(caches.open(CACHE_NAME).then(async cache => {
     const cached = await cache.match(request);
     const update = fetch(request).then(async response => { if(response.ok) { await cache.put(request,response.clone()); const keys=await cache.keys(); for(const r of keys.filter(r => !APP_SHELL.includes(new URL(r.url).pathname)).slice(0,Math.max(0,keys.length-150))) await cache.delete(r); } return response; });
