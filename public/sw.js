@@ -22,7 +22,7 @@ self.addEventListener("fetch", event => {
   if (url.pathname.startsWith('/vendor/foliate-js/') && /\.(?:js|mjs)$/.test(url.pathname)) {
     event.respondWith(caches.open(CACHE_NAME).then(async cache => {
       try {
-        const response = await fetch(request);
+        const response = await fetch(request, { cache: 'no-cache' });
         if (response.ok) await cache.put(request, response.clone());
         return response;
       } catch { return (await cache.match(request)) || Response.error(); }
