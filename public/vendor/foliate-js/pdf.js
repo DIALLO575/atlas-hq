@@ -1,6 +1,7 @@
 const pdfjsPath = path => new URL(`vendor/pdfjs/${path}`, import.meta.url).toString()
 
 import './vendor/pdfjs/pdf.mjs'
+import { pdfOutlineDestination } from './pdf-destination.mjs'
 const pdfjsLib = globalThis.pdfjsLib
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsPath('pdf.worker.mjs')
 
@@ -166,13 +167,7 @@ export const makePDF = async file => {
         const index = await pdf.getPageIndex(dest[0])
         return { index }
     }
-    book.splitTOCHref = async href => {
-        const parsed = JSON.parse(href)
-        const dest = typeof parsed === 'string'
-            ? await pdf.getDestination(parsed) : parsed
-        const index = await pdf.getPageIndex(dest[0])
-        return [index, null]
-    }
+    book.splitTOCHref = href => pdfOutlineDestination(pdf, href)
     book.getTOCFragment = doc => doc.documentElement
     book.getCover = async () => renderPage(await pdf.getPage(1), true)
     book.destroy = () => pdf.destroy()
